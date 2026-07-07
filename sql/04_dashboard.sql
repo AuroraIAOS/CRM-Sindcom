@@ -98,8 +98,14 @@ create table snapshots_dashboard (
   mrr_contribuicoes  numeric(12,2),
   created_at         timestamptz not null default now()
 );
-create unique index ux_snapshot on snapshots_dashboard
-  (data_ref, coalesce(municipio_id, 0), coalesce(nivel::text, '__todos__'));
+create unique index ux_snapshot_com_nivel on snapshots_dashboard
+  (data_ref, coalesce(municipio_id, 0), nivel)
+  where nivel is not null;
+
+create unique index ux_snapshot_sem_nivel on snapshots_dashboard
+  (data_ref, coalesce(municipio_id, 0))
+  where nivel is null;
+
 alter table snapshots_dashboard enable row level security;
 
 create policy pol_snapshots_select on snapshots_dashboard for select
