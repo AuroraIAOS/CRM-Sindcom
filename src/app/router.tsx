@@ -1,0 +1,60 @@
+import { createBrowserRouter, Navigate } from "react-router-dom";
+import { AppShell } from "./AppShell";
+import { RoleGate } from "./RoleGate";
+import { NAV, homeDoRole } from "./nav";
+import { useAuth } from "@/lib/auth";
+import { Placeholder } from "@/components/shared/Placeholder";
+import { LoginPage } from "@/features/auth/LoginPage";
+import { RecuperarSenhaPage } from "@/features/auth/RecuperarSenhaPage";
+import { GuiaPublicaPage } from "@/features/servicos/GuiaPublicaPage";
+import type { PapelUsuario } from "@/lib/supabase";
+
+const INTERNOS: PapelUsuario[] = ["admin", "presidente", "secretaria", "juridico"];
+const GESTAO: PapelUsuario[] = ["admin", "presidente", "secretaria"];
+
+function IndexRedirect() {
+  const { role } = useAuth();
+  return <Navigate to={homeDoRole(role)} replace />;
+}
+
+// Rotas de detalhe (não aparecem no menu, mas seguem a mesma matriz de papéis).
+const ROTAS_DETALHE: Array<{ path: string; roles: PapelUsuario[]; titulo: string }> = [
+  { path: "/trabalhadores/:id", roles: INTERNOS, titulo: "Ficha do trabalhador" },
+  { path: "/beneficios/:id", roles: GESTAO, titulo: "Detalhe do benefício" },
+  { path: "/servicos/:id", roles: GESTAO, titulo: "Detalhe da solicitação" },
+  { path: "/servicos/:id/guia", roles: ["admin", "secretaria"], titulo: "Guia de encaminhamento" },
+];
+
+export const router = createBrowserRouter([
+  { path: "/login", element: <LoginPage /> },
+  { path: "/recuperar-senha", element: <RecuperarSenhaPage /> },
+  { path: "/guia/:token", element: <GuiaPublicaPage /> },
+  {
+    // Área interna: exige sessão + perfil ativo (RoleGate sem roles).
+    element: (
+      <RoleGate>
+        <AppShell />
+      </RoleGate>
+    ),
+    children: [
+      { index: true, element: <IndexRedirect /> },
+      ...NAV.map((item) => ({
+        path: item.path,
+        element: (
+          <RoleGate roles={item.roles}>
+            <Placeholder titulo={item.label} />
+          </RoleGate>
+        ),
+      })),
+      ...ROTAS_DETALHE.map((r) => ({
+        path: r.path,
+        element: (
+          <RoleGate roles={r.roles}>
+            <Placeholder titulo={r.titulo} />
+          </RoleGate>
+        ),
+      })),
+    ],
+  },
+  { path: "*", element: <Navigate to="/" replace /> },
+]);
