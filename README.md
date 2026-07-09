@@ -44,10 +44,30 @@ React 18 · TypeScript · Vite · vite-plugin-pwa · Tailwind CSS + shadcn/ui ·
 ```bash
 npm install
 cp .env.example .env   # preencher VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY
-npm run dev
+npm run dev            # servidor de desenvolvimento
+npm run build          # tsc --noEmit + build de produção (gera dist/)
 ```
 
-Regra de portão: **nenhuma tela antes da suíte de testes RLS 100% verde** (Fase 0 do plano de fases).
+### Testes RLS (portão da Fase 0)
+
+A suíte valida a matriz de `03_rls.sql` com 6 atores (5 papéis + anon), fazendo login
+real via supabase-js. Requer um `.env.test` (gitignored) com as credenciais dos usuários
+de teste:
+
+```bash
+# .env.test  (não versionar)
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+TEST_USER_PASSWORD=...
+TEST_ADMIN_EMAIL=...   TEST_PRESIDENTE_EMAIL=...   TEST_SECRETARIA_EMAIL=...
+TEST_JURIDICO_EMAIL=...   TEST_PARCEIRO_EMAIL=...
+```
+
+```bash
+npm run test:rls
+```
+
+Regra de portão: **nenhuma tela real antes da suíte de testes RLS 100% verde** (Fase 0).
 
 ## Deploy (Hostgator)
 
@@ -55,13 +75,13 @@ Regra de portão: **nenhuma tela antes da suíte de testes RLS 100% verde** (Fas
 npm run build
 ```
 
-Subir o conteúdo de `dist/` para a pasta do subdomínio `crm.sindcompassos.org` (cPanel/FTP), com `.htaccess` de SPA fallback (snippet em `specs/frontend.md`). HTTPS obrigatório (AutoSSL) — PWA não instala sem ele.
+Subir **todo** o conteúdo de `dist/` para a pasta do subdomínio `crm.sindcompassos.org` (cPanel/FTP). O `.htaccess` de SPA fallback + cache já vive em `public/.htaccess` e é copiado para `dist/` no build — nada a ajustar à mão (garanta que o FTP envie arquivos ocultos). HTTPS obrigatório (AutoSSL) — PWA não instala sem ele.
 
 ## Fases
 
 | Fase | Entrega | Status |
 |---|---|---|
-| 0 | Fundação: banco, auth, shell, suíte RLS | ⬜ |
+| 0 | Fundação: banco, auth, shell, suíte RLS | ✅ código completo · suíte RLS verde · deploy manual pendente |
 | 1 | MVP cadastral (Denise operando) | ⬜ |
 | 2 | Convênio + motor financeiro | ⬜ |
 | 3 | Dashboard, integrações (site + agente WhatsApp) | ⬜ |

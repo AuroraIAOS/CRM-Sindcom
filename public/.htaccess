@@ -1,0 +1,27 @@
+# CRM Sindcom — SPA fallback + cache (Hostgator / Apache)
+# Copiado para dist/ no build (Vite serve o publicDir como raiz).
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Arquivos e diretórios reais são servidos direto.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Qualquer outra rota do SPA → index.html (React Router resolve no cliente).
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+<IfModule mod_headers.c>
+  # Assets com hash no nome podem ser cacheados por muito tempo.
+  <FilesMatch "\.(js|css|woff2?|png|jpg|jpeg|svg|webp)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  # index.html e service worker nunca em cache (bloco por último = sobrepõe o
+  # de assets para sw.js/registerSW.js, que também terminam em .js).
+  <FilesMatch "(index\.html|sw\.js|registerSW\.js|manifest\.webmanifest)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
+</IfModule>
