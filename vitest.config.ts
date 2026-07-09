@@ -1,10 +1,14 @@
 import { defineConfig } from "vitest/config";
+import { fileURLToPath } from "node:url";
 
 // Config isolada dos testes (não carrega o plugin PWA do vite.config).
 // A suíte RLS fala direto com o Supabase via supabase-js (anon key + login),
 // exercitando o caminho JWT real. Sem paralelismo entre arquivos para não
 // embaralhar sessões/limpezas no banco compartilhado.
 export default defineConfig({
+  resolve: {
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+  },
   test: {
     environment: "node",
     include: ["tests/**/*.spec.ts"],
