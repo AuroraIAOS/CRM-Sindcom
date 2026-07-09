@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Tokens de docs/design-tokens.md — fonte única de identidade visual */
+:root {
+  --cor-texto-01: #424242;
+  --cor-texto-02: #565656;
+  --cor-fundo-01: #f5f5f5;
+  --cor-fundo-02: #efeee7;
+  --cor-realce: #c62828;
+  --cor-branco: #ffffff;
+
+  --font-titulo: "Playfair Display", Georgia, serif;
+  --font-corpo: "Lato", sans-serif;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    /* Nunca branco puro como fundo de página (design-tokens §2) */
+    background-color: var(--cor-fundo-01);
+    color: var(--cor-texto-01);
+    font-family: var(--font-corpo);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-titulo);
+  }
+}
