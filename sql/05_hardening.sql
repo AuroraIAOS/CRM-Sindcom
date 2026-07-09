@@ -86,11 +86,32 @@ begin
   end if;
 end $$;
 
+-- ----------------------------------------------------------------------------
+-- 4. search_path FIXO também nas funções SECURITY INVOKER
+-- Severidade menor (não rodam com privilégio elevado), mas fechamos o aviso
+-- para não deixar pendências. Mesmo padrão da seção 1 (public, extensions,
+-- pg_temp). Nenhuma delas usa objetos de `extensions`, mas mantém-se o padrão
+-- uniforme; `public` resolve primeiro.
+-- ----------------------------------------------------------------------------
+alter function public.fn_set_updated_at()                 set search_path = public, extensions, pg_temp;
+alter function public.fn_gera_numero_guia()               set search_path = public, extensions, pg_temp;
+alter function public.fn_gera_guia_pagamento()            set search_path = public, extensions, pg_temp;
+alter function public.fn_guarda_job()                     set search_path = public, extensions, pg_temp;
+alter function public.fn_valida_solicitacao()             set search_path = public, extensions, pg_temp;
+alter function public.fn_valida_atendimento_juridico()    set search_path = public, extensions, pg_temp;
+alter function public.fn_guarda_parceiro_solicitacao()    set search_path = public, extensions, pg_temp;
+alter function public.fn_eh(variadic papel_usuario[])     set search_path = public, extensions, pg_temp;
+alter function public.fn_config(text, text)               set search_path = public, extensions, pg_temp;
+
 -- ============================================================================
 -- FIM · 05_hardening.sql
--- Observação: os avisos de search_path mutável nas funções SECURITY INVOKER
--- (fn_set_updated_at, fn_gera_numero_guia, fn_gera_guia_pagamento, fn_eh,
--- fn_valida_solicitacao, fn_valida_atendimento_juridico,
--- fn_guarda_parceiro_solicitacao, fn_config, fn_guarda_job) têm severidade
--- menor (não rodam com privilégio elevado) e ficam fora deste escopo.
+-- Itens remanescentes no advisor são intencionais/ambientais:
+--  · v_fila_parceiro security definer  → BY DESIGN (esconde CPF do parceiro).
+--  · fn_dados_guia_publica / fn_registrar_checkin executáveis por anon
+--    → BY DESIGN (RPCs públicas da página do QR Code).
+--  · fn_role / fn_parceiro_id / fn_titular_bloqueado / fn_reclassificar_convencao
+--    executáveis por authenticated → necessárias ao RLS e à pré-validação de UX.
+--  · leaked-password protection (HaveIBeenPwned) → recurso do plano pago do
+--    Supabase; no plano Free adota-se política de senha forte (8+ caracteres,
+--    tipos múltiplos). Reavaliar ao migrar para o plano premium.
 -- ============================================================================
