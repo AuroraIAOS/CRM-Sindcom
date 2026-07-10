@@ -99,3 +99,10 @@ sandbox/
 # n8n exports temporários
 # ============================================================
 *.n8n.tmp
+
+# ============================================================
+# Screenshots de apoio (cPanel, painéis, provas de tela)
+# Vivem APENAS no repositório físico local — nunca no remoto.
+# Podem expor caminhos, usuários e senhas visíveis na tela.
+# ============================================================
+screenshots/
