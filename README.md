@@ -81,7 +81,7 @@ Subir **todo** o conteúdo de `dist/` para a pasta do subdomínio `crm.sindcompa
 
 | Fase | Entrega | Status |
 |---|---|---|
-| 0 | Fundação: banco, auth, shell, suíte RLS | ✅ código completo · suíte RLS verde · deploy manual pendente |
+| 0 | Fundação: banco, auth, shell, suíte RLS | ✅ concluída · suíte RLS verde · no ar em crm.sindcompassos.org |
 | 1 | MVP cadastral (Denise operando) | ⬜ |
 | 2 | Convênio + motor financeiro | ⬜ |
 | 3 | Dashboard, integrações (site + agente WhatsApp) | ⬜ |
