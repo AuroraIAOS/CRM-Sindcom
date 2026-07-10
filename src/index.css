@@ -17,9 +17,35 @@
   --radius-sm: 4px;
   --radius-md: 8px;
   --radius-lg: 16px;
+
+  /* Camada semântica shadcn/ui — HSL da MESMA paleta SindCom.
+     primary/destructive/ring = realce #C62828; background = fundo-01. */
+  --background: 0 0% 96%;
+  --foreground: 0 0% 26%;
+  --card: 0 0% 100%;
+  --card-foreground: 0 0% 26%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 0 0% 26%;
+  --primary: 0 66% 47%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 52 20% 92%;
+  --secondary-foreground: 0 0% 26%;
+  --muted: 52 20% 92%;
+  --muted-foreground: 0 0% 34%;
+  --accent: 52 20% 92%;
+  --accent-foreground: 0 0% 26%;
+  --destructive: 0 66% 47%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 0 0% 88%;
+  --input: 0 0% 88%;
+  --ring: 0 66% 47%;
+  --radius: 0.5rem;
 }
 
 @layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
   html,
   body,
   #root {

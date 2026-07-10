@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
+import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { homeDoRole, podeAcessar } from "./nav";
 import type { PapelUsuario } from "@/lib/supabase";
@@ -61,10 +62,19 @@ export function RoleGate({
   }
 
   if (roles && !podeAcessar(role, roles)) {
-    // TODO(Fase 1): toast "acesso negado" (adicionar sonner ao design system).
     if (inline) return null;
-    return <Navigate to={homeDoRole(role)} replace />;
+    return <RedirecionaSemAcesso destino={homeDoRole(role)} />;
   }
 
   return <>{children}</>;
+}
+
+/** Redireciona para a home do papel e avisa que o acesso foi negado. */
+function RedirecionaSemAcesso({ destino }: { destino: string }) {
+  useEffect(() => {
+    toast.error("Acesso negado", {
+      description: "Você não tem permissão para acessar esta página.",
+    });
+  }, []);
+  return <Navigate to={destino} replace />;
 }
