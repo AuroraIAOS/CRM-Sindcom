@@ -100,15 +100,21 @@ theme: {
 }
 ```
 
-## 5. Logotipos (arquivos em `assets/`)
+## 5. Logotipos e ícones (arquivos DEFINITIVOS — estrutura real no repo)
+
+**`public/assets/brand/`** — logotipos:
 
 | Arquivo | Versão | Uso indicado |
 |---|---|---|
-| `logo_vertical.png` | Vertical, ícone + texto | Cabeçalhos verticais, redes sociais, favicon |
-| `logo_horizontal_com_texto.png` | Horizontal, ícone + texto | Header principal, documentos, e-mails, **guia de encaminhamento** |
-| `logo_horizontal_sem_texto.png` | Horizontal, só ícone | Espaços reduzidos, badges, marca d'água, ícone do PWA |
+| `logo_horizontal_colorido.png` | Horizontal, colorido | Header principal (AppShell), login, documentos, **guia de encaminhamento** |
+| `logo_horizontal_negativo.png` | Horizontal, negativo | Fundos escuros |
+| `logo_vertical_colorido.png` | Vertical, colorido | Cabeçalhos verticais, redes sociais |
+| `logo_vertical_negativo.png` | Vertical, negativo | Fundos escuros |
 
-Regras: nunca distorcer proporções; horizontal com texto é a principal; largura mínima 120px na horizontal; **não existe versão negativa** (fundos escuros) — se precisar, sinalizar ao Maxwell antes de improvisar.
+**`public/icons/`** — ícones de PWA e touch (variantes `vermelho` e `negativo`):
+`icon_pwa_{vermelho|negativo}_192x192.png` · `icon_pwa_{vermelho|negativo}_512x512.png` · `icon_touch_{vermelho|negativo}_180x180.png`. O manifest do PWA (`vite.config.ts`) usa as variantes **vermelhas**; o favicon é o `icon_pwa_vermelho_192x192.png`.
+
+Regras: nunca distorcer proporções; horizontal colorido é a principal; largura mínima 120px na horizontal; as versões **negativo** existem para fundos escuros (superando a limitação da identidade original, que não as tinha). Estes arquivos são a versão final — o código referencia estes caminhos; não renomear.
 
 ## 6. Tom e voz
 

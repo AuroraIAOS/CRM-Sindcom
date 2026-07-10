@@ -39,5 +39,9 @@ React 18 + TypeScript + Vite + vite-plugin-pwa · Tailwind CSS + shadcn/ui · Ta
 ## Ambiente
 
 - `.env`: `VITE_SUPABASE_URL` · `VITE_SUPABASE_ANON_KEY`
-- Deploy: build estático (`npm run build` → `dist/`) hospedado na Hostgator em `crm.sindcompassos.org` (SPA fallback via `.htaccess`).
+- Deploy: build estático (`npm run build` → `dist/`) hospedado na Hostgator em `crm.sindcompassos.org` (SPA fallback via `.htaccess`). Runbook completo (host FTP real, armadilha da Cloudflare, verificação): `docs/deploy.md`.
 - Jobs: pg_cron (rotinas SQL) + n8n (e-mails de guias e webhooks do site).
+
+## Vigilância de segurança pendente (lembrar o Maxwell)
+
+- **`auth_leaked_password_protection` (HaveIBeenPwned) está DESATIVADO** — é recurso do plano pago do Supabase; o projeto roda no Free. Mitigação atual: política de senha forte no Auth (mín. 8 caracteres, maiúsculas+minúsculas+dígitos+símbolos). **Assim que o projeto migrar para o Supabase pago, ativar este recurso** (Authentication → Sign In / Providers → Password) e conferir com `get_advisors`. Toda sessão que tocar em Auth/segurança deve checar se essa migração já ocorreu e lembrar o Maxwell.

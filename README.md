@@ -77,6 +77,10 @@ npm run build
 
 Subir **todo** o conteúdo de `dist/` para a pasta do subdomínio `crm.sindcompassos.org` (cPanel/FTP). O `.htaccess` de SPA fallback + cache já vive em `public/.htaccess` e é copiado para `dist/` no build — nada a ajustar à mão (garanta que o FTP envie arquivos ocultos). HTTPS obrigatório (AutoSSL) — PWA não instala sem ele.
 
+## Segurança — pendência vigiada
+
+- **Proteção contra senhas vazadas (HaveIBeenPwned) desativada** por ser recurso do plano pago do Supabase (projeto no Free). Mitigação: política de senha forte no Auth (mín. 8 caracteres, tipos múltiplos). **Ativar assim que migrar para o plano pago** — a nota correspondente em `CLAUDE.md` faz o Claude Code lembrar desta pendência nas sessões futuras. Demais hardenings aplicados e documentados em `sql/05_hardening.sql`.
+
 ## Fases
 
 | Fase | Entrega | Status |

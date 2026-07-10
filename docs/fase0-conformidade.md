@@ -108,7 +108,26 @@ começam depois disso.
 3. `/guia/:token` abre sem login e chama `fn_dados_guia_publica`.
 4. `npm run build` gera `dist/`; Hostgator serve o SPA com refresh em rota profunda.
 
-## Pendências que dependem do Maxwell
-- Enviar os 3 logos para `assets/`.
-- Fornecer as 5 senhas de teste para `.env.test`.
-- Decidir se/quando rodar a carga RFB + `codigo_rfb` (infra) para fechar o aceite completo da Fase 0.
+---
+
+## FECHAMENTO — resolução dos gaps (Fase 0 encerrada)
+
+Todos os gaps do relatório acima foram resolvidos. Registro definitivo:
+
+### Gap 1 — `codigo_rfb` (de-para TOM→IBGE) ✅
+- **Fonte:** CSV oficial da Receita Federal — `https://www.gov.br/receitafederal/dados/municipios.csv/@@download/file` (formato `CÓDIGO TOM;CÓDIGO IBGE;MUNICÍPIO TOM;MUNICÍPIO IBGE;UF`, latin-1/CRLF, 5.571 linhas de dados — a RFB inclui 1 código extra sem par no IBGE, ignorado no join).
+- **Lógica:** staging temporária `stg_tom_ibge(tom, ibge)` → `UPDATE municipios SET codigo_rfb = tom` casando por `codigo_ibge` (7 dígitos, chave 100% populada pelo seed). Nenhuma alteração de schema; staging removida ao final.
+- **Resultado:** **5.570/5.570** municípios com `codigo_rfb` (0 sem); **MG 853/853**; **29/29 municípios da base territorial** resolvidos (Passos = TOM 4957). Critério de aceite da Fase 0 cumprido.
+- **Tabelas de referência RFB** também carregadas pelo Maxwell e conferidas: `cnaes` 1.359 · `naturezas_juridicas` 91 · `qualificacoes_responsavel` 68 · `motivos_situacao_cadastral` 63.
+
+### Gap 2 — assets de marca ✅
+Arquivos **definitivos** em `public/assets/brand/` (4 logos: horizontal/vertical × colorido/negativo) e `public/icons/` (6 ícones PWA/touch). Estrutura e usos documentados em `docs/design-tokens.md` §5 — o código referencia estes caminhos; não renomear.
+
+### Gap 3 — hardening de segurança ✅
+Aplicado e versionado em `sql/05_hardening.sql` (idempotente, comentado bloco a bloco): `search_path` fixo em TODAS as funções `fn_*` (SECURITY DEFINER e INVOKER — 0 restantes no advisor), `EXECUTE` revogado de PUBLIC/anon com reconcessão cirúrgica (RPCs do QR seguem anon; funções de RLS seguem authenticated), `pg_trgm` movido para o schema `extensions` (índices GIN religados sem recriação). Único item aceito como pendência: `auth_leaked_password_protection` (plano pago) — vigilância registrada em `CLAUDE.md` e `README.md`.
+
+### Credenciais de teste ✅
+`.env.test` criado (gitignored via `.env.*`) com os 5 usuários; chaves documentadas no `README.md` §Testes sem expor a senha.
+
+### Metade-código + deploy ✅
+Skeleton React+Vite+TS+PWA com AppShell, RoleGate, navegação por papel e Auth; suíte RLS **27/27 verde** (17 RLS × 6 atores + 10 navegação/redirect); **no ar em `https://crm.sindcompassos.org`** (runbook: `docs/deploy.md`). Fase 0 concluída e aceita.
