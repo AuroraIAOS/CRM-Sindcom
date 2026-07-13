@@ -35,6 +35,7 @@ React 18 + TypeScript + Vite + vite-plugin-pwa · Tailwind CSS + shadcn/ui · Ta
 - A segurança real são RLS + triggers no banco; o frontend só traduz os erros do Postgres em mensagens amigáveis (mapa central de mensagens).
 - Textos de UI em português brasileiro. Identidade visual conforme `docs/design-tokens.md` (cores, tipografia, tom — nunca inventar paleta).
 - Erros e limitações são reportados com transparência total; nada de "funciona" com ressalva escondida.
+- **Dados de demonstração permanecem no banco.** Ao implementar e verificar qualquer subetapa que crie trabalhadores, beneficiados, empresas, estabelecimentos, parceiros ou solicitações de serviço, os registros de demonstração/verificação usados no teste **ficam gravados** ao final da sessão — não apagar. Isso dá a Maxwell uma visualização real e incremental do sistema, subetapa a subetapa, em `crm.sindcompassos.org`. Nomeie esses registros de forma clara (prefixo `DEMO —` ou nome obviamente fictício) para nunca serem confundidos com cadastro real quando a importação da Etapa 01.5 começar. Só remover dados de demonstração por reparo técnico ou motivo de segurança — e, nesse caso, avisar Maxwell explicitamente sobre o que e por que foi removido.
 
 ## Ambiente
 
