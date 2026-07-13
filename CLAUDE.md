@@ -44,6 +44,10 @@ React 18 + TypeScript + Vite + vite-plugin-pwa · Tailwind CSS + shadcn/ui · Ta
 - **Deploy automático autorizado.** Ao final de cada subetapa/processo que altere o frontend, faça o deploy para `crm.sindcompassos.org` (build + envio FTP via `docs/deploy.md`, credenciais em `.env.deploy`) sem pedir confirmação a cada vez — Maxwell autorizou isso explicitamente em 2026-07-13. Racional: o CRM já exige login/senha, então publicar uma tela nova não é um risco crítico. Ainda assim, nunca faça deploy com a suíte de testes (`npm run test`) ou o `typecheck`/`build` quebrados, e avise Maxwell no resumo de cada subetapa que o deploy foi feito (com o resultado da verificação pós-deploy do runbook).
 - Jobs: pg_cron (rotinas SQL) + n8n (e-mails de guias e webhooks do site).
 
+## Backlog (decisões adiadas)
+
+- [ ] **Visão anual de cartas de oposição** (`/cartas`: quem entregou, quem falta, exportação da lista de reclassificação — `specs/frontend.md` §2.2) — adiada para o **final do roteiro**, decisão de Maxwell em 2026-07-13. Não implementar junto de nenhuma subetapa intermediária; só entra quando todo o resto estiver pronto.
+
 ## Vigilância de segurança pendente (lembrar o Maxwell)
 
 - **`auth_leaked_password_protection` (HaveIBeenPwned) está DESATIVADO** — é recurso do plano pago do Supabase; o projeto roda no Free. Mitigação atual: política de senha forte no Auth (mín. 8 caracteres, maiúsculas+minúsculas+dígitos+símbolos). **Assim que o projeto migrar para o Supabase pago, ativar este recurso** (Authentication → Sign In / Providers → Password) e conferir com `get_advisors`. Toda sessão que tocar em Auth/segurança deve checar se essa migração já ocorreu e lembrar o Maxwell.
