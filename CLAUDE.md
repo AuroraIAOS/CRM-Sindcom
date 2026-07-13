@@ -47,6 +47,7 @@ React 18 + TypeScript + Vite + vite-plugin-pwa · Tailwind CSS + shadcn/ui · Ta
 ## Backlog (decisões adiadas)
 
 - [ ] **Visão anual de cartas de oposição** (`/cartas`: quem entregou, quem falta, exportação da lista de reclassificação — `specs/frontend.md` §2.2) — adiada para o **final do roteiro**, decisão de Maxwell em 2026-07-13. Não implementar junto de nenhuma subetapa intermediária; só entra quando todo o resto estiver pronto.
+- [ ] **Exportação CSV incompleta (Subetapa 01.5)** — Apenas Trabalhadores possui botão "Exportar CSV" implementado. **Faltam exportações em:** Empresas, Estabelecimentos e Beneficiados. As importações de todos os 4 tipos estão 100% funcionais; as exportações precisam ser propagadas para manter simetria. Prioridade: baixa (funcionalidade secundária, importação é crítica). Quando implementar: de forma uniforme em todas as 4 tabelas, mantendo mesmos formatos e padrões visuais.
 
 ## Vigilância de segurança pendente (lembrar o Maxwell)
 
