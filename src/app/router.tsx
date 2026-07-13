@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { AppShell } from "./AppShell";
 import { RoleGate } from "./RoleGate";
@@ -7,7 +8,20 @@ import { Placeholder } from "@/components/shared/Placeholder";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RecuperarSenhaPage } from "@/features/auth/RecuperarSenhaPage";
 import { GuiaPublicaPage } from "@/features/servicos/GuiaPublicaPage";
+import { ListaTrabalhadoresPage } from "@/features/trabalhadores/ListaTrabalhadoresPage";
+import { FichaTrabalhadorPage } from "@/features/trabalhadores/FichaTrabalhadorPage";
 import type { PapelUsuario } from "@/lib/supabase";
+
+/**
+ * Telas reais já implementadas, por rota — o restante do NAV/ROTAS_DETALHE
+ * segue como Placeholder até a subetapa correspondente as substituir.
+ */
+const PAGINAS: Partial<Record<string, ReactNode>> = {
+  "/trabalhadores": <ListaTrabalhadoresPage />,
+};
+const PAGINAS_DETALHE: Partial<Record<string, ReactNode>> = {
+  "/trabalhadores/:id": <FichaTrabalhadorPage />,
+};
 
 const INTERNOS: PapelUsuario[] = ["admin", "presidente", "secretaria", "juridico"];
 const GESTAO: PapelUsuario[] = ["admin", "presidente", "secretaria"];
@@ -42,7 +56,7 @@ export const router = createBrowserRouter([
         path: item.path,
         element: (
           <RoleGate roles={item.roles}>
-            <Placeholder titulo={item.label} />
+            {PAGINAS[item.path] ?? <Placeholder titulo={item.label} />}
           </RoleGate>
         ),
       })),
@@ -50,7 +64,7 @@ export const router = createBrowserRouter([
         path: r.path,
         element: (
           <RoleGate roles={r.roles}>
-            <Placeholder titulo={r.titulo} />
+            {PAGINAS_DETALHE[r.path] ?? <Placeholder titulo={r.titulo} />}
           </RoleGate>
         ),
       })),
