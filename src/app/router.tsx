@@ -10,6 +10,8 @@ import { RecuperarSenhaPage } from "@/features/auth/RecuperarSenhaPage";
 import { GuiaPublicaPage } from "@/features/servicos/GuiaPublicaPage";
 import { ListaTrabalhadoresPage } from "@/features/trabalhadores/ListaTrabalhadoresPage";
 import { FichaTrabalhadorPage } from "@/features/trabalhadores/FichaTrabalhadorPage";
+import { ListaEmpresasPage } from "@/features/empresas/ListaEmpresasPage";
+import { ConvencoesPage } from "@/features/convencoes/ConvencoesPage";
 import type { PapelUsuario } from "@/lib/supabase";
 
 /**
@@ -18,6 +20,8 @@ import type { PapelUsuario } from "@/lib/supabase";
  */
 const PAGINAS: Partial<Record<string, ReactNode>> = {
   "/trabalhadores": <ListaTrabalhadoresPage />,
+  "/empresas": <ListaEmpresasPage />,
+  "/convencoes": <ConvencoesPage />,
 };
 const PAGINAS_DETALHE: Partial<Record<string, ReactNode>> = {
   "/trabalhadores/:id": <FichaTrabalhadorPage />,
