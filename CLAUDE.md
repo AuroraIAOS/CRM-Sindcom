@@ -41,6 +41,7 @@ React 18 + TypeScript + Vite + vite-plugin-pwa · Tailwind CSS + shadcn/ui · Ta
 
 - `.env`: `VITE_SUPABASE_URL` · `VITE_SUPABASE_ANON_KEY`
 - Deploy: build estático (`npm run build` → `dist/`) hospedado na Hostgator em `crm.sindcompassos.org` (SPA fallback via `.htaccess`). Runbook completo (host FTP real, armadilha da Cloudflare, verificação): `docs/deploy.md`.
+- **Deploy automático autorizado.** Ao final de cada subetapa/processo que altere o frontend, faça o deploy para `crm.sindcompassos.org` (build + envio FTP via `docs/deploy.md`, credenciais em `.env.deploy`) sem pedir confirmação a cada vez — Maxwell autorizou isso explicitamente em 2026-07-13. Racional: o CRM já exige login/senha, então publicar uma tela nova não é um risco crítico. Ainda assim, nunca faça deploy com a suíte de testes (`npm run test`) ou o `typecheck`/`build` quebrados, e avise Maxwell no resumo de cada subetapa que o deploy foi feito (com o resultado da verificação pós-deploy do runbook).
 - Jobs: pg_cron (rotinas SQL) + n8n (e-mails de guias e webhooks do site).
 
 ## Vigilância de segurança pendente (lembrar o Maxwell)
