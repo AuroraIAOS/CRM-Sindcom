@@ -20,6 +20,7 @@ import { useAuth } from "@/lib/auth";
 import { useMunicipiosBase } from "@/features/municipios/api";
 import { useTrabalhadores, type TrabalhadorListItem, type TrabalhadoresFiltros } from "./api";
 import { TrabalhadorFormDialog } from "./TrabalhadorFormDialog";
+import { ExportarTrabalhadoresDialog } from "./ExportarTrabalhadoresDialog";
 
 const PODE_CRIAR = ["admin", "secretaria"] as const;
 
@@ -37,6 +38,7 @@ export function ListaTrabalhadoresPage() {
   const { role } = useAuth();
   const podeCriar = role !== null && (PODE_CRIAR as readonly string[]).includes(role);
   const [criando, setCriando] = useState(false);
+  const [exportando, setExportando] = useState(false);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
   const [sorting, setSorting] = useState<SortingState>([]);
   const [busca, setBusca] = useState("");
@@ -119,6 +121,9 @@ export function ListaTrabalhadoresPage() {
       )}
 
       {criando && <TrabalhadorFormDialog onOpenChange={setCriando} />}
+      {exportando && (
+        <ExportarTrabalhadoresDialog filtros={filtros} onOpenChange={setExportando} />
+      )}
 
       <DataTable
         columns={columns}
@@ -130,6 +135,7 @@ export function ListaTrabalhadoresPage() {
         onSortingChange={setSorting}
         carregando={trabalhadores.isLoading}
         onLinhaClick={(linha) => navigate(`/trabalhadores/${linha.id}`)}
+        onExportar={() => setExportando(true)}
         vazio="Nenhum trabalhador encontrado com estes filtros."
         toolbar={
           <>
