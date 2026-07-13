@@ -29,6 +29,14 @@ const POR_TRECHO: Array<[RegExp, string]> = [
   [/row-level security|violates row-level security/i, "Você não tem permissão para esta operação."],
   [/permission denied/i, "Você não tem permissão para esta operação."],
   [/JWT expired|invalid claim/i, "Sessão expirada. Faça login novamente."],
+  [
+    /ux_vinculo_principal_ativo/i,
+    "Este trabalhador já tem um vínculo principal ativo. Desligue o vínculo atual antes de cadastrar um novo vínculo principal.",
+  ],
+  [
+    /cartas_oposicao_trabalhador_id_ano_base_key/i,
+    "Já existe uma carta de oposição registrada para este trabalhador neste ano-base.",
+  ],
   [/duplicate key value/i, "Já existe um registro com estes dados (duplicado)."],
 ];
 
@@ -42,13 +50,14 @@ export function mensagemErro(erro: unknown): string {
   // 1. Erros de trigger (P0001): a mensagem do SQL já é amigável.
   if (e.code === "P0001" && msg) return msg;
 
-  // 2. Código conhecido.
-  if (e.code && POR_CODIGO[e.code]) return POR_CODIGO[e.code];
-
-  // 3. Trecho conhecido na mensagem.
+  // 2. Trecho conhecido na mensagem — mais específico que o código genérico
+  //    (ex.: qual constraint de unicidade foi violada), então vem antes.
   for (const [re, texto] of POR_TRECHO) {
     if (re.test(msg)) return texto;
   }
+
+  // 3. Código conhecido (fallback genérico por SQLSTATE).
+  if (e.code && POR_CODIGO[e.code]) return POR_CODIGO[e.code];
 
   // 4. Fallback: a própria mensagem, ou genérica.
   return msg || "Ocorreu um erro inesperado. Tente novamente.";
