@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
+import { Plus } from "lucide-react";
 import { DataTable } from "@/components/shared/DataTable";
 import { NivelBadge } from "@/components/shared/NivelBadge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -14,8 +16,12 @@ import {
 } from "@/components/ui/select";
 import { formatarCpf } from "@/lib/formatters";
 import { mensagemErro } from "@/lib/mensagens";
+import { useAuth } from "@/lib/auth";
 import { useMunicipiosBase } from "@/features/municipios/api";
 import { useTrabalhadores, type TrabalhadorListItem, type TrabalhadoresFiltros } from "./api";
+import { TrabalhadorFormDialog } from "./TrabalhadorFormDialog";
+
+const PODE_CRIAR = ["admin", "secretaria"] as const;
 
 const ROTULO_NIVEL = { bronze: "Bronze", prata: "Prata", ouro: "Ouro" } as const;
 const ROTULO_STATUS = {
@@ -28,6 +34,9 @@ const ROTULO_PAGAMENTO = { holerite: "Holerite", boleto_direto: "Boleto direto" 
 
 export function ListaTrabalhadoresPage() {
   const navigate = useNavigate();
+  const { role } = useAuth();
+  const podeCriar = role !== null && (PODE_CRIAR as readonly string[]).includes(role);
+  const [criando, setCriando] = useState(false);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
   const [sorting, setSorting] = useState<SortingState>([]);
   const [busca, setBusca] = useState("");
@@ -96,11 +105,20 @@ export function ListaTrabalhadoresPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-3xl font-semibold text-texto-1">Trabalhadores</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-semibold text-texto-1">Trabalhadores</h1>
+        {podeCriar && (
+          <Button onClick={() => setCriando(true)}>
+            <Plus className="mr-1 h-4 w-4" /> Novo trabalhador
+          </Button>
+        )}
+      </div>
 
       {trabalhadores.isError && (
         <p className="text-sm text-estado-erro">{mensagemErro(trabalhadores.error)}</p>
       )}
+
+      {criando && <TrabalhadorFormDialog onOpenChange={setCriando} />}
 
       <DataTable
         columns={columns}

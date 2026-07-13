@@ -1,6 +1,33 @@
 import { z } from "zod";
 import { cpfValido } from "@/lib/validators";
 
+/**
+ * Espelha trabalhadores (cadastro central). `nivel` NÃO entra — é coluna
+ * gerada no banco a partir das duas flags. A regra `chk_convenio_exige_
+ * contribuicao` do banco vira um refine aqui (mensalidade exige contribuição).
+ */
+export const trabalhadorSchema = z
+  .object({
+    cpf: z.string().refine(cpfValido, "CPF inválido"),
+    nome: z.string().trim().min(1, "Nome obrigatório"),
+    data_nascimento: z.string().optional(),
+    telefone_whatsapp: z.string().trim().optional(),
+    email: z.string().trim().email("E-mail inválido").optional().or(z.literal("")),
+    municipio_id: z.preprocess(
+      (v) => (v === "" || v === undefined || v === null ? undefined : Number(v)),
+      z.number().optional(),
+    ),
+    recolhe_contribuicao_sindical: z.boolean().default(true),
+    recolhe_mensalidade_convenio: z.boolean().default(false),
+    forma_pagamento_preferida: z.enum(["holerite", "boleto_direto"]).default("holerite"),
+  })
+  .refine((v) => !(v.recolhe_mensalidade_convenio && !v.recolhe_contribuicao_sindical), {
+    message: "A mensalidade do convênio exige que o trabalhador recolha a contribuição sindical.",
+    path: ["recolhe_mensalidade_convenio"],
+  });
+
+export type TrabalhadorFormValues = z.infer<typeof trabalhadorSchema>;
+
 /** Espelha vinculos_empregaticios (chk_datas_vinculo, ux_vinculo_principal_ativo). */
 export const vinculoSchema = z
   .object({

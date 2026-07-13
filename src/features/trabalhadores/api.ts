@@ -3,7 +3,13 @@ import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { supabase } from "@/lib/supabase";
 import { apenasDigitos } from "@/lib/validators";
 import type { Database, Enums } from "@/lib/database.types";
-import type { BeneficiadoFormValues, CartaFormValues, VinculoFormValues } from "./schemas";
+import type { TablesInsert } from "@/lib/database.types";
+import type {
+  BeneficiadoFormValues,
+  CartaFormValues,
+  TrabalhadorFormValues,
+  VinculoFormValues,
+} from "./schemas";
 
 /**
  * Camada única de acesso ao domínio "trabalhadores" (frontend.md §5): todo
@@ -84,6 +90,47 @@ export function useTrabalhadores(
       return { linhas: (data ?? []) as TrabalhadorListItem[], total: count ?? 0 };
     },
     placeholderData: keepPreviousData,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Criação de trabalhador
+// ---------------------------------------------------------------------------
+
+/**
+ * Monta o payload de INSERT a partir do formulário. Usado tanto pelo INSERT
+ * direto do Admin (useCriarTrabalhador) quanto pela fila-admin (payload da
+ * solicitacoes_admin da Secretária) — o mesmo objeto vira `jsonb` na fila e é
+ * reexecutado como INSERT real quando o Admin aprova. `status_cadastro` e
+ * `origem_cadastro` são fixos: criação manual é ato deliberado (= aprovado).
+ */
+export function montarPayloadTrabalhador(v: TrabalhadorFormValues): TablesInsert<"trabalhadores"> {
+  return {
+    cpf: apenasDigitos(v.cpf),
+    nome: v.nome.trim(),
+    data_nascimento: vazio(v.data_nascimento),
+    telefone_whatsapp: vazio(v.telefone_whatsapp),
+    email: vazio(v.email),
+    municipio_id: v.municipio_id ?? null,
+    recolhe_contribuicao_sindical: v.recolhe_contribuicao_sindical,
+    recolhe_mensalidade_convenio: v.recolhe_mensalidade_convenio,
+    forma_pagamento_preferida: v.forma_pagamento_preferida,
+    status_cadastro: "aprovado",
+    origem_cadastro: "manual",
+  };
+}
+
+/** INSERT direto — só o Admin passa no RLS (pol_trab_insert). */
+export function useCriarTrabalhador() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (valores: TrabalhadorFormValues) => {
+      const { error } = await supabase.from("trabalhadores").insert(montarPayloadTrabalhador(valores));
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["trabalhadores", "lista"] });
+    },
   });
 }
 
