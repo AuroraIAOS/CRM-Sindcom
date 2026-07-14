@@ -1,8 +1,10 @@
 import { NavLink, Outlet } from "react-router-dom";
-import { Bell, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { NAV, type NavItem } from "./nav";
 import { cn } from "@/lib/utils";
+import { NotificationBell } from "@/features/notificacoes/NotificationBell";
+import { useNotificacoesRealtime } from "@/features/notificacoes/api";
 
 const GRUPOS: Array<{ id: NavItem["grupo"]; titulo: string }> = [
   { id: "principal", titulo: "" },
@@ -22,6 +24,7 @@ const ROTULO_ROLE: Record<string, string> = {
 export function AppShell() {
   const { perfil, role, signOut } = useAuth();
   const itens = NAV.filter((i) => role && i.roles.includes(role));
+  useNotificacoesRealtime();
 
   return (
     <div className="grid min-h-full grid-cols-[260px_1fr]">
@@ -74,12 +77,7 @@ export function AppShell() {
             )}
           </div>
           <div className="flex items-center gap-4">
-            <button
-              aria-label="Notificações"
-              className="relative text-texto-2 hover:text-texto-1"
-            >
-              <Bell className="h-5 w-5" />
-            </button>
+            <NotificationBell />
             <button
               onClick={() => void signOut()}
               className="flex items-center gap-2 text-sm text-texto-2 hover:text-realce"

@@ -15,6 +15,7 @@ import { ConvencoesPage } from "@/features/convencoes/ConvencoesPage";
 import { FilaAdminPage } from "@/features/fila-admin/FilaAdminPage";
 import { AprovacoesPage } from "@/features/aprovacoes/AprovacoesPage";
 import { ImportacaoPage } from "@/features/importacao/ImportacaoPage";
+import { NotificacoesPage } from "@/features/notificacoes/NotificacoesPage";
 import type { PapelUsuario } from "@/lib/supabase";
 
 /**
@@ -28,6 +29,7 @@ const PAGINAS: Partial<Record<string, ReactNode>> = {
   "/fila-admin": <FilaAdminPage />,
   "/aprovacoes": <AprovacoesPage />,
   "/importacao": <ImportacaoPage />,
+  "/notificacoes": <NotificacoesPage />,
 };
 const PAGINAS_DETALHE: Partial<Record<string, ReactNode>> = {
   "/trabalhadores/:id": <FichaTrabalhadorPage />,
