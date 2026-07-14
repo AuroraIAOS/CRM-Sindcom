@@ -12,13 +12,14 @@ export function useEstabelecimentosSimples() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("estabelecimentos")
-        .select("id, nome_fantasia, cnpj_completo, empresa:empresas(razao_social)")
+        .select("id, nome_fantasia, cnpj_completo, convencao_id, empresa:empresas(razao_social)")
         .order("nome_fantasia");
       if (error) throw error;
       return data as Array<{
         id: string;
         nome_fantasia: string | null;
         cnpj_completo: string | null;
+        convencao_id: string | null;
         empresa: { razao_social: string } | null;
       }>;
     },

@@ -48,12 +48,23 @@ export const vinculoSchema = z
 
 export type VinculoFormValues = z.infer<typeof vinculoSchema>;
 
+/** Espelha o enum parentesco_beneficiado do banco (sql/08_parentesco_enum.sql). */
+export const PARENTESCO_OPCOES = [
+  "progenitor/a",
+  "irmão/a",
+  "filho/a",
+  "sogro/a",
+  "enteado/a",
+  "independentes",
+  "cônjuge",
+] as const;
+
 /** Espelha beneficiados (cpf único, DV validado no front — igual a trabalhadores). */
 export const beneficiadoSchema = z.object({
   nome: z.string().trim().min(1, "Nome obrigatório"),
   cpf: z.string().refine(cpfValido, "CPF inválido"),
   data_nascimento: z.string().optional(),
-  parentesco: z.string().trim().optional(),
+  parentesco: z.enum(PARENTESCO_OPCOES).optional(),
   tipo: z.enum(["direto", "indireto", "adicional"], { required_error: "Selecione o tipo" }),
 });
 

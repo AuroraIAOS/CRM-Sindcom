@@ -1,24 +1,66 @@
 import { cpfValido } from "@/lib/validators";
 import { parseDataFlexivel } from "@/lib/formatters";
+import { PARENTESCO_OPCOES } from "@/features/trabalhadores/schemas";
 import {
   campo,
   construirMapaColunas,
   normalizarIdentificador,
-  vazioParaNull,
   type LinhaPreview,
   type ParseResultado,
 } from "./parsers";
 
 type TipoBeneficiado = "direto" | "indireto" | "adicional";
+type ParentescoBeneficiado = (typeof PARENTESCO_OPCOES)[number];
 
 export type BeneficiadoPayload = {
   titular_id: string;
   cpf: string;
   nome: string;
   data_nascimento: string | null;
-  parentesco: string | null;
+  parentesco: ParentescoBeneficiado | null;
   tipo: TipoBeneficiado;
 };
+
+/** parentesco virou ENUM fechado no banco (sql/08_parentesco_enum.sql) — texto
+ *  livre da planilha precisa casar com um dos 7 valores ou vira null (não
+ *  bloqueia a linha; aviso informativo no preview). */
+const SINONIMOS_PARENTESCO: Record<string, ParentescoBeneficiado> = {
+  pai: "progenitor/a",
+  mae: "progenitor/a",
+  mãe: "progenitor/a",
+  progenitor: "progenitor/a",
+  progenitora: "progenitor/a",
+  "progenitor/a": "progenitor/a",
+  irmao: "irmão/a",
+  irmão: "irmão/a",
+  irma: "irmão/a",
+  irmã: "irmão/a",
+  "irmão/a": "irmão/a",
+  filho: "filho/a",
+  filha: "filho/a",
+  "filho/a": "filho/a",
+  sogro: "sogro/a",
+  sogra: "sogro/a",
+  "sogro/a": "sogro/a",
+  enteado: "enteado/a",
+  enteada: "enteado/a",
+  "enteado/a": "enteado/a",
+  independente: "independentes",
+  independentes: "independentes",
+  conjuge: "cônjuge",
+  cônjuge: "cônjuge",
+  esposa: "cônjuge",
+  esposo: "cônjuge",
+  marido: "cônjuge",
+  mulher: "cônjuge",
+};
+
+function normalizarParentesco(valor: string): { valor: ParentescoBeneficiado | null; naoReconhecido: boolean } {
+  const bruto = valor.trim();
+  if (!bruto) return { valor: null, naoReconhecido: false };
+  const encontrado = SINONIMOS_PARENTESCO[bruto.toLowerCase()];
+  return encontrado ? { valor: encontrado, naoReconhecido: false } : { valor: null, naoReconhecido: true };
+}
 
 export type ContextoBeneficiados = {
   /** cpf do titular → { id, ouro } */
@@ -99,12 +141,21 @@ export function validarBeneficiados(
       return { linha: idx + 2, status: "atualizar", mensagens, dados: null, bruta };
     }
 
+    const { valor: parentesco, naoReconhecido: parentescoNaoReconhecido } = normalizarParentesco(
+      campo(bruta, mapa, "parentesco"),
+    );
+    if (parentescoNaoReconhecido) {
+      mensagens.push(
+        `Parentesco "${campo(bruta, mapa, "parentesco")}" não reconhecido — gravado em branco (edite na ficha depois)`,
+      );
+    }
+
     const dados: BeneficiadoPayload = {
       titular_id: titular.id,
       cpf,
       nome,
       data_nascimento: parseDataFlexivel(campo(bruta, mapa, "data_nascimento")),
-      parentesco: vazioParaNull(campo(bruta, mapa, "parentesco")),
+      parentesco,
       tipo: tipoRaw,
     };
     const status = existente ? "atualizar" : mensagens.length > 0 ? "aviso" : "inserir";

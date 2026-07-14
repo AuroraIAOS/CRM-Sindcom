@@ -1,6 +1,3 @@
-// Tipos gerados do schema Supabase (public). NAO editar a mao.
-// Regenerar: mcp Supabase generate_typescript_types.
-
 export type Json =
   | string
   | number
@@ -130,7 +127,9 @@ export type Database = {
           data_nascimento: string | null
           id: string
           nome: string
-          parentesco: string | null
+          parentesco:
+            | Database["public"]["Enums"]["parentesco_beneficiado"]
+            | null
           status_cadastro: Database["public"]["Enums"]["status_cadastro"]
           tipo: Database["public"]["Enums"]["tipo_beneficiado"]
           titular_id: string
@@ -143,7 +142,9 @@ export type Database = {
           data_nascimento?: string | null
           id?: string
           nome: string
-          parentesco?: string | null
+          parentesco?:
+            | Database["public"]["Enums"]["parentesco_beneficiado"]
+            | null
           status_cadastro?: Database["public"]["Enums"]["status_cadastro"]
           tipo: Database["public"]["Enums"]["tipo_beneficiado"]
           titular_id: string
@@ -156,7 +157,9 @@ export type Database = {
           data_nascimento?: string | null
           id?: string
           nome?: string
-          parentesco?: string | null
+          parentesco?:
+            | Database["public"]["Enums"]["parentesco_beneficiado"]
+            | null
           status_cadastro?: Database["public"]["Enums"]["status_cadastro"]
           tipo?: Database["public"]["Enums"]["tipo_beneficiado"]
           titular_id?: string
@@ -1920,6 +1923,14 @@ export type Database = {
         | "secretaria"
         | "juridico"
         | "parceiro"
+      parentesco_beneficiado:
+        | "progenitor/a"
+        | "irmão/a"
+        | "filho/a"
+        | "sogro/a"
+        | "enteado/a"
+        | "independentes"
+        | "cônjuge"
       status_cadastro: "pendente" | "aprovado" | "rejeitado" | "inativo"
       status_fatura: "aberta" | "paga" | "inadimplente" | "isenta" | "cancelada"
       status_repasse: "previsto" | "enviado" | "recebido" | "em_atraso"
@@ -2081,6 +2092,15 @@ export const Constants = {
         "secretaria",
         "juridico",
         "parceiro",
+      ],
+      parentesco_beneficiado: [
+        "progenitor/a",
+        "irmão/a",
+        "filho/a",
+        "sogro/a",
+        "enteado/a",
+        "independentes",
+        "cônjuge",
       ],
       status_cadastro: ["pendente", "aprovado", "rejeitado", "inativo"],
       status_fatura: ["aberta", "paga", "inadimplente", "isenta", "cancelada"],

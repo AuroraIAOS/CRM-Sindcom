@@ -3,7 +3,12 @@ import type { PaginationState, SortingState } from "@tanstack/react-table";
 import { supabase } from "@/lib/supabase";
 import { apenasDigitos } from "@/lib/validators";
 import type { Database } from "@/lib/database.types";
-import type { EmpresaFormValues, EstabelecimentoFormValues } from "./schemas";
+import type {
+  EmpresaFormValues,
+  EstabelecimentoFormValues,
+  NovaEmpresaFormValues,
+  NovoEstabelecimentoFormValues,
+} from "./schemas";
 
 /**
  * Camada única de acesso a empresas/estabelecimentos (frontend.md §5).
@@ -72,6 +77,54 @@ export function useEmpresa(cnpjBasico: string | undefined) {
       return data as EmpresaFicha;
     },
     enabled: !!cnpjBasico,
+  });
+}
+
+/** INSERT direto — admin-only por RLS (pol_empresas_insert). Criação manual
+ *  fora da importação CSV (Tarefa 04.3 do documento de melhorias). */
+export function useCriarEmpresa() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (valores: NovaEmpresaFormValues) => {
+      const { error } = await supabase.from("empresas").insert({
+        cnpj_basico: valores.cnpj_basico,
+        razao_social: valores.razao_social.trim(),
+        porte: vazio(valores.porte),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["empresas", "lista"] });
+    },
+  });
+}
+
+/** Atribuição em massa (Tarefa 01.2) — só os campos preenchidos entram no
+ *  `.update()`, os demais registros selecionados ficam intocados. */
+export function useAtribuirEmpresasEmLote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      cnpjsBasicos,
+      valores,
+    }: {
+      cnpjsBasicos: string[];
+      valores: Partial<Pick<EmpresaFormValues, "porte" | "razao_social">>;
+    }) => {
+      const payload: Database["public"]["Tables"]["empresas"]["Update"] = {};
+      if (valores.razao_social) payload.razao_social = valores.razao_social.trim();
+      if (valores.porte) payload.porte = valores.porte.trim();
+
+      const { error, count } = await supabase
+        .from("empresas")
+        .update(payload, { count: "exact" })
+        .in("cnpj_basico", cnpjsBasicos);
+      if (error) throw error;
+      return count ?? cnpjsBasicos.length;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["empresas", "lista"] });
+    },
   });
 }
 
@@ -174,6 +227,38 @@ export function useAtualizarEstabelecimento(id: string, cnpjBasico: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["estabelecimentos", "ficha", id] });
+      void queryClient.invalidateQueries({ queryKey: ["empresas", "estabelecimentos", cnpjBasico] });
+    },
+  });
+}
+
+/** INSERT direto — admin-only por RLS (pol_estab_insert). Tarefa 04.3. */
+export function useCriarEstabelecimento(cnpjBasico: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (valores: NovoEstabelecimentoFormValues) => {
+      const { error } = await supabase.from("estabelecimentos").insert({
+        cnpj_basico: cnpjBasico,
+        cnpj_ordem: valores.cnpj_ordem,
+        cnpj_dv: valores.cnpj_dv,
+        nome_fantasia: vazio(valores.nome_fantasia),
+        tipo_logradouro: vazio(valores.tipo_logradouro),
+        logradouro: vazio(valores.logradouro),
+        numero: vazio(valores.numero),
+        complemento: vazio(valores.complemento),
+        bairro: vazio(valores.bairro),
+        cep: vazio(valores.cep),
+        municipio_id: valores.municipio_id ?? null,
+        ddd_1: vazio(valores.ddd_1),
+        telefone_1: vazio(valores.telefone_1),
+        ddd_2: vazio(valores.ddd_2),
+        telefone_2: vazio(valores.telefone_2),
+        email: vazio(valores.email),
+        convencao_id: vazio(valores.convencao_id),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["empresas", "estabelecimentos", cnpjBasico] });
     },
   });

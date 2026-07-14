@@ -37,3 +37,21 @@ export const estabelecimentoSchema = z.object({
 });
 
 export type EstabelecimentoFormValues = z.infer<typeof estabelecimentoSchema>;
+
+/** Criação (Tarefa 04.3) — admin-only por RLS. CNPJ básico é a PK; ordem/DV
+ *  identificam o estabelecimento dentro da empresa (mesma convenção da Receita
+ *  usada em `sql/01_schema.sql`: cnpj_completo = basico || ordem || dv). */
+export const novaEmpresaSchema = z.object({
+  cnpj_basico: z.string().regex(/^\d{8}$/, "CNPJ básico deve ter 8 dígitos"),
+  razao_social: z.string().trim().min(1, "Razão social obrigatória"),
+  porte: z.string().trim().optional(),
+});
+
+export type NovaEmpresaFormValues = z.infer<typeof novaEmpresaSchema>;
+
+export const novoEstabelecimentoSchema = estabelecimentoSchema.extend({
+  cnpj_ordem: z.string().regex(/^\d{4}$/, "Deve ter 4 dígitos (ex.: 0001)"),
+  cnpj_dv: z.string().regex(/^\d{2}$/, "Deve ter 2 dígitos"),
+});
+
+export type NovoEstabelecimentoFormValues = z.infer<typeof novoEstabelecimentoSchema>;

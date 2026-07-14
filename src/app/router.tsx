@@ -51,36 +51,41 @@ const ROTAS_DETALHE: Array<{ path: string; roles: PapelUsuario[]; titulo: string
   { path: "/servicos/:id/guia", roles: ["admin", "secretaria"], titulo: "Guia de encaminhamento" },
 ];
 
-export const router = createBrowserRouter([
-  { path: "/login", element: <LoginPage /> },
-  { path: "/recuperar-senha", element: <RecuperarSenhaPage /> },
-  { path: "/guia/:token", element: <GuiaPublicaPage /> },
-  {
-    // Área interna: exige sessão + perfil ativo (RoleGate sem roles).
-    element: (
-      <RoleGate>
-        <AppShell />
-      </RoleGate>
-    ),
-    children: [
-      { index: true, element: <IndexRedirect /> },
-      ...NAV.map((item) => ({
-        path: item.path,
-        element: (
-          <RoleGate roles={item.roles}>
-            {PAGINAS[item.path] ?? <Placeholder titulo={item.label} />}
-          </RoleGate>
-        ),
-      })),
-      ...ROTAS_DETALHE.map((r) => ({
-        path: r.path,
-        element: (
-          <RoleGate roles={r.roles}>
-            {PAGINAS_DETALHE[r.path] ?? <Placeholder titulo={r.titulo} />}
-          </RoleGate>
-        ),
-      })),
-    ],
-  },
-  { path: "*", element: <Navigate to="/" replace /> },
-]);
+export const router = createBrowserRouter(
+  [
+    { path: "/login", element: <LoginPage /> },
+    { path: "/recuperar-senha", element: <RecuperarSenhaPage /> },
+    { path: "/guia/:token", element: <GuiaPublicaPage /> },
+    {
+      // Área interna: exige sessão + perfil ativo (RoleGate sem roles).
+      element: (
+        <RoleGate>
+          <AppShell />
+        </RoleGate>
+      ),
+      children: [
+        { index: true, element: <IndexRedirect /> },
+        ...NAV.map((item) => ({
+          path: item.path,
+          element: (
+            <RoleGate roles={item.roles}>
+              {PAGINAS[item.path] ?? <Placeholder titulo={item.label} />}
+            </RoleGate>
+          ),
+        })),
+        ...ROTAS_DETALHE.map((r) => ({
+          path: r.path,
+          element: (
+            <RoleGate roles={r.roles}>
+              {PAGINAS_DETALHE[r.path] ?? <Placeholder titulo={r.titulo} />}
+            </RoleGate>
+          ),
+        })),
+      ],
+    },
+    { path: "*", element: <Navigate to="/" replace /> },
+  ],
+  // BASE_URL vem do --base do Vite (ex.: /preview-usabilidade-01/ nos builds
+  // de preview isolado); em produção é "/" — zero mudança de comportamento.
+  { basename: import.meta.env.BASE_URL },
+);

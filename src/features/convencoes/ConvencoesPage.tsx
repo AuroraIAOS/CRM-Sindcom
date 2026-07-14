@@ -14,10 +14,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { EntityForm } from "@/components/shared/EntityForm";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2, Download } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { formatarDataBR } from "@/lib/formatters";
 import { mensagemErro } from "@/lib/mensagens";
+import { exportarCsv, type ColunaCsv } from "@/lib/csv";
 import {
   useAtualizarConvencao,
   useConvencao,
@@ -33,6 +34,14 @@ import { EstabelecimentosTab } from "./abas/EstabelecimentosTab";
 
 const PODE_ESCREVER = ["admin", "secretaria"] as const;
 
+const COLUNAS_CSV_CONVENCAO: ColunaCsv<Convencao>[] = [
+  { titulo: "Nome", valor: (c) => c.nome },
+  { titulo: "Ano-base", valor: (c) => c.ano_base },
+  { titulo: "Início vigência", valor: (c) => formatarDataBR(c.data_inicio_vigencia) },
+  { titulo: "Fim vigência", valor: (c) => formatarDataBR(c.data_fim_vigencia) },
+  { titulo: "Limite oposição", valor: (c) => formatarDataBR(c.data_limite_oposicao) },
+];
+
 export function ConvencoesPage() {
   const { role } = useAuth();
   const podeEscrever = role !== null && (PODE_ESCREVER as readonly string[]).includes(role);
@@ -47,16 +56,26 @@ export function ConvencoesPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-semibold text-texto-1">Convenções coletivas (CCT)</h1>
-        {podeEscrever && (
-          <Button
-            onClick={() => {
-              setEmEdicao(null);
-              setDialogAberto(true);
-            }}
-          >
-            <Plus className="mr-1 h-4 w-4" /> Nova convenção
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {(convencoes.data ?? []).length > 0 && (
+            <Button
+              variant="outline"
+              onClick={() => exportarCsv("convencoes", convencoes.data ?? [], COLUNAS_CSV_CONVENCAO)}
+            >
+              <Download className="mr-1 h-4 w-4" /> Exportar CSV
+            </Button>
+          )}
+          {podeEscrever && (
+            <Button
+              onClick={() => {
+                setEmEdicao(null);
+                setDialogAberto(true);
+              }}
+            >
+              <Plus className="mr-1 h-4 w-4" /> Nova convenção
+            </Button>
+          )}
+        </div>
       </div>
 
       {convencoes.isError && (

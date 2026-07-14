@@ -262,7 +262,7 @@ export function useCriarBeneficiado(titularId: string) {
         nome: valores.nome.trim(),
         cpf: apenasDigitos(valores.cpf),
         data_nascimento: vazio(valores.data_nascimento),
-        parentesco: vazio(valores.parentesco),
+        parentesco: valores.parentesco ?? null,
         tipo: valores.tipo,
         status_cadastro: "aprovado",
       });
@@ -284,7 +284,7 @@ export function useAtualizarBeneficiado(titularId: string) {
           nome: valores.nome.trim(),
           cpf: apenasDigitos(valores.cpf),
           data_nascimento: vazio(valores.data_nascimento),
-          parentesco: vazio(valores.parentesco),
+          parentesco: valores.parentesco ?? null,
           tipo: valores.tipo,
         })
         .eq("id", id);
@@ -369,6 +369,69 @@ export function useExcluirCarta(trabalhadorId: string) {
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["trabalhadores", "cartas", trabalhadorId] });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Ações em massa (Tarefa 01 — restritas a ADMIN pela tela que chama)
+// ---------------------------------------------------------------------------
+
+/** Exclusão em massa — admin-only por RLS (pol_trab_delete); cascade nativo
+ *  do schema apaga vínculos/beneficiados/cartas relacionados. */
+export function useExcluirTrabalhadoresEmLote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => {
+      const { error, count } = await supabase
+        .from("trabalhadores")
+        .delete({ count: "exact" })
+        .in("id", ids);
+      if (error) throw error;
+      return count ?? ids.length;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["trabalhadores", "lista"] });
+    },
+  });
+}
+
+/**
+ * "Atribuir Estabelecimento" em massa (exemplo do documento de melhorias):
+ * a coluna de estabelecimento vive no VÍNCULO, não em `trabalhadores` — a
+ * atribuição resolve o vínculo *principal ativo* de cada trabalhador
+ * selecionado e atualiza `estabelecimento_id` nesses vínculos.
+ */
+export function useAtribuirEstabelecimentoEmLote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      trabalhadorIds,
+      estabelecimentoId,
+    }: {
+      trabalhadorIds: string[];
+      estabelecimentoId: string;
+    }) => {
+      const { data: vinculos, error: erroBusca } = await supabase
+        .from("vinculos_empregaticios")
+        .select("id")
+        .in("trabalhador_id", trabalhadorIds)
+        .eq("principal", true)
+        .is("data_desligamento", null);
+      if (erroBusca) throw erroBusca;
+
+      const vinculoIds = (vinculos ?? []).map((v) => v.id);
+      if (vinculoIds.length === 0) return 0;
+
+      const { error, count } = await supabase
+        .from("vinculos_empregaticios")
+        .update({ estabelecimento_id: estabelecimentoId }, { count: "exact" })
+        .in("id", vinculoIds);
+      if (error) throw error;
+      return count ?? vinculoIds.length;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["trabalhadores"] });
     },
   });
 }

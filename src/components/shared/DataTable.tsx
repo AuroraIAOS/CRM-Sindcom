@@ -6,6 +6,7 @@ import {
   type ColumnDef,
   type OnChangeFn,
   type PaginationState,
+  type RowSelectionState,
   type SortingState,
 } from "@tanstack/react-table";
 import {
@@ -27,6 +28,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 /**
@@ -53,6 +55,12 @@ export type DataTableProps<T> = {
   onExportar?: () => void;
   exportando?: boolean;
   onLinhaClick?: (linha: T) => void;
+  /** Ativa a coluna de checkbox (seleção múltipla — Tarefa 01, restrita a ADMIN
+   *  pela tela que usa o DataTable). Exige `getRowId`. */
+  enableSelection?: boolean;
+  getRowId?: (linha: T) => string;
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: OnChangeFn<RowSelectionState>;
 };
 
 export function DataTable<T>({
@@ -69,19 +77,58 @@ export function DataTable<T>({
   onExportar,
   exportando = false,
   onLinhaClick,
+  enableSelection = false,
+  getRowId,
+  rowSelection = {},
+  onRowSelectionChange,
 }: DataTableProps<T>) {
   const [compacto, setCompacto] = useState(false);
   const pageCount = Math.max(1, Math.ceil(total / pagination.pageSize));
 
+  const colunasComSelecao: ColumnDef<T, unknown>[] = enableSelection
+    ? [
+        {
+          id: "__selecao__",
+          header: ({ table }) => (
+            <Checkbox
+              checked={
+                table.getIsAllRowsSelected()
+                  ? true
+                  : table.getIsSomeRowsSelected()
+                    ? "indeterminate"
+                    : false
+              }
+              onCheckedChange={(v) => table.toggleAllRowsSelected(!!v)}
+              aria-label="Selecionar tudo"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ),
+          cell: ({ row }) => (
+            <Checkbox
+              checked={row.getIsSelected()}
+              onCheckedChange={(v) => row.toggleSelected(!!v)}
+              aria-label="Selecionar linha"
+              onClick={(e) => e.stopPropagation()}
+            />
+          ),
+          enableSorting: false,
+        },
+        ...columns,
+      ]
+    : columns;
+
   const table = useReactTable({
     data,
-    columns,
+    columns: colunasComSelecao,
     pageCount,
-    state: { pagination, sorting },
+    state: { pagination, sorting, rowSelection },
     onPaginationChange,
     onSortingChange,
+    onRowSelectionChange,
     manualPagination: true,
     manualSorting: true,
+    enableRowSelection: enableSelection,
+    getRowId,
     getCoreRowModel: getCoreRowModel(),
   });
 
@@ -150,13 +197,13 @@ export function DataTable<T>({
           <TableBody>
             {carregando ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={colunasComSelecao.length} className="h-24 text-center text-muted-foreground">
                   Carregando…
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={colunasComSelecao.length} className="h-24 text-center text-muted-foreground">
                   {vazio}
                 </TableCell>
               </TableRow>

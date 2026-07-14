@@ -27,11 +27,13 @@ import {
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { EntityForm } from "@/components/shared/EntityForm";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { ConfirmarEdicaoDialog } from "@/components/shared/ConfirmarEdicaoDialog";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { formatarCnpj, formatarDataBR } from "@/lib/formatters";
 import { mensagemErro } from "@/lib/mensagens";
 import { useEstabelecimentosSimples } from "@/features/estabelecimentos/api";
+import { usePisosConvencao } from "@/features/convencoes/api";
 import {
   useAtualizarVinculo,
   useCriarVinculo,
@@ -152,7 +154,20 @@ function VinculoFormDialog({
   const criar = useCriarVinculo(trabalhadorId);
   const atualizar = useAtualizarVinculo(trabalhadorId);
   const [erro, setErro] = useState<string | null>(null);
+  const [pendente, setPendente] = useState<VinculoFormValues | null>(null);
   const salvando = criar.isPending || atualizar.isPending;
+
+  // Estado à parte (fora do react-hook-form) só para disparar a busca de pisos
+  // da CCT ao trocar de estabelecimento — ver nota sobre hooks no EntityForm.
+  const [estabelecimentoParaCct, setEstabelecimentoParaCct] = useState(
+    vinculo?.estabelecimento_id ?? "",
+  );
+  const estabelecimentoSelecionado = estabelecimentos.data?.find(
+    (e) => e.id === estabelecimentoParaCct,
+  );
+  const pisos = usePisosConvencao(estabelecimentoSelecionado?.convencao_id ?? undefined);
+  const funcoesComPiso = (pisos.data ?? []).filter((p) => p.funcao);
+  const pisoGeral = (pisos.data ?? []).find((p) => !p.funcao);
 
   const valoresIniciais: VinculoFormValues = {
     estabelecimento_id: vinculo?.estabelecimento_id ?? "",
@@ -163,14 +178,16 @@ function VinculoFormDialog({
     principal: vinculo?.principal ?? true,
   };
 
-  async function salvar(valores: VinculoFormValues) {
+  async function confirmar() {
+    if (!pendente) return;
     setErro(null);
     try {
       if (vinculo) {
-        await atualizar.mutateAsync({ id: vinculo.id, valores });
+        await atualizar.mutateAsync({ id: vinculo.id, valores: pendente });
       } else {
-        await criar.mutateAsync(valores);
+        await criar.mutateAsync(pendente);
       }
+      setPendente(null);
       onOpenChange(false);
     } catch (e) {
       setErro(mensagemErro(e));
@@ -178,7 +195,8 @@ function VinculoFormDialog({
   }
 
   return (
-    <Dialog open onOpenChange={onOpenChange}>
+    <>
+    <Dialog open={!pendente} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{vinculo ? "Editar vínculo" : "Novo vínculo"}</DialogTitle>
@@ -188,7 +206,7 @@ function VinculoFormDialog({
           id="form-vinculo"
           schema={vinculoSchema}
           valoresIniciais={valoresIniciais}
-          onSubmit={salvar}
+          onSubmit={(valores) => setPendente(valores)}
         >
           {(form) => (
             <div className="flex flex-col gap-4">
@@ -198,7 +216,14 @@ function VinculoFormDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Estabelecimento</FormLabel>
-                    <Select value={field.value} onValueChange={field.onChange}>
+                    <Select
+                      value={field.value}
+                      onValueChange={(v) => {
+                        field.onChange(v);
+                        setEstabelecimentoParaCct(v);
+                        form.setValue("funcao", "");
+                      }}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione…" />
@@ -220,15 +245,61 @@ function VinculoFormDialog({
               <FormField
                 control={form.control}
                 name="funcao"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Função</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Ex.: Operador de caixa" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                render={({ field }) =>
+                  funcoesComPiso.length > 0 || pisoGeral ? (
+                    <FormItem>
+                      <FormLabel>Função (funções cadastradas na CCT do estabelecimento)</FormLabel>
+                      <Select
+                        value={field.value || (pisoGeral ? "__geral__" : undefined)}
+                        onValueChange={(v) => {
+                          if (v === "__geral__") {
+                            field.onChange("");
+                            if (pisoGeral) form.setValue("salario_informado", Number(pisoGeral.valor));
+                            return;
+                          }
+                          field.onChange(v);
+                          const piso = funcoesComPiso.find((p) => p.funcao === v);
+                          if (piso) form.setValue("salario_informado", Number(piso.valor));
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione…" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {pisoGeral && (
+                            <SelectItem value="__geral__">
+                              Piso geral da categoria (sem função específica)
+                            </SelectItem>
+                          )}
+                          {funcoesComPiso.map((p) => (
+                            <SelectItem key={p.id} value={p.funcao as string}>
+                              {p.funcao}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-texto-2">
+                        Selecionar a função preenche o salário com o piso da CCT — o campo salário
+                        continua editável para casos de override.
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  ) : (
+                    <FormItem>
+                      <FormLabel>Função</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Ex.: Operador de caixa" />
+                      </FormControl>
+                      <p className="text-xs text-texto-2">
+                        Este estabelecimento não tem CCT com pisos cadastrados — função em texto
+                        livre.
+                      </p>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }
               />
 
               <div className="grid grid-cols-2 gap-4">
@@ -302,11 +373,20 @@ function VinculoFormDialog({
             Cancelar
           </Button>
           <Button type="submit" form="form-vinculo" disabled={salvando}>
-            {salvando ? "Salvando…" : "Salvar"}
+            Salvar
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <ConfirmarEdicaoDialog
+      open={!!pendente}
+      onOpenChange={(o) => !o && setPendente(null)}
+      carregando={salvando}
+      erro={erro}
+      onConfirmar={confirmar}
+    />
+    </>
   );
 }
 

@@ -7,6 +7,7 @@ node_modules/
 
 # Builds
 dist/
+dist-preview/
 dist-ssr/
 build/
 

@@ -26,6 +26,7 @@ import {
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { EntityForm } from "@/components/shared/EntityForm";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { ConfirmarEdicaoDialog } from "@/components/shared/ConfirmarEdicaoDialog";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
@@ -38,11 +39,20 @@ import {
   useCriarBeneficiado,
   useExcluirBeneficiado,
 } from "../api";
-import { beneficiadoSchema, type BeneficiadoFormValues } from "../schemas";
+import { beneficiadoSchema, PARENTESCO_OPCOES, type BeneficiadoFormValues } from "../schemas";
 
 type Beneficiado = Database["public"]["Tables"]["beneficiados"]["Row"];
 
 const ROTULO_TIPO = { direto: "Direto", indireto: "Indireto", adicional: "Adicional" } as const;
+const ROTULO_PARENTESCO: Record<(typeof PARENTESCO_OPCOES)[number], string> = {
+  "progenitor/a": "Progenitor/a",
+  "irmão/a": "Irmão/ã",
+  "filho/a": "Filho/a",
+  "sogro/a": "Sogro/a",
+  "enteado/a": "Enteado/a",
+  independentes: "Independentes",
+  "cônjuge": "Cônjuge",
+};
 
 /** Criar/excluir é privilégio do Admin (RLS: pol_benef_insert/delete); editar é
  *  também da Secretária (RLS: pol_benef_update) — CRU-baixa igual a trabalhadores. */
@@ -101,7 +111,7 @@ export function BeneficiadosTab({ titularId }: { titularId: string }) {
                 <TableRow key={b.id}>
                   <TableCell>{b.nome}</TableCell>
                   <TableCell>{formatarCpf(b.cpf)}</TableCell>
-                  <TableCell>{b.parentesco ?? "—"}</TableCell>
+                  <TableCell>{b.parentesco ? ROTULO_PARENTESCO[b.parentesco] : "—"}</TableCell>
                   <TableCell>{ROTULO_TIPO[b.tipo]}</TableCell>
                   <TableCell>{formatarDataBR(b.data_nascimento) || "—"}</TableCell>
                   <TableCell><StatusBadge status={b.status_cadastro} /></TableCell>
@@ -163,24 +173,27 @@ function BeneficiadoFormDialog({
   const criar = useCriarBeneficiado(titularId);
   const atualizar = useAtualizarBeneficiado(titularId);
   const [erro, setErro] = useState<string | null>(null);
+  const [pendente, setPendente] = useState<BeneficiadoFormValues | null>(null);
   const salvando = criar.isPending || atualizar.isPending;
 
   const valoresIniciais: BeneficiadoFormValues = {
     nome: beneficiado?.nome ?? "",
     cpf: beneficiado?.cpf ?? "",
     data_nascimento: beneficiado?.data_nascimento ?? "",
-    parentesco: beneficiado?.parentesco ?? "",
+    parentesco: beneficiado?.parentesco ?? undefined,
     tipo: beneficiado?.tipo ?? "direto",
   };
 
-  async function salvar(valores: BeneficiadoFormValues) {
+  async function confirmar() {
+    if (!pendente) return;
     setErro(null);
     try {
       if (beneficiado) {
-        await atualizar.mutateAsync({ id: beneficiado.id, valores });
+        await atualizar.mutateAsync({ id: beneficiado.id, valores: pendente });
       } else {
-        await criar.mutateAsync(valores);
+        await criar.mutateAsync(pendente);
       }
+      setPendente(null);
       onOpenChange(false);
     } catch (e) {
       setErro(mensagemErro(e));
@@ -188,7 +201,8 @@ function BeneficiadoFormDialog({
   }
 
   return (
-    <Dialog open onOpenChange={onOpenChange}>
+    <>
+    <Dialog open={!pendente} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{beneficiado ? "Editar beneficiado" : "Novo beneficiado"}</DialogTitle>
@@ -198,7 +212,7 @@ function BeneficiadoFormDialog({
           id="form-beneficiado"
           schema={beneficiadoSchema}
           valoresIniciais={valoresIniciais}
-          onSubmit={salvar}
+          onSubmit={(valores) => setPendente(valores)}
         >
           {(form) => (
             <div className="flex flex-col gap-4">
@@ -234,9 +248,20 @@ function BeneficiadoFormDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Parentesco</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="Ex.: Cônjuge, filho(a)" />
-                    </FormControl>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione…" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PARENTESCO_OPCOES.map((valor) => (
+                          <SelectItem key={valor} value={valor}>
+                            {ROTULO_PARENTESCO[valor]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -287,11 +312,20 @@ function BeneficiadoFormDialog({
             Cancelar
           </Button>
           <Button type="submit" form="form-beneficiado" disabled={salvando}>
-            {salvando ? "Salvando…" : "Salvar"}
+            Salvar
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <ConfirmarEdicaoDialog
+      open={!!pendente}
+      onOpenChange={(o) => !o && setPendente(null)}
+      carregando={salvando}
+      erro={erro}
+      onConfirmar={confirmar}
+    />
+    </>
   );
 }
 
