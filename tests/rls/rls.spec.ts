@@ -82,7 +82,7 @@ describe("SELECT — visibilidade por papel (dados semeados)", () => {
 
 // ---------------------------------------------------------------------------
 describe("Secretária — CRU (baixa): sem INSERT nas tabelas de cadastro", () => {
-  it("INSERT negado (42501) em trabalhadores/empresas/parceiros/recepcionistas/beneficios/beneficiados/estabelecimentos", async () => {
+  it("INSERT negado (42501) em cadastro + convencoes/pisos/taxas (agora domínio Jurídico — Tarefa 03.3)", async () => {
     const c = clientes.secretaria;
     expect(ehErroRls(await insertErr(c, "trabalhadores", { cpf: "00000000000", nome: "RLS" }))).toBe(true);
     expect(ehErroRls(await insertErr(c, "empresas", { cnpj_basico: "00000000", razao_social: "RLS" }))).toBe(true);
@@ -91,11 +91,13 @@ describe("Secretária — CRU (baixa): sem INSERT nas tabelas de cadastro", () =
     expect(ehErroRls(await insertErr(c, "beneficios", { parceiro_id: anaParceiroId, nome: "RLS" }))).toBe(true);
     expect(ehErroRls(await insertErr(c, "beneficiados", { titular_id: crypto.randomUUID(), cpf: "00000000000", nome: "RLS", tipo: "direto" }))).toBe(true);
     expect(ehErroRls(await insertErr(c, "estabelecimentos", { cnpj_basico: "00000000", cnpj_ordem: "0001", cnpj_dv: "00" }))).toBe(true);
+    // Convenções migraram para o Jurídico — Secretária perde a escrita.
+    expect(ehErroRls(await insertErr(c, "convencoes_coletivas", {}))).toBe(true);
   });
 
-  it("INSERT permitido (RLS passa; falha só nos dados) em vinculos/faturas/repasses/convencoes/cartas/solicitacoes_servico", async () => {
+  it("INSERT permitido (RLS passa; falha só nos dados) em vinculos/faturas/repasses/cartas/solicitacoes_servico", async () => {
     const c = clientes.secretaria;
-    for (const t of ["vinculos_empregaticios", "faturas", "repasses", "convencoes_coletivas", "cartas_oposicao", "solicitacoes_servico"]) {
+    for (const t of ["vinculos_empregaticios", "faturas", "repasses", "cartas_oposicao", "solicitacoes_servico"]) {
       const err = await insertErr(c, t, {});
       expect(err, `${t} deveria falhar por dados (não RLS)`).toBeTruthy();
       expect(ehErroRls(err), `${t} não deveria ser 42501`).toBe(false);
@@ -105,12 +107,11 @@ describe("Secretária — CRU (baixa): sem INSERT nas tabelas de cadastro", () =
 });
 
 // ---------------------------------------------------------------------------
-describe("Jurídico — só atendimentos jurídicos", () => {
-  it("INSERT negado (42501) em trabalhadores/faturas/convencoes/solicitacoes_servico", async () => {
+describe("Jurídico — atendimentos jurídicos + Convenções (domínio jurídico)", () => {
+  it("INSERT negado (42501) em trabalhadores/faturas/solicitacoes_servico", async () => {
     const c = clientes.juridico;
     expect(ehErroRls(await insertErr(c, "trabalhadores", { cpf: "00000000000", nome: "RLS" }))).toBe(true);
     expect(ehErroRls(await insertErr(c, "faturas", {}))).toBe(true);
-    expect(ehErroRls(await insertErr(c, "convencoes_coletivas", {}))).toBe(true);
     expect(ehErroRls(await insertErr(c, "solicitacoes_servico", {}))).toBe(true);
   });
 
@@ -118,6 +119,23 @@ describe("Jurídico — só atendimentos jurídicos", () => {
     const err = await insertErr(clientes.juridico, "atendimentos_juridicos", {});
     expect(err).toBeTruthy();
     expect(ehErroRls(err)).toBe(false);
+  });
+
+  it("INSERT permitido (RLS passa; falha só nos dados) em convencoes/pisos/taxas — Tarefa 03.3", async () => {
+    const c = clientes.juridico;
+    for (const t of ["convencoes_coletivas", "pisos_convencao", "taxas_convencao"]) {
+      const err = await insertErr(c, t, {});
+      expect(err, `${t} deveria falhar por dados (não RLS)`).toBeTruthy();
+      expect(ehErroRls(err), `${t} não deveria ser 42501`).toBe(false);
+    }
+  });
+
+  it("UPDATE/DELETE em convencoes_coletivas não são bloqueados por RLS (42501)", async () => {
+    const c = clientes.juridico;
+    const upd = await c.from("convencoes_coletivas").update({ observacoes: "rls" }).eq("id", crypto.randomUUID());
+    expect(ehErroRls(upd.error)).toBe(false);
+    const del = await c.from("convencoes_coletivas").delete().eq("id", crypto.randomUUID());
+    expect(ehErroRls(del.error)).toBe(false);
   });
 });
 

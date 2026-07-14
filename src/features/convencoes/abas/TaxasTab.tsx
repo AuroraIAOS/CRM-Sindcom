@@ -32,7 +32,7 @@ import {
 } from "../api";
 import { taxaSchema, type TaxaFormValues } from "../schemas";
 
-const PODE_ESCREVER = ["admin", "secretaria"] as const;
+const PODE_ESCREVER = ["admin", "juridico"] as const;
 
 /** Multas/acordos/taxas adicionais previstas na CCT — base de valores para as
  *  faturas excepcionais da Secretaria (Etapa 02); aqui é só o cadastro. */

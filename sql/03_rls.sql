@@ -51,34 +51,36 @@ begin
 end $$;
 
 -- ----------------------------------------------------------------------------
--- 3. CONVENÇÕES COLETIVAS E PISOS — Secretária CRU direto
+-- 3. CONVENÇÕES COLETIVAS E PISOS — domínio JURÍDICO (+ Admin)
+--    Secretária/Presidente só leitura. Escrita atualizada em
+--    sql/09_convencoes_rls_juridico.sql (Tarefa 03.3) — refletida abaixo.
 -- ----------------------------------------------------------------------------
 create policy pol_convencoes_select on convencoes_coletivas for select
   to authenticated using (fn_eh('admin','presidente','secretaria','juridico'));
 create policy pol_convencoes_insert on convencoes_coletivas for insert
-  to authenticated with check (fn_eh('admin','secretaria'));
+  to authenticated with check (fn_eh('admin','juridico'));
 create policy pol_convencoes_update on convencoes_coletivas for update
-  to authenticated using (fn_eh('admin','secretaria')) with check (fn_eh('admin','secretaria'));
+  to authenticated using (fn_eh('admin','juridico')) with check (fn_eh('admin','juridico'));
 create policy pol_convencoes_delete on convencoes_coletivas for delete
-  to authenticated using (fn_eh('admin'));
+  to authenticated using (fn_eh('admin','juridico'));
 
 create policy pol_pisos_select on pisos_convencao for select
   to authenticated using (fn_eh('admin','presidente','secretaria','juridico'));
 create policy pol_pisos_insert on pisos_convencao for insert
-  to authenticated with check (fn_eh('admin','secretaria'));
+  to authenticated with check (fn_eh('admin','juridico'));
 create policy pol_pisos_update on pisos_convencao for update
-  to authenticated using (fn_eh('admin','secretaria')) with check (fn_eh('admin','secretaria'));
+  to authenticated using (fn_eh('admin','juridico')) with check (fn_eh('admin','juridico'));
 create policy pol_pisos_delete on pisos_convencao for delete
-  to authenticated using (fn_eh('admin'));
+  to authenticated using (fn_eh('admin','juridico'));
 
 create policy pol_taxas_select on taxas_convencao for select
   to authenticated using (fn_eh('admin','presidente','secretaria','juridico'));
 create policy pol_taxas_insert on taxas_convencao for insert
-  to authenticated with check (fn_eh('admin','secretaria'));
+  to authenticated with check (fn_eh('admin','juridico'));
 create policy pol_taxas_update on taxas_convencao for update
-  to authenticated using (fn_eh('admin','secretaria')) with check (fn_eh('admin','secretaria'));
+  to authenticated using (fn_eh('admin','juridico')) with check (fn_eh('admin','juridico'));
 create policy pol_taxas_delete on taxas_convencao for delete
-  to authenticated using (fn_eh('admin'));
+  to authenticated using (fn_eh('admin','juridico'));
 
 -- ----------------------------------------------------------------------------
 -- 4. EMPRESAS E ESTABELECIMENTOS — Secretária CRU (baixa): sem INSERT/DELETE

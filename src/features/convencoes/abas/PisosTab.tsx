@@ -32,7 +32,7 @@ import {
 } from "../api";
 import { pisoSchema, type PisoFormValues } from "../schemas";
 
-const PODE_ESCREVER = ["admin", "secretaria"] as const;
+const PODE_ESCREVER = ["admin", "juridico"] as const;
 
 export function PisosTab({ convencaoId }: { convencaoId: string }) {
   const { role } = useAuth();

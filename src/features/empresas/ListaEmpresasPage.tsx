@@ -172,7 +172,7 @@ export function ListaEmpresasPage() {
           onSortingChange={setSorting}
           carregando={empresas.isLoading}
           onLinhaClick={(linha) => setSelecionada(linha.cnpj_basico)}
-          onExportar={exportarTudo}
+          onExportar={ehAdmin ? exportarTudo : undefined}
           exportando={exportandoTudo}
           vazio="Nenhuma empresa encontrada. A carga em massa chega na importação CSV (subetapa 01.5)."
           enableSelection={ehAdmin}
@@ -206,12 +206,21 @@ export function ListaEmpresasPage() {
         onOpenChange={setAtribuindo}
         titulo="Atribuir em massa"
         count={idsSelecionados.length}
-        campos={[
-          { name: "razao_social", label: "Razão social", tipo: "text" },
-          { name: "porte", label: "Porte", tipo: "text" },
+        secoes={[
+          {
+            chave: "empresa",
+            titulo: "Empresa",
+            campos: [
+              { name: "razao_social", label: "Razão social", tipo: "text" },
+              { name: "porte", label: "Porte", tipo: "text" },
+            ],
+          },
         ]}
-        onConfirmar={async (valores) => {
-          await atribuirEmLote.mutateAsync({ cnpjsBasicos: idsSelecionados, valores });
+        onConfirmar={async (porSecao) => {
+          await atribuirEmLote.mutateAsync({
+            cnpjsBasicos: idsSelecionados,
+            valores: porSecao.empresa ?? {},
+          });
           setRowSelection({});
         }}
       />
@@ -439,7 +448,7 @@ function DetalheEmpresa({ cnpjBasico }: { cnpjBasico: string }) {
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-texto-1">Estabelecimentos</h2>
           <div className="flex gap-2">
-            {estabelecimentos.data && estabelecimentos.data.length > 0 && (
+            {ehAdmin && estabelecimentos.data && estabelecimentos.data.length > 0 && (
               <Button variant="outline" size="sm" onClick={exportarEstabelecimentos}>
                 <Download className="mr-1 h-4 w-4" /> Exportar CSV
               </Button>

@@ -61,6 +61,14 @@ export type DataTableProps<T> = {
   getRowId?: (linha: T) => string;
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
+  /** Suprime a barra de ferramentas interna (filtros/densidade/export). A tela
+   *  passa a renderizar esses controles fora do DataTable (Tarefa 02.1 —
+   *  Trabalhadores usa uma barra superior de largura total). */
+  ocultarBarraFerramentas?: boolean;
+  /** Densidade controlada externamente (opcional). Sem estes props, o DataTable
+   *  mantém o próprio estado interno de densidade (Empresas/Convenções). */
+  compacto?: boolean;
+  onCompactoChange?: (compacto: boolean) => void;
 };
 
 export function DataTable<T>({
@@ -81,8 +89,15 @@ export function DataTable<T>({
   getRowId,
   rowSelection = {},
   onRowSelectionChange,
+  ocultarBarraFerramentas = false,
+  compacto: compactoProp,
+  onCompactoChange,
 }: DataTableProps<T>) {
-  const [compacto, setCompacto] = useState(false);
+  const [compactoInterno, setCompactoInterno] = useState(false);
+  // Densidade controlada externamente quando os props são fornecidos; senão,
+  // estado interno (retrocompatível com Empresas/Convenções).
+  const compacto = compactoProp ?? compactoInterno;
+  const setCompacto = onCompactoChange ?? setCompactoInterno;
   const pageCount = Math.max(1, Math.ceil(total / pagination.pageSize));
 
   const colunasComSelecao: ColumnDef<T, unknown>[] = enableSelection
@@ -139,26 +154,29 @@ export function DataTable<T>({
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Barra de ferramentas: filtros à esquerda, densidade + export à direita */}
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">{toolbar}</div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            title={compacto ? "Densidade confortável" : "Densidade compacta"}
-            onClick={() => setCompacto((v) => !v)}
-          >
-            {compacto ? <Rows3 className="h-4 w-4" /> : <Rows2 className="h-4 w-4" />}
-          </Button>
-          {onExportar && (
-            <Button variant="outline" size="sm" onClick={onExportar} disabled={exportando}>
-              <Download className="mr-2 h-4 w-4" />
-              {exportando ? "Exportando…" : "Exportar CSV"}
+      {/* Barra de ferramentas: filtros à esquerda, densidade + export à direita.
+          Suprimida quando a tela renderiza esses controles fora (Tarefa 02.1). */}
+      {!ocultarBarraFerramentas && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">{toolbar}</div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              title={compacto ? "Densidade confortável" : "Densidade compacta"}
+              onClick={() => setCompacto(!compacto)}
+            >
+              {compacto ? <Rows3 className="h-4 w-4" /> : <Rows2 className="h-4 w-4" />}
             </Button>
-          )}
+            {onExportar && (
+              <Button variant="outline" size="sm" onClick={onExportar} disabled={exportando}>
+                <Download className="mr-2 h-4 w-4" />
+                {exportando ? "Exportando…" : "Exportar CSV"}
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="rounded-md border bg-card">
         <Table>

@@ -27,7 +27,7 @@ import {
   useMigrarEstabelecimentos,
 } from "../api";
 
-const PODE_MIGRAR = ["admin", "secretaria"] as const;
+const PODE_MIGRAR = ["admin", "juridico"] as const;
 
 /**
  * Migração em lote (plano_fases.md 01.3): ato deliberado e auditável — sempre

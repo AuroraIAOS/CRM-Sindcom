@@ -1,6 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
 import type { Database, Json, TablesInsert, TablesUpdate } from "@/lib/database.types";
+import { executarLote, type LotePayload } from "@/features/trabalhadores/bulk";
+
+/** Extrai o payload de lote de uma solicitação, se houver (Tarefa 01.1 —
+ *  Secretária faz ações em massa via fila). */
+function loteDaSolicitacao(payload: Json | null): LotePayload | null {
+  if (payload && typeof payload === "object" && !Array.isArray(payload) && "lote" in payload) {
+    return (payload as { lote: LotePayload }).lote;
+  }
+  return null;
+}
 
 /**
  * Fila de solicitações ao Admin (frontend.md §2.2). Qualquer role abre um
@@ -109,6 +119,30 @@ export function useCriarSolicitacaoAdmin() {
   });
 }
 
+/**
+ * Secretária abre UMA solicitação de lote (Tarefa 01.1). O Admin aprova de uma
+ * vez e o `executarOperacao` roda `executarLote(...)`. `tabela_alvo`/`operacao`
+ * servem só para a exibição na fila; o payload `{ lote }` carrega o essencial.
+ */
+export function useCriarSolicitacaoLote() {
+  const criar = useCriarSolicitacaoAdmin();
+  return {
+    ...criar,
+    mutateAsync: (args: {
+      lote: LotePayload;
+      tabela_alvo: string;
+      operacao: OperacaoAuditoria;
+      justificativa?: string;
+    }) =>
+      criar.mutateAsync({
+        tabela_alvo: args.tabela_alvo,
+        operacao: args.operacao,
+        payload: { lote: args.lote } as unknown as Json,
+        justificativa: args.justificativa ?? null,
+      }),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Ações do solicitante e do Admin
 // ---------------------------------------------------------------------------
@@ -156,6 +190,14 @@ export function useRejeitarSolicitacao() {
  *  tabela alvo. Hoje só trabalhadores; erro claro para tabelas ainda não
  *  suportadas em vez de tentar um `.from(string)` inseguro. */
 async function executarOperacao(sol: SolicitacaoAdmin): Promise<void> {
+  // Ação em massa (Tarefa 01.1): o payload carrega o lote; executa com a
+  // sessão do Admin (RLS admin cobre trabalhadores/vínculos/cartas).
+  const lote = loteDaSolicitacao(sol.payload);
+  if (lote) {
+    await executarLote(lote);
+    return;
+  }
+
   if (!TABELAS_EXECUTAVEIS.has(sol.tabela_alvo)) {
     throw new Error(
       `A fila ainda só executa operações em "trabalhadores" (recebido: "${sol.tabela_alvo}").`,

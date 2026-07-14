@@ -32,7 +32,7 @@ import { PisosTab } from "./abas/PisosTab";
 import { TaxasTab } from "./abas/TaxasTab";
 import { EstabelecimentosTab } from "./abas/EstabelecimentosTab";
 
-const PODE_ESCREVER = ["admin", "secretaria"] as const;
+const PODE_ESCREVER = ["admin", "juridico"] as const;
 
 const COLUNAS_CSV_CONVENCAO: ColunaCsv<Convencao>[] = [
   { titulo: "Nome", valor: (c) => c.nome },
@@ -45,6 +45,7 @@ const COLUNAS_CSV_CONVENCAO: ColunaCsv<Convencao>[] = [
 export function ConvencoesPage() {
   const { role } = useAuth();
   const podeEscrever = role !== null && (PODE_ESCREVER as readonly string[]).includes(role);
+  const ehAdmin = role === "admin";
 
   const convencoes = useConvencoes();
   const [selecionada, setSelecionada] = useState<string | null>(null);
@@ -57,7 +58,7 @@ export function ConvencoesPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-semibold text-texto-1">Convenções coletivas (CCT)</h1>
         <div className="flex gap-2">
-          {(convencoes.data ?? []).length > 0 && (
+          {ehAdmin && (convencoes.data ?? []).length > 0 && (
             <Button
               variant="outline"
               onClick={() => exportarCsv("convencoes", convencoes.data ?? [], COLUNAS_CSV_CONVENCAO)}
@@ -148,7 +149,6 @@ function DetalheConvencao({
   onEditar: (c: Convencao) => void;
   onExcluir: (c: Convencao) => void;
 }) {
-  const { role } = useAuth();
   const convencao = useConvencao(id);
 
   if (convencao.isLoading) return <p className="text-texto-2">Carregando…</p>;
@@ -171,14 +171,14 @@ function DetalheConvencao({
         </div>
         <div className="flex gap-1">
           {podeEscrever && (
-            <Button variant="ghost" size="icon" onClick={() => onEditar(c)}>
-              <Pencil className="h-4 w-4" />
-            </Button>
-          )}
-          {role === "admin" && (
-            <Button variant="ghost" size="icon" onClick={() => onExcluir(c)}>
-              <Trash2 className="h-4 w-4 text-estado-erro" />
-            </Button>
+            <>
+              <Button variant="ghost" size="icon" onClick={() => onEditar(c)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => onExcluir(c)}>
+                <Trash2 className="h-4 w-4 text-estado-erro" />
+              </Button>
+            </>
           )}
         </div>
       </div>

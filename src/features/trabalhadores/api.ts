@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { apenasDigitos } from "@/lib/validators";
 import type { Database, Enums } from "@/lib/database.types";
 import type { TablesInsert } from "@/lib/database.types";
+import * as bulk from "./bulk";
 import type {
   BeneficiadoFormValues,
   CartaFormValues,
@@ -374,62 +375,62 @@ export function useExcluirCarta(trabalhadorId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// Ações em massa (Tarefa 01 — restritas a ADMIN pela tela que chama)
+// Ações em massa (Tarefa 01) — caminho DIRETO do Admin. A Secretária usa os
+// mesmos executores puros (bulk.ts) via fila-admin (solicitacoes_admin).
 // ---------------------------------------------------------------------------
 
-/** Exclusão em massa — admin-only por RLS (pol_trab_delete); cascade nativo
- *  do schema apaga vínculos/beneficiados/cartas relacionados. */
+/** Exclusão em massa — admin direto por RLS; cascade nativo do schema apaga
+ *  vínculos/beneficiados/cartas relacionados. */
 export function useExcluirTrabalhadoresEmLote() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (ids: string[]) => {
-      const { error, count } = await supabase
-        .from("trabalhadores")
-        .delete({ count: "exact" })
-        .in("id", ids);
-      if (error) throw error;
-      return count ?? ids.length;
-    },
+    mutationFn: (ids: string[]) => bulk.executarLoteExcluir(ids),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["trabalhadores", "lista"] });
+      void queryClient.invalidateQueries({ queryKey: ["trabalhadores"] });
     },
   });
 }
 
-/**
- * "Atribuir Estabelecimento" em massa (exemplo do documento de melhorias):
- * a coluna de estabelecimento vive no VÍNCULO, não em `trabalhadores` — a
- * atribuição resolve o vínculo *principal ativo* de cada trabalhador
- * selecionado e atualiza `estabelecimento_id` nesses vínculos.
- */
-export function useAtribuirEstabelecimentoEmLote() {
+/** Atribuição em massa de campos de DADOS (colunas de trabalhadores). */
+export function useAtribuirDadosEmLote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ids, valores }: { ids: string[]; valores: bulk.DadosLote }) =>
+      bulk.executarLoteDados(ids, valores),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["trabalhadores"] });
+    },
+  });
+}
+
+/** Atribuição em massa de campos de VÍNCULO — resolve os vínculos principais
+ *  ativos dos trabalhadores e atualiza esses vínculos. */
+export function useAtribuirVinculosEmLote() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       trabalhadorIds,
-      estabelecimentoId,
+      valores,
     }: {
       trabalhadorIds: string[];
-      estabelecimentoId: string;
+      valores: bulk.VinculoLote;
     }) => {
-      const { data: vinculos, error: erroBusca } = await supabase
-        .from("vinculos_empregaticios")
-        .select("id")
-        .in("trabalhador_id", trabalhadorIds)
-        .eq("principal", true)
-        .is("data_desligamento", null);
-      if (erroBusca) throw erroBusca;
-
-      const vinculoIds = (vinculos ?? []).map((v) => v.id);
-      if (vinculoIds.length === 0) return 0;
-
-      const { error, count } = await supabase
-        .from("vinculos_empregaticios")
-        .update({ estabelecimento_id: estabelecimentoId }, { count: "exact" })
-        .in("id", vinculoIds);
-      if (error) throw error;
-      return count ?? vinculoIds.length;
+      const vinculoIds = await bulk.resolverVinculosPrincipais(trabalhadorIds);
+      return bulk.executarLoteVinculos(vinculoIds, valores);
     },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["trabalhadores"] });
+    },
+  });
+}
+
+/** Registro de carta em massa — rebaixa todos os selecionados a Bronze; pula
+ *  duplicatas de ano-base. */
+export function useRegistrarCartasEmLote() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ ids, valores }: { ids: string[]; valores: bulk.CartaLote }) =>
+      bulk.executarLoteCartas(ids, valores),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["trabalhadores"] });
     },
