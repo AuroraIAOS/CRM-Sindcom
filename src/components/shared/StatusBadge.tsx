@@ -29,6 +29,10 @@ const MAPA: Record<string, { label: string; tom: Tom }> = {
   solicitada: { label: "Solicitada", tom: "alerta" },
   pendente_confirmacao: { label: "Pendente de confirmação", tom: "alerta" },
   executada: { label: "Executada", tom: "sucesso" },
+  // status de parceiros (texto livre — sql/01_schema.sql §7)
+  ativo: { label: "Ativo", tom: "sucesso" },
+  suspenso: { label: "Suspenso", tom: "alerta" },
+  encerrado: { label: "Encerrado", tom: "neutro" },
 };
 
 export function StatusBadge({

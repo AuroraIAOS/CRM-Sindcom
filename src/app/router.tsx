@@ -16,6 +16,9 @@ import { FilaAdminPage } from "@/features/fila-admin/FilaAdminPage";
 import { AprovacoesPage } from "@/features/aprovacoes/AprovacoesPage";
 import { ImportacaoPage } from "@/features/importacao/ImportacaoPage";
 import { NotificacoesPage } from "@/features/notificacoes/NotificacoesPage";
+import { ListaParceirosPage } from "@/features/parceiros/ListaParceirosPage";
+import { ListaBeneficiosPage } from "@/features/beneficios/ListaBeneficiosPage";
+import { DetalheBeneficioPage } from "@/features/beneficios/DetalheBeneficioPage";
 import type { PapelUsuario } from "@/lib/supabase";
 
 /**
@@ -30,9 +33,12 @@ const PAGINAS: Partial<Record<string, ReactNode>> = {
   "/aprovacoes": <AprovacoesPage />,
   "/importacao": <ImportacaoPage />,
   "/notificacoes": <NotificacoesPage />,
+  "/parceiros": <ListaParceirosPage />,
+  "/beneficios": <ListaBeneficiosPage />,
 };
 const PAGINAS_DETALHE: Partial<Record<string, ReactNode>> = {
   "/trabalhadores/:id": <FichaTrabalhadorPage />,
+  "/beneficios/:id": <DetalheBeneficioPage />,
 };
 
 const INTERNOS: PapelUsuario[] = ["admin", "presidente", "secretaria", "juridico"];

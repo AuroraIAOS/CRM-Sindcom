@@ -80,7 +80,7 @@ Evidência: runbook `docs/deploy.md` + app no ar.
 
 ---
 
-## ETAPA 01 — MVP CADASTRAL · Complexidade: ALTA · Status: ⬜ ATIVA
+## ETAPA 01 — MVP CADASTRAL · Complexidade: ALTA · Status: ✅ CONCLUÍDA (no ar em `crm.sindcompassos.org`)
 
 Objetivo geral: Denise operando — cadastros, vínculos, CCTs e importação da base real. Gerar HANDOFF_BUILD ao final.
 Modo predominante: [Manual Mode] + [Goal] (um `/goal` por subetapa de baixo risco).

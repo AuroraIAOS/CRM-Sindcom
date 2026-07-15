@@ -21,6 +21,8 @@ const uids: Record<Role, string> = {} as never;
 let anon: SupabaseClient;
 let anaParceiroId: string;
 const paraLimpar: string[] = []; // ids de solicitacoes_admin
+const recepcionistasParaLimpar: string[] = []; // ids de recepcionistas (Subetapa 02.1)
+const beneficiosParaLimpar: string[] = []; // ids de beneficios (Subetapa 02.1)
 
 async function count(c: SupabaseClient, table: string): Promise<number> {
   const { count, error } = await c.from(table).select("*", { count: "exact", head: true });
@@ -51,6 +53,12 @@ afterAll(async () => {
   for (const id of paraLimpar) {
     await clientes.admin.from("notificacoes").delete().eq("referencia_tabela", "solicitacoes_admin").eq("referencia_id", id);
     await clientes.admin.from("solicitacoes_admin").delete().eq("id", id);
+  }
+  for (const id of recepcionistasParaLimpar) {
+    await clientes.admin.from("recepcionistas").delete().eq("id", id);
+  }
+  for (const id of beneficiosParaLimpar) {
+    await clientes.admin.from("beneficios").delete().eq("id", id);
   }
 });
 
@@ -191,6 +199,123 @@ describe("RPCs — grants pós-hardening (Tarefa 3)", () => {
     expect(error).toBeNull();
     expect(Array.isArray(data)).toBe(true);
     expect((data as unknown[]).length).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("Subetapa 02.1 — RPCs de recepcionista (PIN sempre com hash)", () => {
+  it("fn_criar_recepcionista: secretária/juridico/presidente/parceiro/anon negados; admin cria com hash", async () => {
+    for (const p of ["secretaria", "juridico", "presidente", "parceiro"] as Role[]) {
+      const { error } = await clientes[p].rpc("fn_criar_recepcionista", {
+        p_parceiro_id: anaParceiroId,
+        p_nome: "RLS teste",
+        p_pin: "1234",
+      });
+      expect(error, `${p} não deveria conseguir criar recepcionista`).toBeTruthy();
+    }
+    const { error: erroAnon } = await anon.rpc("fn_criar_recepcionista", {
+      p_parceiro_id: anaParceiroId,
+      p_nome: "RLS teste",
+      p_pin: "1234",
+    });
+    expect(erroAnon).toBeTruthy();
+
+    const { data, error } = await clientes.admin.rpc("fn_criar_recepcionista", {
+      p_parceiro_id: anaParceiroId,
+      p_nome: "RLS teste — hash",
+      p_pin: "1234",
+    });
+    expect(error, error?.message).toBeNull();
+    const id = data as string;
+    recepcionistasParaLimpar.push(id);
+
+    const { data: linha } = await clientes.admin
+      .from("recepcionistas")
+      .select("pin_hash")
+      .eq("id", id)
+      .single();
+    expect(linha?.pin_hash).not.toBe("1234");
+    expect(linha?.pin_hash).toMatch(/^\$2/); // bcrypt (pgcrypto gen_salt('bf'))
+  });
+
+  it("fn_criar_recepcionista: PIN fora do padrão (4-6 dígitos) é rejeitado mesmo pelo admin", async () => {
+    const { error } = await clientes.admin.rpc("fn_criar_recepcionista", {
+      p_parceiro_id: anaParceiroId,
+      p_nome: "RLS teste — pin curto",
+      p_pin: "12",
+    });
+    expect(error).toBeTruthy();
+  });
+
+  it("fn_definir_pin_recepcionista: juridico/presidente/parceiro/anon negados; admin/secretária redefinem com hash novo", async () => {
+    const { data: criadoId, error: erroCriacao } = await clientes.admin.rpc("fn_criar_recepcionista", {
+      p_parceiro_id: anaParceiroId,
+      p_nome: "RLS teste — redefinir pin",
+      p_pin: "1234",
+    });
+    expect(erroCriacao).toBeNull();
+    const id = criadoId as string;
+    recepcionistasParaLimpar.push(id);
+
+    for (const p of ["juridico", "presidente", "parceiro"] as Role[]) {
+      const { error } = await clientes[p].rpc("fn_definir_pin_recepcionista", {
+        p_recepcionista_id: id,
+        p_pin: "5678",
+      });
+      expect(error, `${p} não deveria conseguir redefinir PIN`).toBeTruthy();
+    }
+    const { error: erroAnon } = await anon.rpc("fn_definir_pin_recepcionista", {
+      p_recepcionista_id: id,
+      p_pin: "5678",
+    });
+    expect(erroAnon).toBeTruthy();
+
+    const { data: antes } = await clientes.admin.from("recepcionistas").select("pin_hash").eq("id", id).single();
+    const { error: erroSecretaria } = await clientes.secretaria.rpc("fn_definir_pin_recepcionista", {
+      p_recepcionista_id: id,
+      p_pin: "9999",
+    });
+    expect(erroSecretaria).toBeNull();
+    const { data: depois } = await clientes.admin.from("recepcionistas").select("pin_hash").eq("id", id).single();
+    expect(depois?.pin_hash).not.toBe(antes?.pin_hash);
+    expect(depois?.pin_hash).not.toBe("9999");
+  });
+});
+
+// ---------------------------------------------------------------------------
+describe("Subetapa 02.1 — catálogo de benefícios filtra por nível mínimo", () => {
+  it("query com .eq('nivel_minimo', ...) retorna só o nível pedido", async () => {
+    const { data: bronze, error: e1 } = await clientes.admin
+      .from("beneficios")
+      .insert({ parceiro_id: anaParceiroId, nome: "RLS teste — bronze", nivel_minimo: "bronze" })
+      .select("id")
+      .single();
+    expect(e1, e1?.message).toBeNull();
+    beneficiosParaLimpar.push(bronze!.id as string);
+
+    const { data: ouro, error: e2 } = await clientes.admin
+      .from("beneficios")
+      .insert({ parceiro_id: anaParceiroId, nome: "RLS teste — ouro", nivel_minimo: "ouro" })
+      .select("id")
+      .single();
+    expect(e2, e2?.message).toBeNull();
+    beneficiosParaLimpar.push(ouro!.id as string);
+
+    const idsCriados = [bronze!.id, ouro!.id];
+
+    const { data: filtroBronze } = await clientes.admin
+      .from("beneficios")
+      .select("id")
+      .in("id", idsCriados)
+      .eq("nivel_minimo", "bronze");
+    expect((filtroBronze ?? []).map((l) => l.id)).toEqual([bronze!.id]);
+
+    const { data: filtroOuro } = await clientes.admin
+      .from("beneficios")
+      .select("id")
+      .in("id", idsCriados)
+      .eq("nivel_minimo", "ouro");
+    expect((filtroOuro ?? []).map((l) => l.id)).toEqual([ouro!.id]);
   });
 });
 

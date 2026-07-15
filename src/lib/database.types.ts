@@ -1856,6 +1856,10 @@ export type Database = {
         Args: { p_chave: string; p_default: string }
         Returns: string
       }
+      fn_criar_recepcionista: {
+        Args: { p_nome: string; p_parceiro_id: string; p_pin: string }
+        Returns: string
+      }
       fn_dados_guia_publica: {
         Args: { p_token: string }
         Returns: {
@@ -1869,6 +1873,10 @@ export type Database = {
           valor_convenio: number
           valor_particular: number
         }[]
+      }
+      fn_definir_pin_recepcionista: {
+        Args: { p_pin: string; p_recepcionista_id: string }
+        Returns: undefined
       }
       fn_eh: {
         Args: { p_roles: Database["public"]["Enums"]["papel_usuario"][] }

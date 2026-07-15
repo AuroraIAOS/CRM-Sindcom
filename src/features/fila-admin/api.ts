@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/lib/supabase";
-import type { Database, Json, TablesInsert, TablesUpdate } from "@/lib/database.types";
+import type { Database, Json } from "@/lib/database.types";
 import { executarLote, type LotePayload } from "@/features/trabalhadores/bulk";
 
 /** Extrai o payload de lote de uma solicitação, se houver (Tarefa 01.1 —
@@ -31,8 +31,14 @@ export type SolicitacaoAdmin =
   };
 
 /** Tabelas que a fila sabe executar hoje. Estender à medida que cada domínio
- *  ganhar uma UI que crie solicitações (por ora só trabalhadores tem). */
-const TABELAS_EXECUTAVEIS = new Set(["trabalhadores"]);
+ *  ganhar uma UI que crie solicitações. Todas usam "id" como PK. */
+type TabelaExecutavel = "trabalhadores" | "parceiros" | "recepcionistas" | "beneficios";
+const TABELAS_EXECUTAVEIS = new Set<TabelaExecutavel>([
+  "trabalhadores",
+  "parceiros",
+  "recepcionistas",
+  "beneficios",
+]);
 
 async function uidAtual(): Promise<string | null> {
   const { data } = await supabase.auth.getUser();
@@ -187,8 +193,8 @@ export function useRejeitarSolicitacao() {
 }
 
 /** Executa a operação real da solicitação (com a sessão do Admin) contra a
- *  tabela alvo. Hoje só trabalhadores; erro claro para tabelas ainda não
- *  suportadas em vez de tentar um `.from(string)` inseguro. */
+ *  tabela alvo. Erro claro para tabelas ainda não suportadas em vez de tentar
+ *  um `.from(string)` inseguro — ver TABELAS_EXECUTAVEIS acima. */
 async function executarOperacao(sol: SolicitacaoAdmin): Promise<void> {
   // Ação em massa (Tarefa 01.1): o payload carrega o lote; executa com a
   // sessão do Admin (RLS admin cobre trabalhadores/vínculos/cartas).
@@ -198,26 +204,43 @@ async function executarOperacao(sol: SolicitacaoAdmin): Promise<void> {
     return;
   }
 
-  if (!TABELAS_EXECUTAVEIS.has(sol.tabela_alvo)) {
+  // recepcionistas.pin_hash é NOT NULL — a criação nunca passa por um INSERT
+  // genérico (nem a anon key do Admin calcula o hash). Usa a RPC dedicada
+  // (sql/11_recepcionista_criacao.sql) com o PIN que veio no payload.
+  if (sol.tabela_alvo === "recepcionistas" && sol.operacao === "INSERT") {
+    const p = sol.payload as { parceiro_id: string; nome: string; pin: string };
+    const { error } = await supabase.rpc("fn_criar_recepcionista", {
+      p_parceiro_id: p.parceiro_id,
+      p_nome: p.nome,
+      p_pin: p.pin,
+    });
+    if (error) throw error;
+    return;
+  }
+
+  if (!TABELAS_EXECUTAVEIS.has(sol.tabela_alvo as TabelaExecutavel)) {
     throw new Error(
-      `A fila ainda só executa operações em "trabalhadores" (recebido: "${sol.tabela_alvo}").`,
+      `A fila ainda não executa operações em "${sol.tabela_alvo}".`,
     );
   }
+  const tabela = sol.tabela_alvo as TabelaExecutavel;
+
   if (sol.operacao === "INSERT") {
-    const { error } = await supabase
-      .from("trabalhadores")
-      .insert(sol.payload as TablesInsert<"trabalhadores">);
+    const { error } = await supabase.from(tabela).insert(sol.payload as never);
     if (error) throw error;
-  } else if (sol.operacao === "UPDATE") {
-    if (!sol.registro_id) throw new Error("Solicitação de UPDATE sem registro alvo.");
+    return;
+  }
+  if (!sol.registro_id) {
+    throw new Error(`Solicitação de ${sol.operacao} sem registro alvo.`);
+  }
+  if (sol.operacao === "UPDATE") {
     const { error } = await supabase
-      .from("trabalhadores")
-      .update(sol.payload as TablesUpdate<"trabalhadores">)
+      .from(tabela)
+      .update(sol.payload as never)
       .eq("id", sol.registro_id);
     if (error) throw error;
   } else {
-    if (!sol.registro_id) throw new Error("Solicitação de DELETE sem registro alvo.");
-    const { error } = await supabase.from("trabalhadores").delete().eq("id", sol.registro_id);
+    const { error } = await supabase.from(tabela).delete().eq("id", sol.registro_id);
     if (error) throw error;
   }
 }
