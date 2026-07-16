@@ -172,7 +172,7 @@ Esforço máximo do /goal: 3 tentativas.
 Escalonamento de LLM: Sonnet nas 2 primeiras; Opus na 3ª.
 Se esgotar: parar e emitir relatório curto.
 
-### Subetapa 02.4 — Telas financeiro (faturas + guias de pagamento) [Manual] [LLM: Sonnet]
+### Subetapa 02.4 — Telas financeiro (faturas + guias de pagamento) [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 Objetivo: faturas (incl. excepcionais: multa/acordo/taxa da CCT) e guias de pagamento.
 Conclusão: fatura excepcional criada e refletida na ficha; guia lista faturas agregadas.
 Qualidade: valores conferem com as views de base de cálculo.

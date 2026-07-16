@@ -10,10 +10,11 @@ const TOM_CLASSE: Record<Tom, string> = {
 };
 
 /**
- * Mapa central de status → rótulo + tom. Cobre os enums de status usados na
- * Fase 1 (status_cadastro, status_solicitacao, status_solicitacao_admin).
- * Fonte de cor: design-tokens §7 (estados semânticos). Um status desconhecido
- * cai em "neutro" com o próprio texto — nunca quebra a tela.
+ * Mapa central de status → rótulo + tom. Cobre os enums de status usados no
+ * MVP (status_cadastro, status_solicitacao, status_solicitacao_admin,
+ * status_fatura, status_repasse). Fonte de cor: design-tokens §7 (estados
+ * semânticos). Um status desconhecido cai em "neutro" com o próprio texto —
+ * nunca quebra a tela.
  */
 const MAPA: Record<string, { label: string; tom: Tom }> = {
   // status_cadastro
@@ -33,6 +34,16 @@ const MAPA: Record<string, { label: string; tom: Tom }> = {
   ativo: { label: "Ativo", tom: "sucesso" },
   suspenso: { label: "Suspenso", tom: "alerta" },
   encerrado: { label: "Encerrado", tom: "neutro" },
+  // status_fatura (Subetapa 02.4)
+  aberta: { label: "Aberta", tom: "alerta" },
+  paga: { label: "Paga", tom: "sucesso" },
+  inadimplente: { label: "Inadimplente", tom: "erro" },
+  isenta: { label: "Isenta", tom: "neutro" },
+  // status_repasse (Subetapa 02.4)
+  previsto: { label: "Previsto", tom: "neutro" },
+  enviado: { label: "Enviado", tom: "alerta" },
+  recebido: { label: "Recebido", tom: "sucesso" },
+  em_atraso: { label: "Em atraso", tom: "erro" },
 };
 
 export function StatusBadge({

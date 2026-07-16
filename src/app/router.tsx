@@ -25,6 +25,8 @@ import { GuiaPrint } from "@/features/servicos/GuiaPrint";
 import { PortalFilaPage } from "@/features/portal-parceiro/PortalFilaPage";
 import { PortalBeneficiosPage } from "@/features/portal-parceiro/PortalBeneficiosPage";
 import { PortalRecepcionistasPage } from "@/features/portal-parceiro/PortalRecepcionistasPage";
+import { ListaFaturasPage } from "@/features/financeiro/ListaFaturasPage";
+import { ListaGuiasPage } from "@/features/financeiro/ListaGuiasPage";
 import type { PapelUsuario } from "@/lib/supabase";
 
 /**
@@ -45,6 +47,8 @@ const PAGINAS: Partial<Record<string, ReactNode>> = {
   "/portal": <PortalFilaPage />,
   "/portal/beneficios": <PortalBeneficiosPage />,
   "/portal/recepcionistas": <PortalRecepcionistasPage />,
+  "/financeiro/faturas": <ListaFaturasPage />,
+  "/financeiro/guias": <ListaGuiasPage />,
 };
 const PAGINAS_DETALHE: Partial<Record<string, ReactNode>> = {
   "/trabalhadores/:id": <FichaTrabalhadorPage />,
