@@ -31,6 +31,7 @@ import { convencaoSchema, type ConvencaoFormValues } from "./schemas";
 import { PisosTab } from "./abas/PisosTab";
 import { TaxasTab } from "./abas/TaxasTab";
 import { EstabelecimentosTab } from "./abas/EstabelecimentosTab";
+import { RelatorioTab } from "./abas/RelatorioTab";
 
 const PODE_ESCREVER = ["admin", "juridico"] as const;
 
@@ -105,7 +106,10 @@ export function ConvencoesPage() {
         </Card>
 
         {selecionada ? (
+          /* key: sem ela, trocar de CCT reconcilia o mesmo componente e o
+             resumo da execução anterior gruda sob o nome da CCT nova. */
           <DetalheConvencao
+            key={selecionada}
             id={selecionada}
             podeEscrever={podeEscrever}
             onEditar={(c) => {
@@ -116,7 +120,8 @@ export function ConvencoesPage() {
           />
         ) : (
           <Card className="flex items-center justify-center p-8 text-sm text-texto-2">
-            Selecione uma convenção para ver pisos, taxas e estabelecimentos vinculados.
+            Selecione uma convenção para ver pisos, taxas, estabelecimentos vinculados e o
+            relatório da CCT.
           </Card>
         )}
       </div>
@@ -190,11 +195,21 @@ function DetalheConvencao({
           <TabsTrigger value="pisos">Pisos</TabsTrigger>
           <TabsTrigger value="taxas">Taxas</TabsTrigger>
           <TabsTrigger value="estabelecimentos">Estabelecimentos</TabsTrigger>
+          <TabsTrigger value="relatorio">Relatório</TabsTrigger>
         </TabsList>
         <TabsContent value="pisos"><PisosTab convencaoId={c.id} /></TabsContent>
         <TabsContent value="taxas"><TaxasTab convencaoId={c.id} /></TabsContent>
         <TabsContent value="estabelecimentos">
           <EstabelecimentosTab convencaoId={c.id} nomeConvencao={c.nome} />
+        </TabsContent>
+        <TabsContent value="relatorio">
+          <RelatorioTab
+            convencaoId={c.id}
+            nomeConvencao={c.nome}
+            anoBase={c.ano_base}
+            dataLimiteOposicao={c.data_limite_oposicao}
+            reclassificadaEm={c.reclassificada_em}
+          />
         </TabsContent>
       </Tabs>
     </Card>

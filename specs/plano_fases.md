@@ -178,7 +178,7 @@ Conclusão: fatura excepcional criada e refletida na ficha; guia lista faturas a
 Qualidade: valores conferem com as views de base de cálculo.
 Evidência: fatura excepcional + guia na tela.
 
-### Subetapa 02.5 — Relatório da CCT + organização interna [Manual] [LLM: Opus]
+### Subetapa 02.5 — Relatório da CCT + organização interna [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
 Objetivo: `v_relatorio_convencao` + botão "Executar organização interna" (`fn_reclassificar_convencao`).
 Conclusão: organização interna 5.1/5.2/5.3 com **Ouro com carta intocado**; idempotência via `reclassificada_em`; origem dos eventos registrada.
 Qualidade: reclassificação é ato deliberado e idempotente (Manual, sem `/goal`).

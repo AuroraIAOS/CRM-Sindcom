@@ -330,3 +330,87 @@ export function useMigrarEstabelecimentos(convencaoId: string) {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Relatório da CCT + organização interna (plano_fases.md 02.5)
+// ---------------------------------------------------------------------------
+
+export type LinhaRelatorioConvencao =
+  Database["public"]["Views"]["v_relatorio_convencao"]["Row"];
+
+/** Uma linha por TRABALHADOR: o resultado de deduplicar a view por
+ *  `trabalhador_id`, com os estabelecimentos de todos os vínculos reunidos. */
+export type TrabalhadorRelatorio = LinhaRelatorioConvencao & { estabelecimentos: string[] };
+
+const TAMANHO_PAGINA = 1000;
+
+/**
+ * Base do relatório de organização interna (04_dashboard.sql D7).
+ *
+ * A view devolve UMA LINHA POR VÍNCULO, não por trabalhador: quem tem dois
+ * vínculos ativos na mesma CCT aparece duas vezes. Quem consome tem de
+ * deduplicar por `trabalhador_id` antes de contar — a própria
+ * `fn_reclassificar_convencao` usa `select distinct t.id` pelo mesmo motivo, e
+ * contar linhas aqui faria o total divergir dos deltas da RPC.
+ *
+ * Pagina em lotes porque o cap padrão do PostgREST trunca em 1000 linhas
+ * silenciosamente. O `order` precisa ser determinístico até o desempate, senão
+ * a fronteira entre lotes repete ou pula registros.
+ */
+export function useRelatorioConvencao(convencaoId: string | undefined) {
+  return useQuery({
+    queryKey: ["convencoes", "relatorio", convencaoId],
+    queryFn: async () => {
+      let todas: LinhaRelatorioConvencao[] = [];
+      let pagina = 0;
+      for (;;) {
+        const from = pagina * TAMANHO_PAGINA;
+        const { data, error } = await supabase
+          .from("v_relatorio_convencao")
+          .select("*")
+          .eq("convencao_id", convencaoId as string)
+          .order("trabalhador")
+          .order("trabalhador_id")
+          .order("estabelecimento_id")
+          .range(from, from + TAMANHO_PAGINA - 1);
+        if (error) throw error;
+        const linhas = (data ?? []) as LinhaRelatorioConvencao[];
+        todas = todas.concat(linhas);
+        if (linhas.length < TAMANHO_PAGINA) break;
+        pagina += 1;
+      }
+      return todas;
+    },
+    enabled: !!convencaoId,
+  });
+}
+
+export type ResultadoReclassificacao = { para_bronze: number; para_prata: number };
+
+/**
+ * Organização interna da CCT (fluxo de convenções 5.1–5.3): quem entregou carta
+ * no ano-base vira Bronze, quem não entregou vira Prata, Ouro fica intocado.
+ *
+ * Os números devolvidos são DELTAS (quem de fato mudou), não totais — a função é
+ * idempotente no banco (só altera a flag divergente), então uma segunda execução
+ * retornando `0, 0` é sucesso, não erro. Quem chama não precisa se proteger de
+ * duplo clique: a garantia é do Postgres.
+ */
+export function useReclassificarConvencao() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (convencaoId: string): Promise<ResultadoReclassificacao> => {
+      const { data, error } = await supabase.rpc("fn_reclassificar_convencao", {
+        p_convencao_id: convencaoId,
+      });
+      if (error) throw error;
+      return data?.[0] ?? { para_bronze: 0, para_prata: 0 };
+    },
+    onSuccess: () => {
+      // Prefixo: cobre lista, ficha e relatório (reclassificada_em muda em todos).
+      void queryClient.invalidateQueries({ queryKey: ["convencoes"] });
+      void queryClient.invalidateQueries({ queryKey: ["trabalhadores"] });
+      void queryClient.invalidateQueries({ queryKey: ["notificacoes"] });
+    },
+  });
+}
