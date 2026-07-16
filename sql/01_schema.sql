@@ -800,7 +800,14 @@ select
   v.estabelecimento_id,
   e.cnpj_basico,
   coalesce(v.salario_informado, piso.valor) as salario_base,
-  least(coalesce(v.salario_informado, piso.valor) * 0.05, 100.00) as valor_contribuicao_anual
+  -- ATENÇÃO: least() IGNORA NULLs — least(NULL, 100.00) devolve 100.00. Sem o
+  -- case, quem não tem base de cálculo (sem piso na CCT e sem salário
+  -- informado) receberia justamente o TETO. Sem base → NULL, e o motor de
+  -- cobrança (10_cobrancas.sql) pula e reporta em vez de inventar valor.
+  case
+    when coalesce(v.salario_informado, piso.valor) is null then null
+    else least(coalesce(v.salario_informado, piso.valor) * 0.05, 100.00)
+  end as valor_contribuicao_anual
 from trabalhadores t
 left join vinculos_empregaticios v
        on v.trabalhador_id = t.id and v.principal and v.data_desligamento is null
