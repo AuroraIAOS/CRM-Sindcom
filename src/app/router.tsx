@@ -22,6 +22,9 @@ import { DetalheBeneficioPage } from "@/features/beneficios/DetalheBeneficioPage
 import { ListaServicosPage } from "@/features/servicos/ListaServicosPage";
 import { DetalheServicoPage } from "@/features/servicos/DetalheServicoPage";
 import { GuiaPrint } from "@/features/servicos/GuiaPrint";
+import { PortalFilaPage } from "@/features/portal-parceiro/PortalFilaPage";
+import { PortalBeneficiosPage } from "@/features/portal-parceiro/PortalBeneficiosPage";
+import { PortalRecepcionistasPage } from "@/features/portal-parceiro/PortalRecepcionistasPage";
 import type { PapelUsuario } from "@/lib/supabase";
 
 /**
@@ -39,6 +42,9 @@ const PAGINAS: Partial<Record<string, ReactNode>> = {
   "/parceiros": <ListaParceirosPage />,
   "/beneficios": <ListaBeneficiosPage />,
   "/servicos": <ListaServicosPage />,
+  "/portal": <PortalFilaPage />,
+  "/portal/beneficios": <PortalBeneficiosPage />,
+  "/portal/recepcionistas": <PortalRecepcionistasPage />,
 };
 const PAGINAS_DETALHE: Partial<Record<string, ReactNode>> = {
   "/trabalhadores/:id": <FichaTrabalhadorPage />,

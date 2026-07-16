@@ -163,7 +163,7 @@ Esforço máximo do /goal: 4 tentativas.
 Escalonamento de LLM: Sonnet nas 2 primeiras; Opus nas 2 últimas.
 Se esgotar: parar e emitir relatório curto.
 
-### Subetapa 02.3 — Portal do parceiro [Goal] [Manual] [LLM: Sonnet]
+### Subetapa 02.3 — Portal do parceiro [Goal] [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 Objetivo: fila (`v_fila_parceiro`) + confirmação em lote mensal.
 Conclusão: parceiro vê apenas os próprios (sem CPF) e confirma em lote.
 Qualidade: `v_fila_parceiro` nunca expõe CPF.
