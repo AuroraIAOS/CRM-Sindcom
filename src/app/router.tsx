@@ -19,6 +19,9 @@ import { NotificacoesPage } from "@/features/notificacoes/NotificacoesPage";
 import { ListaParceirosPage } from "@/features/parceiros/ListaParceirosPage";
 import { ListaBeneficiosPage } from "@/features/beneficios/ListaBeneficiosPage";
 import { DetalheBeneficioPage } from "@/features/beneficios/DetalheBeneficioPage";
+import { ListaServicosPage } from "@/features/servicos/ListaServicosPage";
+import { DetalheServicoPage } from "@/features/servicos/DetalheServicoPage";
+import { GuiaPrint } from "@/features/servicos/GuiaPrint";
 import type { PapelUsuario } from "@/lib/supabase";
 
 /**
@@ -35,10 +38,13 @@ const PAGINAS: Partial<Record<string, ReactNode>> = {
   "/notificacoes": <NotificacoesPage />,
   "/parceiros": <ListaParceirosPage />,
   "/beneficios": <ListaBeneficiosPage />,
+  "/servicos": <ListaServicosPage />,
 };
 const PAGINAS_DETALHE: Partial<Record<string, ReactNode>> = {
   "/trabalhadores/:id": <FichaTrabalhadorPage />,
   "/beneficios/:id": <DetalheBeneficioPage />,
+  "/servicos/:id": <DetalheServicoPage />,
+  "/servicos/:id/guia": <GuiaPrint />,
 };
 
 const INTERNOS: PapelUsuario[] = ["admin", "presidente", "secretaria", "juridico"];

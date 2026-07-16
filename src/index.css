@@ -42,6 +42,26 @@
   --radius: 0.5rem;
 }
 
+/* Impressão da guia de encaminhamento (/servicos/:id/guia).
+   Margem de 10mm é a folga de segurança contra as bordas não-imprimíveis da
+   impressora da sede (specs/frontend.md §8). O restante do chrome do AppShell
+   se esconde via utilitários `print:` nos próprios componentes. */
+@media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+  body {
+    /* Fundo cinza da tela vira desperdício de toner no papel. */
+    background-color: #ffffff;
+  }
+  /* Sem isto o Chrome descarta os fundos coloridos (destaque da economia). */
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
+
 @layer base {
   * {
     border-color: hsl(var(--border));

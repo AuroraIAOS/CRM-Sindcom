@@ -9,6 +9,7 @@ import { VinculosTab } from "./abas/VinculosTab";
 import { BeneficiadosTab } from "./abas/BeneficiadosTab";
 import { CartasTab } from "./abas/CartasTab";
 import { FaturasTab } from "./abas/FaturasTab";
+import { SolicitacoesTab } from "./abas/SolicitacoesTab";
 import { AbaVazia } from "./abas/AbaVazia";
 
 /**
@@ -85,7 +86,7 @@ export function DetalheTrabalhador({ trabalhadorId }: { trabalhadorId: string })
         <AccordionItem value="solicitacoes">
           <AccordionTrigger>Solicitações</AccordionTrigger>
           <AccordionContent>
-            <AbaVazia mensagem="Solicitações de serviço: disponível a partir da Etapa 02 (convênio + motor financeiro)." />
+            <SolicitacoesTab trabalhadorId={t.id} />
           </AccordionContent>
         </AccordionItem>
 

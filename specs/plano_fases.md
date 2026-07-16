@@ -34,43 +34,43 @@ Objetivo geral: banco seguro + app logável, com a suíte de testes RLS 100% ver
 Modo predominante: [Manual Mode] (infra já pronta — metade-código executada).
 Observações: infra da Fase 0 já aplicada (não recriar): projeto Supabase isolado, SQLs 01→04 aplicados, `pg_cron` agendado, `NOTIFY pgrst`, 5 perfis + 1 parceiro-teste. Deploy **Hostgator** (build estático + `.htaccess` SPA fallback) — **não Vercel**.※¹ Fechamento formal em `docs/fase0-conformidade.md`.
 
-### Subetapa 00.1 — Conformidade schema aplicado × SQL do repo [Plan] [LLM: Sonnet]
+### Subetapa 00.1 — Conformidade schema aplicado × SQL do repo [Plan] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 Objetivo: provar que o schema no Supabase corresponde aos arquivos `sql/01→04`.
 Conclusão: enums, tabelas, funções, políticas RLS, triggers, views, extensões e jobs `pg_cron` conferidos 1:1 (relatório em `docs/fase0-conformidade.md`).
 Qualidade: conformidade estrutural total; gaps registrados, não escondidos.
 Evidência: tabela de conformidade preenchida + advisors de segurança revisados.
 
-### Subetapa 00.2 — Carga de referência RFB + de-para TOM→IBGE [Manual] [LLM: Sonnet]
+### Subetapa 00.2 — Carga de referência RFB + de-para TOM→IBGE [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 Objetivo: resolver `codigo_rfb` para 100% dos municípios de MG.
 Conclusão: `municipios` com 5.570 linhas, 29 `base_territorial`; `codigo_rfb` = 5.570/5.570 (MG 853/853); tabelas RFB (`cnaes`, `naturezas_juridicas`, `qualificacoes_responsavel`, `motivos_situacao_cadastral`) carregadas.
 Qualidade: staging temporária removida ao fim; nenhuma alteração de schema.
 Evidência: contagens por query + Passos = TOM 4957.
 
-### Subetapa 00.3 — Skeleton React + Vite + TS + PWA (tokens Sindcom) [Manual] [LLM: Sonnet]
+### Subetapa 00.3 — Skeleton React + Vite + TS + PWA (tokens Sindcom) [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 Objetivo: scaffold com Tailwind/shadcn temados por `docs/design-tokens.md` §4 e PWA (manifest + precache do shell; `/guia/:token` fora do precache).
 Conclusão: `npm run build` gera `dist/` sem erro; estrutura de pastas conforme `specs/frontend.md` §5.
 Qualidade: nada hardcoded fora dos tokens.
 Evidência: build limpo + assets de marca em `public/assets/brand/` e ícones PWA.
 
-### Subetapa 00.4 — Camada Supabase + Auth + mapa de erros [Manual] [LLM: Sonnet]
+### Subetapa 00.4 — Camada Supabase + Auth + mapa de erros [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 Objetivo: `lib/supabase.ts` (cliente único, anon key), `lib/auth.tsx` (sessão + `perfis`), `lib/mensagens.ts` (mapa `PostgrestError.message → pt-BR`).
 Conclusão: login real por role funcionando; erros de trigger traduzidos.
 Qualidade: componentes não chamam supabase-js direto.
 Evidência: sessão carregada + toasts amigáveis.
 
-### Subetapa 00.5 — AppShell + RoleGate + navegação por papel [Manual] [LLM: Sonnet]
+### Subetapa 00.5 — AppShell + RoleGate + navegação por papel [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 Objetivo: guarda de rota/elemento; redirecionamento pós-login (`parceiro`→`/portal`, `juridico`→`/juridico`, demais→`/dashboard`); `/login` e `/recuperar-senha` funcionais.
 Conclusão: cada role redireciona à área correta; rota negada → redirect + toast.
 Qualidade: sidebar filtrada por role.
 Evidência: teste de navegação/redirect (10 asserts) verde.
 
-### Subetapa 00.6 — Suíte de testes RLS (portão da etapa) [Manual] [LLM: Opus]
+### Subetapa 00.6 — Suíte de testes RLS (portão da etapa) [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
 Objetivo: transformar cada célula da matriz de `sql/03_rls.sql` em assert (6 atores: 5 roles + anon), com login real via supabase-js.
 Conclusão: **`npm run test:rls` 100% verde** — secretária sem INSERT/DELETE nas 6 tabelas CRU-baixa; jurídico só INSERT em `atendimentos_juridicos`; presidente leitura ampla sem escrita; parceiro só os próprios via `fn_parceiro_id()`, `v_fila_parceiro` sem CPF; anon só nas RPCs públicas do QR; admin baseline positivo; `solicitacoes_admin` com regra de solicitante. **Regra de portão: nenhuma tela real antes disto.**
 Qualidade: cada assert valida caminho permitido **e** negado.
 Evidência: suíte 27/27 verde (17 RLS × 6 atores + 10 navegação) — log por ator/tabela/operação.
 
-### Subetapa 00.7 — Hardening + deploy inicial (Hostgator) [Manual] [LLM: Sonnet]
+### Subetapa 00.7 — Hardening + deploy inicial (Hostgator) [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 Objetivo: aplicar `sql/05_hardening.sql` (idempotente) e publicar `dist/` em `crm.sindcompassos.org`.
 Conclusão: `search_path` fixo em todas as `fn_*`; `EXECUTE` revogado de PUBLIC/anon com reconcessão cirúrgica; `pg_trgm` no schema `extensions`; SPA servido com refresh em rota profunda; HTTPS/AutoSSL ativo (PWA instalável).
 Qualidade: único item aceito como pendência — `auth_leaked_password_protection` (plano pago), vigiado em `CLAUDE.md`/`README.md`.
@@ -86,7 +86,7 @@ Objetivo geral: Denise operando — cadastros, vínculos, CCTs e importação da
 Modo predominante: [Manual Mode] + [Goal] (um `/goal` por subetapa de baixo risco).
 Observações: subetapas que tocam RLS/triggers/migração em lote ficam **fora do `/goal`** (Manual estrito, aprovação explícita). Toda query Supabase vive em `features/<domínio>/api.ts` como hook TanStack; commit comentado + push ao fim de cada subetapa.
 
-### Subetapa 01.1 — Trabalhadores: lista + ficha com abas [Goal] [Manual] [LLM: Sonnet]
+### Subetapa 01.1 — Trabalhadores: lista + ficha com abas [Goal] [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 Objetivo: DataTable server-side + ficha com abas (Dados · Vínculos · Beneficiados · Cartas · Faturas · Solicitações · Atendimentos — as duas últimas vazias até a Etapa 02).
 Conclusão: lista pagina/filtra no servidor; ficha abre por trabalhador com nível derivado correto (Bronze/Prata/Ouro) a partir das flags — **nível é computado, nunca editável**.
 Qualidade: nível nunca escrito à mão; abas vazias sinalizadas, não quebradas.
@@ -95,7 +95,7 @@ Esforço máximo do /goal: 3 tentativas.
 Escalonamento de LLM: Sonnet nas 2 primeiras; escalar p/ Opus na 3ª.
 Se esgotar: parar e emitir relatório curto (problema + causas + 2-3 alternativas).
 
-### Subetapa 01.2 — Vínculos, beneficiados e cartas de oposição [Goal] [Manual] [LLM: Sonnet]
+### Subetapa 01.2 — Vínculos, beneficiados e cartas de oposição [Goal] [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 Objetivo: CRUD de vínculos empregatícios (Denise), beneficiados, e registro de cartas de oposição (+ visão anual).
 Conclusão: carta registrada reflete Bronze na ficha; beneficiado ≠ titular respeitado pelo trigger.
 Qualidade: mensagens de trigger traduzidas pelo mapa central.
@@ -104,19 +104,19 @@ Esforço máximo do /goal: 3 tentativas.
 Escalonamento de LLM: Sonnet nas 2 primeiras; Opus na 3ª.
 Se esgotar: parar e emitir relatório curto.
 
-### Subetapa 01.3 — Empresas/estabelecimentos + Convenções (CCT) [Manual] [LLM: Opus]
+### Subetapa 01.3 — Empresas/estabelecimentos + Convenções (CCT) [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
 Objetivo: leitura/update de empresas/estabelecimentos e vínculo com CCT; CRUD completo de convenções + pisos por função + `taxas_convencao` + **data limite de oposição** + migração de estabelecimentos em lote.
 Conclusão: convenção criada com pisos e taxas; migração em lote move estabelecimentos sem violar RLS/triggers.
 Qualidade: migração em lote é ato deliberado e auditável (Manual, sem `/goal`).
 Evidência: CCT completa + relatório da migração em lote.
 
-### Subetapa 01.4 — Fila de solicitações ao Admin + aprovação de cadastros [Manual] [LLM: Opus]
+### Subetapa 01.4 — Fila de solicitações ao Admin + aprovação de cadastros [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
 Objetivo: CRU-baixa da Denise → `solicitacoes_admin` com payload + diff para o Admin; aprovação executa a operação real. Fila de aprovação de cadastros pendentes.
 Conclusão: ciclo completo — Denise cria trabalhador → fila-admin → Maxwell aprova → ficha com vínculo e nível correto.
 Qualidade: nada destrutivo sem aprovação; medir tempo médio de aprovação desde o dia 1 (input p/ a válvula de auto-aprovação da Etapa 04).
 Evidência: diff exibido ao Admin + operação real pós-aprovação.
 
-### Subetapa 01.5 — Importação/exportação CSV [Goal] [Manual] [LLM: Sonnet]
+### Subetapa 01.5 — Importação/exportação CSV [Goal] [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 Objetivo: importação CSV completa (spec `specs/importacao.md`) + exportação crua (Admin, logada) / mascarada.
 Conclusão: importação dos CSVs reais de empresas+estabelecimentos dos 29 municípios **com relatório de rejeitadas**; DV de CPF/CNPJ validado; zeros do Excel preservados; políticas de duplicata aplicadas.
 Qualidade: **importação nunca altera** `recolhe_contribuicao_sindical`, `recolhe_mensalidade_convenio` nem `forma_pagamento_preferida` de registros existentes (política importa-válidas).
@@ -125,7 +125,7 @@ Esforço máximo do /goal: 4 tentativas.
 Escalonamento de LLM: Sonnet nas 3 primeiras; Opus na 4ª.
 Se esgotar: parar e emitir relatório curto.
 
-### Subetapa 01.6 — Notificações in-app + badge Realtime [Goal] [Manual] [LLM: Haiku]
+### Subetapa 01.6 — Notificações in-app + badge Realtime [Goal] [Manual] [LLM: Haiku] · Status: ✅ CONCLUÍDA
 Objetivo: notificações in-app com badge via Realtime.
 Conclusão: nova solicitação/pendência gera notificação à Denise em tempo real.
 Qualidade: badge zera ao ler; sem polling desnecessário.
@@ -145,7 +145,7 @@ Objetivo geral: convênio girando + dinheiro cobrado e conciliado. Gerar HANDOFF
 Modo predominante: [Manual Mode] + [Goal] (UI por `/goal`; funções SQL `security definer` e conciliação em Manual estrito).
 Observações: motor financeiro é sensível — funções de geração de cobrança **não** rodam por `/goal`. E-mails via n8n (remetente `estrategico@sindcompassos.org`, template com identidade da skill `sindcom`).
 
-### Subetapa 02.1 — Parceiros + recepcionistas + catálogo de benefícios [Goal] [Manual] [LLM: Sonnet]
+### Subetapa 02.1 — Parceiros + recepcionistas + catálogo de benefícios [Goal] [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 Objetivo: gestão de parceiros e recepcionistas (PIN com hash) + catálogo `beneficios`.
 Conclusão: PIN armazenado com hash; catálogo lista ofertas por nível mínimo.
 Qualidade: `beneficios` = catálogo (oferta); vocabulário canônico respeitado.
@@ -154,7 +154,7 @@ Esforço máximo do /goal: 3 tentativas.
 Escalonamento de LLM: Sonnet nas 2 primeiras; Opus na 3ª.
 Se esgotar: parar e emitir relatório curto.
 
-### Subetapa 02.2 — Solicitações de serviço + guia A4 com QR + página pública + check-in [Goal] [Manual] [LLM: Opus]
+### Subetapa 02.2 — Solicitações de serviço + guia A4 com QR + página pública + check-in [Goal] [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
 Objetivo: form com pré-validação de nível/bloqueio (`fn_titular_bloqueado`), guia A4 com QR, página pública `/guia/:token`, check-in com PIN.
 Conclusão: ciclo real de solicitação até **check-in por QR em celular físico** na sede; `solicitacoes_servico` = carrinho que vira guia; máquina de estados respeita check-in a partir de `solicitada` e `pendente_confirmacao`, rejeita guia já processada e PIN inválido.
 Qualidade: orientação livre para Bronze; guarda do parceiro no trigger.

@@ -27,8 +27,8 @@ export function AppShell() {
   useNotificacoesRealtime();
 
   return (
-    <div className="grid min-h-full grid-cols-[260px_1fr]">
-      <aside className="flex flex-col gap-4 border-r border-black/10 bg-fundo-2 p-4">
+    <div className="grid min-h-full grid-cols-[260px_1fr] print:block">
+      <aside className="flex flex-col gap-4 border-r border-black/10 bg-fundo-2 p-4 print:hidden">
         <img
           src="/assets/brand/logo_horizontal_colorido.png"
           alt="Sindcom"
@@ -67,7 +67,7 @@ export function AppShell() {
       </aside>
 
       <div className="flex min-h-full flex-col">
-        <header className="flex items-center justify-between border-b border-black/10 bg-white px-6 py-3">
+        <header className="flex items-center justify-between border-b border-black/10 bg-white px-6 py-3 print:hidden">
           <div className="text-sm text-texto-2">
             {perfil?.nome}
             {role && (
@@ -88,7 +88,9 @@ export function AppShell() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-6">
+        {/* `print:*` libera a folha da guia das restrições de layout da tela
+            (padding, scroll interno) — ver /servicos/:id/guia. */}
+        <main className="flex-1 overflow-auto p-6 print:overflow-visible print:p-0">
           <Outlet />
         </main>
       </div>
