@@ -45,6 +45,29 @@ React 18 + TypeScript + Vite + vite-plugin-pwa · Tailwind CSS + shadcn/ui · Ta
 - **Deploy automático autorizado.** Ao final de cada subetapa/processo que altere o frontend, faça o deploy para `crm.sindcompassos.org` (build + envio FTP via `docs/deploy.md`, credenciais em `.env.deploy`) sem pedir confirmação a cada vez — Maxwell autorizou isso explicitamente em 2026-07-13. Racional: o CRM já exige login/senha, então publicar uma tela nova não é um risco crítico. Ainda assim, nunca faça deploy com a suíte de testes (`npm run test`) ou o `typecheck`/`build` quebrados, e avise Maxwell no resumo de cada subetapa que o deploy foi feito (com o resultado da verificação pós-deploy do runbook).
 - Jobs: pg_cron (rotinas SQL) + n8n (e-mails de guias e webhooks do site).
 
+## Subetapa 02.6 — estado da integração n8n (EM ANDAMENTO, retomar por aqui)
+
+O motor SQL (`sql/10_cobrancas.sql`, `sql/12_email_guias.sql`) e a correção do teto indevido em `v_base_calculo_trabalhador` já estão prontos, aplicados em produção e commitados. A perna de e-mail das guias via n8n está **parcialmente construída e testada** — falta só a senha SMTP real para concluir.
+
+**Ambiente n8n** (self-host no computador do Maxwell, Docker, instância antes "virgem"):
+- Containers `n8n_container` (porta 5678) e `gotenberg_container` (motor de PDF, sem porta exposta ao host), ambos na rede Docker `sindcom-net`.
+- Resolução por NOME de container não funciona nesse setup (`docker network connect` pós-criação não propagou DNS, nem após `docker restart`) — o Gotenberg usa **IP fixo `172.18.0.10:3000`** nos nós do n8n. Se os containers forem recriados, recriar o Gotenberg com `--ip 172.18.0.10` na rede `sindcom-net` ou atualizar os nós do workflow com o IP novo.
+- Credenciais guardadas no cofre do n8n (não em texto puro no workflow): `Supabase service_role (Sindcom)` — tipo `httpHeaderAuth`, header `Authorization: Bearer <service_role>`. **Importante:** o header `apikey` sozinho NÃO basta — Supabase executa a query como `anon` nesse caso e a RLS filtra tudo silenciosamente (retorna array vazio sem erro). Só o `Authorization: Bearer` estabelece o papel `service_role`. E `Titan SMTP (Sindcom)` — tipo `smtp`, host `smtp.titan.email:587`, `secure:false` (STARTTLS).
+- Workflow criado: **"Sindcom — Guia de pagamento por e-mail"** (id `3rLxjOI0yTFiiBKT`). Cadeia: gatilho por agendamento a cada 15 min (hoje **DESABILITADO** de propósito, ver abaixo) + webhook manual de teste (`POST http://localhost:5678/webhook/guia-email-teste`, ativo) → busca `v_repasses_para_email` como `service_role` → monta HTML da guia (sem CPF) → converte para arquivo → gera PDF no Gotenberg → envia e-mail com o PDF anexado (SMTP) → marca `repasses.status = 'enviado'` + `email_enviado_para`/`email_enviado_em`.
+- **Testado e confirmado funcionando até a geração do PDF**: busca no Supabase com o papel correto, HTML montado, PDF de ~9,5 kB gerado pelo Gotenberg — tudo validado via `GET /api/v1/executions` do n8n. A falha de e-mail **não corrompeu dado nenhum**: a guia de teste continua `previsto`, sem `email_enviado_em` (o nó de PATCH nunca roda se o envio falhar antes).
+
+**Bloqueio atual — senha SMTP.** Três senhas testadas (conta de hospedagem do Davi, `deploycrm@`, `secretaria@`) falharam com `535 Invalid login: authentication failed`. Nenhuma é a senha da caixa Titan — a senha de uma caixa de e-mail Titan é gerenciada **dentro do cPanel** (seção E-mail/Contas de E-mail), separada da senha de login do próprio cPanel. **Suspeita a confirmar:** o usuário de login do cPanel provavelmente é `davide59` (visível no docroot de `docs/deploy.md`), não um e-mail — Maxwell ainda não tentou entrar com esse usuário.
+
+**Ao retomar:**
+1. Maxwell loga no cPanel (`https://br998.hostgator.com.br:2083`, usuário provável `davide59`) e localiza/redefine a senha da caixa `secretaria@sindcompassos.org` (separada da senha do cPanel).
+2. Atualizar a credencial SMTP no n8n com a senha nova (painel do n8n em `localhost:5678`, ou via API `PATCH /api/v1/credentials/f9ZmJCOVlrxDBeG7`).
+3. Reexecutar o teste: `curl -X POST http://localhost:5678/webhook/guia-email-teste`, conferir em `GET /api/v1/executions` e no banco (`repasses.status`, `email_enviado_em`).
+4. **Antes de marcar a 02.6 como concluída:** reabilitar o nó "A cada 15 min" (hoje `disabled:true`) para o job rodar sozinho, e considerar exportar o JSON do workflow para o repo (hoje só existe na instância local do n8n).
+
+**Ainda falta nesta subetapa (independente do n8n):**
+- Botões no frontend para `fn_gerar_faturas_contribuicao`, `fn_gerar_faturas_mensalidade` e `fn_gerar_guias` (hoje só existem como função SQL, sem UI).
+- `tests/rls/cobrancas.spec.ts` (matriz de papéis, idempotência, conciliação, vencimento — molde em `tests/rls/convencoes.spec.ts`).
+
 ## Backlog (decisões adiadas)
 
 - [ ] **Visão anual de cartas de oposição** (`/cartas`: quem entregou, quem falta, exportação da lista de reclassificação — `specs/frontend.md` §2.2) — adiada para o **final do roteiro**, decisão de Maxwell em 2026-07-13. Não implementar junto de nenhuma subetapa intermediária; só entra quando todo o resto estiver pronto. **Exportar CSV nesta tela também espera esse momento** (branch `feature/melhorias-usabilidade-01`, 2026-07-14).
