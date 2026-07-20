@@ -45,31 +45,20 @@ React 18 + TypeScript + Vite + vite-plugin-pwa · Tailwind CSS + shadcn/ui · Ta
 - **Deploy automático autorizado.** Ao final de cada subetapa/processo que altere o frontend, faça o deploy para `crm.sindcompassos.org` (build + envio FTP via `docs/deploy.md`, credenciais em `.env.deploy`) sem pedir confirmação a cada vez — Maxwell autorizou isso explicitamente em 2026-07-13. Racional: o CRM já exige login/senha, então publicar uma tela nova não é um risco crítico. Ainda assim, nunca faça deploy com a suíte de testes (`npm run test`) ou o `typecheck`/`build` quebrados, e avise Maxwell no resumo de cada subetapa que o deploy foi feito (com o resultado da verificação pós-deploy do runbook).
 - Jobs: pg_cron (rotinas SQL) + n8n (e-mails de guias e webhooks do site).
 
-## Subetapa 02.6 — estado da integração n8n (EM ANDAMENTO, retomar por aqui)
+## Subetapa 02.6 — motor de cobrança + e-mail das guias · CONCLUÍDA (2026-07-20)
 
-O motor SQL (`sql/10_cobrancas.sql`, `sql/12_email_guias.sql`) e a correção do teto indevido em `v_base_calculo_trabalhador` já estão prontos, aplicados em produção e commitados. A perna de e-mail das guias via n8n está **parcialmente construída e testada** — falta só a senha SMTP real para concluir.
+Ciclo completo funcionando: faturas → guias → e-mail com PDF → guia marcada como `enviado`.
 
-**Ambiente n8n** (self-host no computador do Maxwell, Docker, instância antes "virgem"):
-- Containers `n8n_container` (porta 5678) e `gotenberg_container` (motor de PDF, sem porta exposta ao host), ambos na rede Docker `sindcom-net`.
-- Resolução por NOME de container não funciona nesse setup (`docker network connect` pós-criação não propagou DNS, nem após `docker restart`) — o Gotenberg usa **IP fixo `172.18.0.10:3000`** nos nós do n8n. Se os containers forem recriados, recriar o Gotenberg com `--ip 172.18.0.10` na rede `sindcom-net` ou atualizar os nós do workflow com o IP novo.
-- Credenciais guardadas no cofre do n8n (não em texto puro no workflow): `Supabase service_role (Sindcom)` — tipo `httpHeaderAuth`, header `Authorization: Bearer <service_role>`. **Importante:** o header `apikey` sozinho NÃO basta — Supabase executa a query como `anon` nesse caso e a RLS filtra tudo silenciosamente (retorna array vazio sem erro). Só o `Authorization: Bearer` estabelece o papel `service_role`. E `Titan SMTP (Sindcom)` — tipo `smtp`, host `smtp.titan.email:587`, `secure:false` (STARTTLS).
-- Workflow criado: **"Sindcom — Guia de pagamento por e-mail"** (id `3rLxjOI0yTFiiBKT`). Cadeia: gatilho por agendamento a cada 15 min (hoje **DESABILITADO** de propósito, ver abaixo) + webhook manual de teste (`POST http://localhost:5678/webhook/guia-email-teste`, ativo) → busca `v_repasses_para_email` como `service_role` → monta HTML da guia (sem CPF) → converte para arquivo → gera PDF no Gotenberg → envia e-mail com o PDF anexado (SMTP) → marca `repasses.status = 'enviado'` + `email_enviado_para`/`email_enviado_em`.
-- **Testado e confirmado funcionando até a geração do PDF**: busca no Supabase com o papel correto, HTML montado, PDF de ~9,5 kB gerado pelo Gotenberg — tudo validado via `GET /api/v1/executions` do n8n. A falha de e-mail **não corrompeu dado nenhum**: a guia de teste continua `previsto`, sem `email_enviado_em` (o nó de PATCH nunca roda se o envio falhar antes).
+- **SQL:** `sql/10_cobrancas.sql` (as 3 `fn_gerar_*`) e `sql/12_email_guias.sql` (`v_repasses_para_email`), aplicados em produção.
+- **Frontend:** botões de disparo (só Admin) na aba Relatório da CCT, em `/financeiro/faturas` e em `/financeiro/guias` — diálogos em `src/features/financeiro/GerarCobrancasDialog.tsx`, hooks em `features/financeiro/api.ts`.
+- **Testes:** `tests/rls/cobrancas.spec.ts` — 67/67 na suíte.
+- **n8n:** workflow "Sindcom — Guia de pagamento por e-mail" (id `3rLxjOI0yTFiiBKT`), ativo com agendamento de 15 min. **Documentação completa e runbook de restauração em `n8n/README.md`** — leia lá antes de mexer na integração.
 
-**Bloqueio atual — senha SMTP.** Três senhas testadas (conta de hospedagem do Davi, `deploycrm@`, `secretaria@`) falharam com `535 Invalid login: authentication failed`. Nenhuma é a senha da caixa Titan — a senha de uma caixa de e-mail Titan é gerenciada **dentro do cPanel** (seção E-mail/Contas de E-mail), separada da senha de login do próprio cPanel. **Suspeita a confirmar:** o usuário de login do cPanel provavelmente é `davide59` (visível no docroot de `docs/deploy.md`), não um e-mail — Maxwell ainda não tentou entrar com esse usuário.
+**Duas armadilhas que custaram horas e estão detalhadas no `n8n/README.md`:**
+1. **Titan grátis não faz SMTP externo.** As caixas `@sindcompassos.org` são Titan no plano grátis, onde acesso por cliente externo é recurso PAGO ("Habilite o Titan em outros aplicativos" aparece na lista de upgrade). Mesmo a senha correta dá `535 authentication failed`. **Não redefina senha do Titan tentando resolver isso** — não é senha, é plano. O envio usa `sindcompassos@gmail.com` com senha de app (exige verificação em 2 etapas), que ainda por cima tem reputação consolidada na região há décadas.
+2. **Header `apikey` sozinho no Supabase roda como `anon`** — a RLS filtra tudo e devolve array vazio SEM erro, então o workflow "passa" processando zero itens. Só `Authorization: Bearer` estabelece o papel `service_role`.
 
-**Ao retomar:**
-1. Maxwell loga no cPanel (`https://br998.hostgator.com.br:2083`, usuário provável `davide59`) e localiza/redefine a senha da caixa `secretaria@sindcompassos.org` (separada da senha do cPanel).
-2. Atualizar a credencial SMTP no n8n com a senha nova (painel do n8n em `localhost:5678`, ou via API `PATCH /api/v1/credentials/f9ZmJCOVlrxDBeG7`).
-3. Reexecutar o teste: `curl -X POST http://localhost:5678/webhook/guia-email-teste`, conferir em `GET /api/v1/executions` e no banco (`repasses.status`, `email_enviado_em`).
-4. **Antes de marcar a 02.6 como concluída:** reabilitar o nó "A cada 15 min" (hoje `disabled:true`) para o job rodar sozinho, e considerar exportar o JSON do workflow para o repo (hoje só existe na instância local do n8n).
-
-**Já concluído (2026-07-20):**
-- Botões de disparo no frontend: "Gerar faturas" na aba Relatório da CCT (`RelatorioTab`, logo após a organização interna), "Gerar mensalidades" em `/financeiro/faturas` e "Gerar guias" em `/financeiro/guias` — todos restritos ao Admin, com confirmação e resumo honesto (`geradas: 0` é sucesso, e os pulados aparecem nominalmente). Diálogos em `src/features/financeiro/GerarCobrancasDialog.tsx`; hooks em `features/financeiro/api.ts`.
-- `tests/rls/cobrancas.spec.ts` — 67/67 na suíte. Cobre matriz de papéis (anon por `ehErroRls`, não pela mensagem), idempotência das faturas e das guias, conciliação guia = Σ faturas, vencimento geração+30, o pulo de quem não tem base de cálculo e a guarda da guia já `recebido`.
-- `src/lib/database.types.ts` regenerado (as 3 funções + `v_repasses_para_email`).
-
-**Ainda falta nesta subetapa:** só a perna do e-mail (senha SMTP acima) e reabilitar o agendamento do n8n.
+**Bug de cobrança corrigido no caminho:** `v_base_calculo_trabalhador` usava `least(valor * 0.05, 100.00)`, e como `least()` ignora NULLs, quem NÃO tinha base de cálculo (sem piso na CCT e sem salário informado) recebia exatamente o TETO de R$ 100 — o valor máximo, para a pessoa sobre quem menos se sabe. Atingiria 14 dos 18 trabalhadores da base. Hoje: sem base → NULL → o motor pula e reporta nominalmente na tela.
 
 ## Backlog (decisões adiadas)
 

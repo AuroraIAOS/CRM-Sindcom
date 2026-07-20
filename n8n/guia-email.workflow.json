@@ -1,0 +1,284 @@
+{
+  "name": "Sindcom — Guia de pagamento por e-mail",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "name": "A cada 15 min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "69d18ac6-c5e9-4e70-acc9-7d04bca0ae79"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "guia-email-teste",
+        "options": {}
+      },
+      "name": "Teste manual (webhook)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        220
+      ],
+      "id": "8492ae81-c107-4781-a799-7c09ea08334f",
+      "webhookId": "a9d9a033-18b6-4151-9c94-326e2b25f1c5"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://vcswvscjqifelslsdjth.supabase.co/rest/v1/v_repasses_para_email?select=*",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "<<SUBSTITUIR: SUPABASE_SERVICE_ROLE_KEY do .env.n8n>>"
+            }
+          ]
+        }
+      },
+      "name": "Buscar guias pendentes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        280,
+        110
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Supabase service_role (Sindcom) (recriar no cofre do n8n)"
+        }
+      },
+      "id": "78bf6f15-8148-4b53-9225-39033c403e44"
+    },
+    {
+      "parameters": {
+        "language": "javaScript",
+        "jsCode": "const item = $input.item.json;\nconst FALLBACK = 'secretaria@sindcompassos.org';\nconst destino = item.email_destino || FALLBACK;\nconst linhas = (item.faturas || []).map(f =>\n  `<tr><td>${f.trabalhador}</td><td>${f.tipo}</td><td style=\"text-align:right\">R$ ${Number(f.valor).toFixed(2)}</td></tr>`\n).join('');\nconst html = `<!DOCTYPE html><html><head><meta charset=\"utf-8\"><style>\nbody{font-family:Arial,sans-serif;font-size:13px;color:#222;padding:24px}\nh1{font-size:18px;margin-bottom:4px}\ntable{width:100%;border-collapse:collapse;margin-top:16px}\ntd,th{border:1px solid #ccc;padding:6px 8px;text-align:left}\n.total{font-weight:bold;margin-top:12px;font-size:14px}\n</style></head><body>\n<h1>Guia de pagamento ${item.numero_guia_pagamento}</h1>\n<p><strong>Empresa:</strong> ${item.empresa}<br/>\n<strong>Tipo:</strong> ${item.tipo}<br/>\n<strong>Competência:</strong> ${item.competencia}<br/>\n<strong>Vencimento:</strong> ${item.data_vencimento}</p>\n<table><thead><tr><th>Trabalhador</th><th>Tipo</th><th>Valor</th></tr></thead>\n<tbody>${linhas}</tbody></table>\n<p class=\"total\">Total: R$ ${Number(item.valor_total).toFixed(2)} (${item.qtd_faturas} fatura(s))</p>\n</body></html>`;\nreturn { repasse_id: item.repasse_id, numero_guia_pagamento: item.numero_guia_pagamento, tipo: item.tipo, competencia: item.competencia, valor_total: item.valor_total, empresa: item.empresa, destino_resolvido: destino, html };"
+      },
+      "name": "Montar HTML da guia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        110
+      ],
+      "id": "1717561f-fae9-47e5-b451-2f97d9fe5661"
+    },
+    {
+      "parameters": {
+        "operation": "toBinary",
+        "sourceProperty": "html",
+        "options": {
+          "fileName": "index.html",
+          "mimeType": "text/html"
+        }
+      },
+      "name": "Converter para arquivo",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        840,
+        110
+      ],
+      "id": "dbf30800-201d-4b58-bc32-b43a5f00c41d"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.18.0.10:3000/forms/chromium/convert/html",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "files",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
+      },
+      "name": "Gerar PDF (Gotenberg)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1120,
+        110
+      ],
+      "id": "96cd3c57-b38e-4da8-82bb-62c395a3fcdf"
+    },
+    {
+      "parameters": {
+        "fromEmail": "sindcompassos@gmail.com",
+        "toEmail": "={{$node[\"Montar HTML da guia\"].json[\"destino_resolvido\"]}}",
+        "subject": "=Guia de pagamento {{$node[\"Montar HTML da guia\"].json[\"numero_guia_pagamento\"]}} — Sindcom Passos",
+        "emailFormat": "html",
+        "html": "=<p>Segue em anexo a guia de pagamento <strong>{{$node[\"Montar HTML da guia\"].json[\"numero_guia_pagamento\"]}}</strong>, referente a {{$node[\"Montar HTML da guia\"].json[\"tipo\"]}}, competência {{$node[\"Montar HTML da guia\"].json[\"competencia\"]}}.</p><p>Empresa: {{$node[\"Montar HTML da guia\"].json[\"empresa\"]}}<br/>Valor total: R$ {{$node[\"Montar HTML da guia\"].json[\"valor_total\"]}}</p><p>Sindicato dos Empregados no Comércio de Passos e Região</p>",
+        "options": {
+          "attachments": "data",
+          "replyTo": "secretaria@sindcompassos.org"
+        }
+      },
+      "name": "Enviar e-mail",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1400,
+        110
+      ],
+      "credentials": {
+        "smtp": {
+          "name": "Gmail SMTP (Sindcom) (recriar no cofre do n8n)"
+        }
+      },
+      "id": "b21ceabd-2867-4328-bea5-f19b036e15ce",
+      "webhookId": "9ca79770-d779-4343-8416-93a67d994af9"
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://vcswvscjqifelslsdjth.supabase.co/rest/v1/repasses?id=eq.{{$node[\"Montar HTML da guia\"].json[\"repasse_id\"]}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Prefer",
+              "value": "return=minimal"
+            },
+            {
+              "name": "apikey",
+              "value": "<<SUBSTITUIR: SUPABASE_SERVICE_ROLE_KEY do .env.n8n>>"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"status\": \"enviado\", \"email_enviado_para\": $node[\"Montar HTML da guia\"].json[\"destino_resolvido\"], \"email_enviado_em\": $now.toISO() } }}",
+        "options": {}
+      },
+      "name": "Marcar como enviado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        110
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "Supabase service_role (Sindcom) (recriar no cofre do n8n)"
+        }
+      },
+      "id": "98e6150b-9597-4962-aa86-b8f94e2b32a2"
+    }
+  ],
+  "connections": {
+    "A cada 15 min": {
+      "main": [
+        [
+          {
+            "node": "Buscar guias pendentes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Teste manual (webhook)": {
+      "main": [
+        [
+          {
+            "node": "Buscar guias pendentes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar guias pendentes": {
+      "main": [
+        [
+          {
+            "node": "Montar HTML da guia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar HTML da guia": {
+      "main": [
+        [
+          {
+            "node": "Converter para arquivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Converter para arquivo": {
+      "main": [
+        [
+          {
+            "node": "Gerar PDF (Gotenberg)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gerar PDF (Gotenberg)": {
+      "main": [
+        [
+          {
+            "node": "Enviar e-mail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar e-mail": {
+      "main": [
+        [
+          {
+            "node": "Marcar como enviado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

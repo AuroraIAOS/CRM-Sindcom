@@ -184,7 +184,7 @@ Conclusão: organização interna 5.1/5.2/5.3 com **Ouro com carta intocado**; i
 Qualidade: reclassificação é ato deliberado e idempotente (Manual, sem `/goal`).
 Evidência: relatório da CCT + prova de idempotência (2ª execução não duplica).
 
-### Subetapa 02.6 — Motor de geração de cobranças + e-mails n8n [Manual] [LLM: Opus]
+### Subetapa 02.6 — Motor de geração de cobranças + e-mails n8n [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
 Objetivo: implementar as funções SQL (security definer, guarda de Admin, disparo por botão ou cron) e os e-mails de guias via n8n.
 Conclusão: matriz de cobrança do item 7 gerada — boleto anual coletivo (guia da empresa), boletos anuais individuais, boleto mensal coletivo, boletos mensais individuais; **conciliação guia = Σ faturas exata**; vencimento geração+30; idempotência garantida.
 Qualidade: boletos individuais v1 **sem API bancária** (registro de `boleto_url`/`boleto_codigo`※² + e-mail via n8n); duplo clique não duplica cobrança.
