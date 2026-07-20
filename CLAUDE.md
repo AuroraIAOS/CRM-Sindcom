@@ -64,9 +64,12 @@ O motor SQL (`sql/10_cobrancas.sql`, `sql/12_email_guias.sql`) e a correção do
 3. Reexecutar o teste: `curl -X POST http://localhost:5678/webhook/guia-email-teste`, conferir em `GET /api/v1/executions` e no banco (`repasses.status`, `email_enviado_em`).
 4. **Antes de marcar a 02.6 como concluída:** reabilitar o nó "A cada 15 min" (hoje `disabled:true`) para o job rodar sozinho, e considerar exportar o JSON do workflow para o repo (hoje só existe na instância local do n8n).
 
-**Ainda falta nesta subetapa (independente do n8n):**
-- Botões no frontend para `fn_gerar_faturas_contribuicao`, `fn_gerar_faturas_mensalidade` e `fn_gerar_guias` (hoje só existem como função SQL, sem UI).
-- `tests/rls/cobrancas.spec.ts` (matriz de papéis, idempotência, conciliação, vencimento — molde em `tests/rls/convencoes.spec.ts`).
+**Já concluído (2026-07-20):**
+- Botões de disparo no frontend: "Gerar faturas" na aba Relatório da CCT (`RelatorioTab`, logo após a organização interna), "Gerar mensalidades" em `/financeiro/faturas` e "Gerar guias" em `/financeiro/guias` — todos restritos ao Admin, com confirmação e resumo honesto (`geradas: 0` é sucesso, e os pulados aparecem nominalmente). Diálogos em `src/features/financeiro/GerarCobrancasDialog.tsx`; hooks em `features/financeiro/api.ts`.
+- `tests/rls/cobrancas.spec.ts` — 67/67 na suíte. Cobre matriz de papéis (anon por `ehErroRls`, não pela mensagem), idempotência das faturas e das guias, conciliação guia = Σ faturas, vencimento geração+30, o pulo de quem não tem base de cálculo e a guarda da guia já `recebido`.
+- `src/lib/database.types.ts` regenerado (as 3 funções + `v_repasses_para_email`).
+
+**Ainda falta nesta subetapa:** só a perna do e-mail (senha SMTP acima) e reabilitar o agendamento do n8n.
 
 ## Backlog (decisões adiadas)
 
@@ -77,6 +80,15 @@ O motor SQL (`sql/10_cobrancas.sql`, `sql/12_email_guias.sql`) e a correção do
 - [ ] **Catálogo geral de Benefícios** (`/beneficios` como visão transversal de todos os parceiros — `specs/frontend.md` §2.2) — é o escopo da própria **Subetapa 02.1**; a tela ainda é `Placeholder` (sem `src/features/beneficios/`). Não antecipar fora do faseamento aprovado — pedido no documento de melhorias de usabilidade (2026-07-14), mas fica para quando a Etapa 02 começar.
 - [ ] **Reestruturação de Parceiros em mestre-detalhe** (com contêineres "Recepcionistas" e "Benefícios do Parceiro", no mesmo padrão de `ListaEmpresasPage.tsx`/`ListaTrabalhadoresPage.tsx`) — idem acima: `/parceiros` ainda é `Placeholder`, isso é a Subetapa 02.1. **Quando implementar:** seguir o padrão mestre-detalhe já estabelecido (grid `DataTable` + painel de detalhe na mesma página, sem navegação de rota).
 - [ ] **Botões "Novo atendimento" / "Novo parceiro" / "Novo recepcionista" / "Novo benefício"** — mesma razão: Jurídico (parcial, subetapa 01.2), Parceiros e Benefícios (Subetapa 02.1) ainda não têm telas reais. Nascem junto com essas telas, seguindo o padrão visual já usado em "Nova empresa"/"Novo estabelecimento"/"Novo trabalhador" (botão + `Dialog` + `EntityForm` + popup de confirmação de edição).
+
+## Incidente de hospedagem (verificar antes de culpar o deploy)
+
+**2026-07-20: o servidor web da Hostgator ficou fora do ar.** O deploy por FTP funcionou (todos os arquivos enviados, 0 divergências de tamanho local × remoto), mas `crm.sindcompassos.org` não respondia em 80/443. Sintomas que identificam esse caso:
+- FTP (porta 21) responde normalmente — é outro serviço, sobe e desce independente do Apache.
+- `curl https://isepem.org` (domínio da mesma conta, atrás da Cloudflare) devolve **521** — código que significa "Cloudflare no ar, servidor de ORIGEM recusando conexão". É a prova de que o problema é da hospedagem, não do build nem do DNS.
+- Os demais domínios da conta (`sindcompassos.org`) também caem, o que confirma que é a conta inteira.
+
+Se isso reaparecer: **não refaça o build nem o deploy** — os arquivos já estão lá. Confirme com o teste do 521, aguarde a Hostgator restabelecer e refaça só a verificação HTTP do `docs/deploy.md`.
 
 ## Vigilância de segurança pendente (lembrar o Maxwell)
 

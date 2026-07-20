@@ -720,6 +720,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "faturas_repasse_id_fkey"
+            columns: ["repasse_id"]
+            isOneToOne: false
+            referencedRelation: "v_repasses_para_email"
+            referencedColumns: ["repasse_id"]
+          },
+          {
             foreignKeyName: "faturas_trabalhador_id_fkey"
             columns: ["trabalhador_id"]
             isOneToOne: false
@@ -1850,6 +1857,30 @@ export type Database = {
         }
         Relationships: []
       }
+      v_repasses_para_email: {
+        Row: {
+          cnpj_basico: string | null
+          competencia: string | null
+          data_vencimento: string | null
+          email_destino: string | null
+          empresa: string | null
+          faturas: Json | null
+          numero_guia_pagamento: string | null
+          qtd_faturas: number | null
+          repasse_id: string | null
+          tipo: Database["public"]["Enums"]["tipo_fatura"] | null
+          valor_total: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repasses_cnpj_basico_fkey"
+            columns: ["cnpj_basico"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["cnpj_basico"]
+          },
+        ]
+      }
     }
     Functions: {
       fn_config: {
@@ -1885,6 +1916,34 @@ export type Database = {
       fn_evoluir_solicitacoes: { Args: never; Returns: number }
       fn_gera_guia_pagamento: { Args: never; Returns: string }
       fn_gera_numero_guia: { Args: never; Returns: string }
+      fn_gerar_faturas_contribuicao: {
+        Args: { p_convencao_id: string }
+        Returns: {
+          geradas: number
+          puladas: number
+          pulados: Json
+        }[]
+      }
+      fn_gerar_faturas_mensalidade: {
+        Args: { p_competencia: string }
+        Returns: {
+          geradas: number
+          puladas: number
+          pulados: Json
+        }[]
+      }
+      fn_gerar_guias: {
+        Args: {
+          p_competencia: string
+          p_tipo: Database["public"]["Enums"]["tipo_fatura"]
+        }
+        Returns: {
+          bloqueadas: number
+          faturas_vinculadas: number
+          guias_criadas: number
+          valor_total: number
+        }[]
+      }
       fn_guarda_job: { Args: never; Returns: undefined }
       fn_marcar_boletos_inadimplentes: { Args: never; Returns: number }
       fn_marcar_guias_em_atraso: { Args: never; Returns: number }

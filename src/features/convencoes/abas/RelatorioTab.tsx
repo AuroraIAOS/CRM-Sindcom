@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { Download, ShieldCheck } from "lucide-react";
+import { Download, Receipt, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { mascararCpf } from "@/lib/formatters";
 import { mensagemErro } from "@/lib/mensagens";
@@ -21,6 +21,10 @@ import {
   type TrabalhadorRelatorio,
 } from "../api";
 import { ExportarRelatorioDialog } from "../ExportarRelatorioDialog";
+// A geração de cobrança é domínio do financeiro; a CCT só dispara — mesmo
+// padrão de ExportarTrabalhadoresDialog usando o hook de importacao/api.
+import { useGerarFaturasContribuicao } from "@/features/financeiro/api";
+import { ResultadoFaturas } from "@/features/financeiro/GerarCobrancasDialog";
 
 const NIVEIS = ["bronze", "prata", "ouro"] as const;
 type Nivel = (typeof NIVEIS)[number];
@@ -81,11 +85,14 @@ export function RelatorioTab({
   const relatorio = useRelatorioConvencao(convencaoId);
   const estabelecimentos = useEstabelecimentosDaConvencao(convencaoId);
   const reclassificar = useReclassificarConvencao();
+  const gerarFaturas = useGerarFaturasContribuicao();
 
   const [confirmando, setConfirmando] = useState(false);
   const [exportando, setExportando] = useState(false);
   const [pagina, setPagina] = useState(0);
   const [erro, setErro] = useState<string | null>(null);
+  const [confirmandoFaturas, setConfirmandoFaturas] = useState(false);
+  const [erroFaturas, setErroFaturas] = useState<string | null>(null);
 
   /** A view dá uma linha por VÍNCULO. Sem deduplicar, quem tem dois vínculos
    *  ativos na mesma CCT é contado duas vezes e o total diverge dos deltas da
@@ -129,6 +136,17 @@ export function RelatorioTab({
     : !prazoEncerrado
       ? "O prazo de entrega das cartas de oposição ainda não encerrou. Organizar agora classificaria como Prata quem ainda tem direito de entregar a carta."
       : null;
+
+  async function confirmarGeracaoFaturas() {
+    setErroFaturas(null);
+    try {
+      await gerarFaturas.mutateAsync(convencaoId);
+      setConfirmandoFaturas(false);
+    } catch (e) {
+      setErroFaturas(mensagemErro(e));
+      setConfirmandoFaturas(false);
+    }
+  }
 
   async function confirmarReclassificacao() {
     setErro(null);
@@ -192,6 +210,39 @@ export function RelatorioTab({
         )}
         {erro && <p className="text-sm text-estado-erro">{erro}</p>}
       </Card>
+
+      {/* Passo seguinte à organização interna: cobrar quem ficou Prata/Ouro. */}
+      {ehAdmin && (
+        <Card className="flex flex-col gap-3 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <p className="font-semibold text-texto-1">Faturas de contribuição sindical</p>
+              <p className="text-sm text-texto-2">
+                Gera uma fatura anual (ano-base {anoBase}) por trabalhador Prata e Ouro desta CCT
+                — 5% do piso da função, teto de R$ 100, vencimento em 30 dias. Reexecutar não
+                duplica cobrança.
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              disabled={gerarFaturas.isPending}
+              onClick={() => setConfirmandoFaturas(true)}
+            >
+              <Receipt className="mr-1 h-4 w-4" /> Gerar faturas
+            </Button>
+          </div>
+
+          {!reclassificadaEm && (
+            <p className="text-sm text-texto-2">
+              Esta CCT ainda não passou pela organização interna. Gerar faturas antes cobra as
+              pessoas pela classificação antiga.
+            </p>
+          )}
+
+          {gerarFaturas.data && <ResultadoFaturas resultado={gerarFaturas.data} />}
+          {erroFaturas && <p className="text-sm text-estado-erro">{erroFaturas}</p>}
+        </Card>
+      )}
 
       {/* Empty states — a view exige status_cadastro = 'aprovado', então uma CCT
           com 200 pendentes mostra relatório vazio; dizer o porquê evita confusão. */}
@@ -307,6 +358,16 @@ export function RelatorioTab({
         carregando={reclassificar.isPending}
         textoConfirmar="Executar organização"
         onConfirmar={confirmarReclassificacao}
+      />
+
+      <ConfirmDialog
+        open={confirmandoFaturas}
+        onOpenChange={setConfirmandoFaturas}
+        titulo="Gerar faturas de contribuição"
+        descricao={`Cria a fatura anual de contribuição sindical (ano-base ${anoBase}) para os trabalhadores Prata e Ouro de "${nomeConvencao}". Quem não tiver piso da função na CCT nem salário informado fica de fora e será listado — ninguém é cobrado por um valor estimado. Reexecutar não duplica cobrança.`}
+        carregando={gerarFaturas.isPending}
+        textoConfirmar="Gerar faturas"
+        onConfirmar={confirmarGeracaoFaturas}
       />
 
       {exportando && (

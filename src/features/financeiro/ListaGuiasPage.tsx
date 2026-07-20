@@ -1,8 +1,9 @@
 import { useMemo, useState } from "react";
 import type { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
-import { AlertTriangle, Check } from "lucide-react";
+import { AlertTriangle, Check, Plus } from "lucide-react";
 import { DataTable } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   Table,
@@ -30,6 +31,7 @@ import {
   type RepasseListItem,
   type RepassesFiltros,
 } from "./api";
+import { GerarGuiasDialog } from "./GerarCobrancasDialog";
 import type { Database } from "@/lib/database.types";
 
 type StatusRepasse = Database["public"]["Enums"]["status_repasse"];
@@ -61,10 +63,13 @@ const ROTULO_STATUS_ACAO: Record<StatusRepasse, string> = {
 };
 
 export function ListaGuiasPage() {
+  const { role } = useAuth();
+  const ehAdmin = role === "admin";
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
   const [sorting, setSorting] = useState<SortingState>([]);
   const [status, setStatus] = useState<RepassesFiltros["status"]>("todos");
   const [selecionada, setSelecionada] = useState<string | null>(null);
+  const [gerando, setGerando] = useState(false);
 
   const filtros: RepassesFiltros = useMemo(() => ({ status }), [status]);
   const repasses = useRepasses(pagination, sorting, filtros);
@@ -114,7 +119,14 @@ export function ListaGuiasPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-3xl font-semibold text-texto-1">Guias de pagamento</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-semibold text-texto-1">Guias de pagamento</h1>
+        {ehAdmin && (
+          <Button onClick={() => setGerando(true)}>
+            <Plus className="mr-1 h-4 w-4" /> Gerar guias
+          </Button>
+        )}
+      </div>
 
       {repasses.isError && <p className="text-sm text-estado-erro">{mensagemErro(repasses.error)}</p>}
 
@@ -159,6 +171,8 @@ export function ListaGuiasPage() {
           </Card>
         )}
       </div>
+
+      {gerando && <GerarGuiasDialog onOpenChange={setGerando} />}
     </div>
   );
 }

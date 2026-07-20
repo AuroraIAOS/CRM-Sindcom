@@ -36,6 +36,7 @@ import {
   type FaturaListItem,
   type FaturasFiltros,
 } from "./api";
+import { GerarMensalidadeDialog } from "./GerarCobrancasDialog";
 import { faturaExcepcionalSchema, type FaturaExcepcionalFormValues } from "./schemas";
 import type { Database } from "@/lib/database.types";
 
@@ -75,12 +76,14 @@ const VALORES_INICIAIS: FaturaExcepcionalFormValues = {
 export function ListaFaturasPage() {
   const { role } = useAuth();
   const podeEditar = role !== null && (PODE_EDITAR as readonly string[]).includes(role);
+  const ehAdmin = role === "admin";
 
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
   const [sorting, setSorting] = useState<SortingState>([]);
   const [tipo, setTipo] = useState<FaturasFiltros["tipo"]>("todos");
   const [status, setStatus] = useState<FaturasFiltros["status"]>("todos");
   const [criando, setCriando] = useState(false);
+  const [gerandoMensalidade, setGerandoMensalidade] = useState(false);
   const [erroLinha, setErroLinha] = useState<string | null>(null);
 
   const filtros: FaturasFiltros = useMemo(
@@ -147,11 +150,18 @@ export function ListaFaturasPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-semibold text-texto-1">Faturas</h1>
-        {podeEditar && (
-          <Button onClick={() => setCriando(true)}>
-            <Plus className="mr-1 h-4 w-4" /> Nova fatura excepcional
-          </Button>
-        )}
+        <div className="flex gap-2">
+          {ehAdmin && (
+            <Button variant="outline" onClick={() => setGerandoMensalidade(true)}>
+              <Plus className="mr-1 h-4 w-4" /> Gerar mensalidades
+            </Button>
+          )}
+          {podeEditar && (
+            <Button onClick={() => setCriando(true)}>
+              <Plus className="mr-1 h-4 w-4" /> Nova fatura excepcional
+            </Button>
+          )}
+        </div>
       </div>
 
       {faturas.isError && <p className="text-sm text-estado-erro">{mensagemErro(faturas.error)}</p>}
@@ -203,6 +213,7 @@ export function ListaFaturasPage() {
       />
 
       {criando && <NovaFaturaExcepcionalDialog onOpenChange={setCriando} />}
+      {gerandoMensalidade && <GerarMensalidadeDialog onOpenChange={setGerandoMensalidade} />}
     </div>
   );
 }

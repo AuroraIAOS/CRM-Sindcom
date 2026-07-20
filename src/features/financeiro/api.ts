@@ -234,3 +234,124 @@ export function useAtualizarStatusRepasse(id: string) {
     },
   });
 }
+
+// ---------------------------------------------------------------------------
+// Motor de geração de cobranças (sql/10_cobrancas.sql · plano_fases.md 02.6)
+// ---------------------------------------------------------------------------
+
+/** Trabalhador sem base de cálculo (sem piso na CCT e sem salário informado):
+ *  é PULADO em vez de cobrado por um valor inventado. A lista nominal volta
+ *  para o Admin resolver o cadastro. */
+export type PuladoGeracao = { trabalhador_id: string; nome: string };
+
+export type ResultadoGeracaoFaturas = {
+  geradas: number;
+  puladas: number;
+  pulados: PuladoGeracao[];
+};
+
+export type ResultadoGeracaoGuias = {
+  guias_criadas: number;
+  faturas_vinculadas: number;
+  bloqueadas: number;
+  valor_total: number;
+};
+
+const RESULTADO_FATURAS_VAZIO: ResultadoGeracaoFaturas = {
+  geradas: 0,
+  puladas: 0,
+  pulados: [],
+};
+
+/** `pulados` chega como Json do Postgres — normaliza para a lista tipada. */
+function normalizarPulados(valor: unknown): PuladoGeracao[] {
+  return Array.isArray(valor) ? (valor as PuladoGeracao[]) : [];
+}
+
+/**
+ * Faturas de contribuição sindical da CCT (anual, Prata e Ouro).
+ *
+ * Idempotente no banco pelo unique (trabalhador_id, tipo, competencia): uma
+ * segunda execução devolve `geradas: 0` — isso é sucesso, não erro. Quem chama
+ * não precisa se proteger de duplo clique.
+ */
+export function useGerarFaturasContribuicao() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (convencaoId: string): Promise<ResultadoGeracaoFaturas> => {
+      const { data, error } = await supabase.rpc("fn_gerar_faturas_contribuicao", {
+        p_convencao_id: convencaoId,
+      });
+      if (error) throw error;
+      const linha = data?.[0];
+      if (!linha) return RESULTADO_FATURAS_VAZIO;
+      return {
+        geradas: linha.geradas,
+        puladas: linha.puladas,
+        pulados: normalizarPulados(linha.pulados),
+      };
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["financeiro"] });
+      void queryClient.invalidateQueries({ queryKey: ["trabalhadores", "faturas"] });
+    },
+  });
+}
+
+/** Faturas de mensalidade do convênio (mensal, só Ouro). */
+export function useGerarFaturasMensalidade() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (competencia: string): Promise<ResultadoGeracaoFaturas> => {
+      const { data, error } = await supabase.rpc("fn_gerar_faturas_mensalidade", {
+        p_competencia: competencia,
+      });
+      if (error) throw error;
+      const linha = data?.[0];
+      if (!linha) return RESULTADO_FATURAS_VAZIO;
+      return {
+        geradas: linha.geradas,
+        puladas: linha.puladas,
+        pulados: normalizarPulados(linha.pulados),
+      };
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["financeiro"] });
+      void queryClient.invalidateQueries({ queryKey: ["trabalhadores", "faturas"] });
+    },
+  });
+}
+
+/**
+ * Guias de pagamento: agrupa as faturas `holerite` por empresa.
+ *
+ * `bloqueadas` conta as faturas que não entraram em guia nenhuma porque a guia
+ * daquela empresa/competência já está `recebido` — anexá-las inflaria um
+ * documento já quitado, então ficam de fora e são reportadas.
+ */
+export function useGerarGuias() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      tipo: TipoFatura;
+      competencia: string;
+    }): Promise<ResultadoGeracaoGuias> => {
+      const { data, error } = await supabase.rpc("fn_gerar_guias", {
+        p_tipo: params.tipo,
+        p_competencia: params.competencia,
+      });
+      if (error) throw error;
+      return (
+        data?.[0] ?? {
+          guias_criadas: 0,
+          faturas_vinculadas: 0,
+          bloqueadas: 0,
+          valor_total: 0,
+        }
+      );
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["financeiro"] });
+    },
+  });
+}
