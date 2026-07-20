@@ -15,6 +15,7 @@ Portanto, na Fase 0 você executa APENAS a metade-código: skeleton React+Vite+T
 
 ## Ordem de leitura obrigatória
 
+0. `orientacoes.md`        ← armadilhas já vencidas (leia antes de depurar qualquer coisa)
 1. `specs/plano_fases.md`  ← fases, escopos, critérios de aceite (comece aqui)
 2. `sql/01_schema.sql`     ← modelo de dados = fonte de verdade das regras de negócio
 3. `sql/03_rls.sql`        ← matriz de permissões por role
@@ -36,6 +37,7 @@ React 18 + TypeScript + Vite + vite-plugin-pwa · Tailwind CSS + shadcn/ui · Ta
 - Textos de UI em português brasileiro. Identidade visual conforme `docs/design-tokens.md` (cores, tipografia, tom — nunca inventar paleta).
 - Erros e limitações são reportados com transparência total; nada de "funciona" com ressalva escondida.
 - **Dados de demonstração permanecem no banco.** Ao implementar e verificar qualquer subetapa que crie trabalhadores, beneficiados, empresas, estabelecimentos, parceiros ou solicitações de serviço, os registros de demonstração/verificação usados no teste **ficam gravados** ao final da sessão — não apagar. Isso dá a Maxwell uma visualização real e incremental do sistema, subetapa a subetapa, em `crm.sindcompassos.org`. Nomeie esses registros de forma clara (prefixo `DEMO —` ou nome obviamente fictício) para nunca serem confundidos com cadastro real quando a importação da Etapa 01.5 começar. Só remover dados de demonstração por reparo técnico ou motivo de segurança — e, nesse caso, avisar Maxwell explicitamente sobre o que e por que foi removido.
+- **Manter `orientacoes.md` atualizado.** É o compilado de armadilhas já vencidas neste projeto (infra, banco, integrações, frontend, ambiente Windows, segurança, método). **Leia antes de começar** — várias horas já foram perdidas em problemas que estão documentados lá. E **sempre que um problema real for diagnosticado e resolvido**, acrescente uma entrada no formato **(a) problema · (b) solução · (c) como implantar**, com o comando/trecho concreto que funcionou. Isso não é opcional: faz parte do fechamento de qualquer sessão que tenha vencido um obstáculo. Só entra o que foi verificado de fato — o arquivo é registro de solução comprovada, não de suspeita ou de tentativa. Se um item de lá se provar errado ou obsoleto, corrija-o em vez de acumular contradição.
 - **Marcar conclusão em `specs/plano_fases.md`.** Sempre que uma ETAPA ou Subetapa for concluída com sucesso (código, testes e — quando aplicável — deploy/verificação em produção), editar `specs/plano_fases.md` e acrescentar **"Status: ✅ CONCLUÍDA"** logo após o título da etapa/subetapa correspondente (mesmo padrão já usado no cabeçalho das ETAPAs, ex.: `## ETAPA 01 — MVP CADASTRAL · Complexidade: ALTA · Status: ✅ CONCLUÍDA`; para subetapas, que hoje não têm campo de status, acrescentar o mesmo sufixo ` · Status: ✅ CONCLUÍDA` ao final da linha do cabeçalho `### Subetapa X.Y — ...`). Isso deixa visível, de forma incremental, o progresso tanto entre etapas quanto entre subetapas — não é opcional, faz parte do fechamento de qualquer subetapa.
 
 ## Ambiente
@@ -70,14 +72,6 @@ Ciclo completo funcionando: faturas → guias → e-mail com PDF → guia marcad
 - [ ] **Reestruturação de Parceiros em mestre-detalhe** (com contêineres "Recepcionistas" e "Benefícios do Parceiro", no mesmo padrão de `ListaEmpresasPage.tsx`/`ListaTrabalhadoresPage.tsx`) — idem acima: `/parceiros` ainda é `Placeholder`, isso é a Subetapa 02.1. **Quando implementar:** seguir o padrão mestre-detalhe já estabelecido (grid `DataTable` + painel de detalhe na mesma página, sem navegação de rota).
 - [ ] **Botões "Novo atendimento" / "Novo parceiro" / "Novo recepcionista" / "Novo benefício"** — mesma razão: Jurídico (parcial, subetapa 01.2), Parceiros e Benefícios (Subetapa 02.1) ainda não têm telas reais. Nascem junto com essas telas, seguindo o padrão visual já usado em "Nova empresa"/"Novo estabelecimento"/"Novo trabalhador" (botão + `Dialog` + `EntityForm` + popup de confirmação de edição).
 
-## Incidente de hospedagem (verificar antes de culpar o deploy)
-
-**2026-07-20: o servidor web da Hostgator ficou fora do ar.** O deploy por FTP funcionou (todos os arquivos enviados, 0 divergências de tamanho local × remoto), mas `crm.sindcompassos.org` não respondia em 80/443. Sintomas que identificam esse caso:
-- FTP (porta 21) responde normalmente — é outro serviço, sobe e desce independente do Apache.
-- `curl https://isepem.org` (domínio da mesma conta, atrás da Cloudflare) devolve **521** — código que significa "Cloudflare no ar, servidor de ORIGEM recusando conexão". É a prova de que o problema é da hospedagem, não do build nem do DNS.
-- Os demais domínios da conta (`sindcompassos.org`) também caem, o que confirma que é a conta inteira.
-
-Se isso reaparecer: **não refaça o build nem o deploy** — os arquivos já estão lá. Confirme com o teste do 521, aguarde a Hostgator restabelecer e refaça só a verificação HTTP do `docs/deploy.md`.
 
 ## Vigilância de segurança pendente (lembrar o Maxwell)
 
