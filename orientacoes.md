@@ -289,7 +289,27 @@ lugar, e dispensa webhook e token de webhook.
 no n8n. A idempotência passa a ser da própria consulta: item já processado sai
 da fila sozinho. Ver `n8n/README.md`.
 
-### 3.4 Contêineres Docker não se resolvem por nome
+### 3.4 Nó Code do n8n processando só o primeiro item
+
+**(a) Problema.** O workflow de e-mail rodava com status **success** mas enviava
+**uma única guia por execução**, deixando as demais na fila. O nó Code estava no
+modo padrão `runOnceForAllItems`, onde `$input.item` devolve apenas o primeiro
+item e o `return` de um objeto único descarta o resto. Passou despercebido por
+três sessões porque **todos os testes tinham só uma guia na fila** — com 50
+empresas, seria uma guia a cada 15 min, mais de 12 horas para completar o envio.
+
+**(b) Solução.** Usar `runOnceForEachItem` quando o código trata um item por vez.
+
+**(c) Como implantar.** No JSON do nó:
+```json
+"parameters": { "mode": "runOnceForEachItem", "language": "javaScript", "jsCode": "..." }
+```
+(Ou manter `runOnceForAllItems` e iterar `$input.all()` devolvendo um array.)
+**Teste sempre com pelo menos 2 itens na fila** — com um só, os dois modos se
+comportam igual e o defeito fica invisível. Confirme pela contagem: itens de
+entrada devem bater com itens processados.
+
+### 3.5 Contêineres Docker não se resolvem por nome
 
 **(a) Problema.** Após `docker network connect` numa rede criada depois dos
 contêineres, o n8n não resolvia `http://gotenberg:3000` (`bad address`), nem
