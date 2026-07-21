@@ -13,6 +13,14 @@ export default defineConfig({
       includeAssets: ["assets/brand/logo_horizontal_colorido.png"],
       workbox: {
         navigateFallbackDenylist: [/^\/guia\//],
+        // A malha municipal do IBGE (public/geo) precisa entrar no precache:
+        // sem ela o mapa do dashboard não desenha offline, e `geojson` não
+        // está no globPatterns padrão do workbox.
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,geojson}"],
+        // O bundle passou de 2 MB com Recharts + Leaflet; o teto padrão do
+        // workbox (2 MiB) descartaria silenciosamente o chunk maior do
+        // precache — e o app "instalado" abriria quebrado offline.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
       },
       manifest: {
         name: "CRM Sindcom",

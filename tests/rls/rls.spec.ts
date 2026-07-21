@@ -80,9 +80,22 @@ describe("SELECT — visibilidade por papel (dados semeados)", () => {
   });
 
   it("parceiros: admin/presidente/secretaria e o próprio parceiro veem; jurídico e anon não", async () => {
-    for (const p of ["admin", "presidente", "secretaria", "parceiro"] as Role[]) {
-      expect(await count(clientes[p], "parceiros"), `parceiros/${p}`).toBe(1);
+    // Asserção ESTRUTURAL, não numérica. `parceiros` acumula registros de
+    // demonstração por decisão do projeto (CLAUDE.md: dados DEMO ficam
+    // gravados), então fixar "toBe(1)" transforma cada cadastro novo do
+    // Maxwell numa falha de teste — foi o que aconteceu quando o parceiro
+    // "Caminho Feliz" entrou na base em 20/07/2026. O que a RLS promete não
+    // é uma quantidade, é um RECORTE: gestão vê todos, parceiro vê só o seu.
+    const totalGestao = await count(clientes.admin, "parceiros");
+    expect(totalGestao, "admin deve enxergar a carteira inteira").toBeGreaterThan(0);
+
+    for (const p of ["presidente", "secretaria"] as Role[]) {
+      expect(await count(clientes[p], "parceiros"), `parceiros/${p}`).toBe(totalGestao);
     }
+
+    // O parceiro enxerga exatamente 1: o seu, resolvido por fn_parceiro_id().
+    expect(await count(clientes.parceiro, "parceiros"), "parceiros/parceiro").toBe(1);
+
     expect(await count(clientes.juridico, "parceiros"), "parceiros/juridico").toBe(0);
     expect(await count(anon, "parceiros"), "parceiros/anon").toBe(0);
   });

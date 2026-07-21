@@ -196,6 +196,62 @@ create unique index ux_com_nivel on t (data_ref, coalesce(municipio_id,0), nivel
 -- + um índice complementar para o caso nivel is null
 ```
 
+### 2.6b View `security_invoker` não nega: ela **zera**
+
+**(a) Problema.** A `v_dash_kpis` é `security_invoker = on`, e a spec do dashboard
+afirmava que o Jurídico receberia **erro** ao consultá-la, porque a RLS negaria as
+subqueries financeiras. Medido com login real: ele recebe **200 com uma linha**,
+onde `guias_em_atraso` e `boletos_inadimplentes` são `0` — não porque não haja
+inadimplência, mas porque a RLS filtra `faturas`/`repasses` para ele. Um painel
+construído sobre essa premissa exibiria "nenhuma inadimplência" como fato.
+
+**(b) Solução.** Entender que `security_invoker` protege contra **vazamento**, não
+contra **leitura enganosa**. Ela some com a linha alheia; ela não levanta exceção.
+Widget que depende de tabela fora do acesso do papel não pode ser renderizado —
+não adianta esperar a view "dar erro".
+
+**(c) Como implantar.** Antes de montar qualquer tela por papel, meça em vez de
+supor — um teste com login real de cada ator, comparando com o Admin:
+
+```ts
+const { data: comoAdmin }    = await admin.from('v_dash_kpis').select('*').single();
+const { data: comoRestrito, error } = await outro.from('v_dash_kpis').select('*').single();
+expect(error).toBeNull();                        // NÃO falha — esse é o ponto
+expect(comoRestrito.guias_em_atraso).toBe(0);    // zerado por RLS, não por realidade
+```
+
+Cuidado extra com view de **subqueries escalares** (`select (select count…), (select sum…)`):
+ela devolve **sempre uma linha**, mesmo para `anon`. Esperar `[]` nesse caso é
+esperar a coisa errada — asserte que os **campos** vieram zerados.
+
+### 2.6c Guarda interna não concede permissão — só o `GRANT` concede
+
+**(a) Problema.** `fn_snapshot_dashboard()` tem `fn_guarda_job()` dentro, que
+levanta "Rotina restrita ao Admin" para papel autenticado sem permissão. Parecia
+suficiente. Mas o `05_hardening.sql` revogou `EXECUTE` de PUBLIC e reconcedeu
+**cirurgicamente** — e essa função ficou de fora. O cron continuou funcionando
+(roda como `postgres`), então nada acusou o problema; só o botão do frontend
+quebrava, com `permission denied for function` (42501).
+
+**(b) Solução.** Tratar as duas camadas como independentes: o `GRANT` **concede**,
+a guarda **nega**. Uma nunca substitui a outra. Toda função nova que ganhe botão
+no frontend precisa do grant explícito.
+
+**(c) Como implantar.**
+```sql
+grant execute on function public.fn_x() to authenticated;  -- concede
+revoke execute on function public.fn_x() from anon;        -- anon fora
+-- a guarda interna (fn_eh/fn_guarda_job) faz o recorte por papel
+```
+Confira quem realmente pode executar — a lista vazia de `authenticated` é o sinal:
+```sql
+select proname, array_to_string(proacl, E'\n') from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname='public' and proname like 'fn_%';
+```
+**Regra transferível:** função chamada por cron **e** por botão tem dois caminhos
+de permissão distintos. Testar só o cron esconde a metade que o usuário usa.
+
 ### 2.7 Documentação divergindo do banco
 
 **(a) Problema.** `docs/handoff_02.md` afirmava que as funções `fn_gerar_*` já
@@ -396,6 +452,34 @@ confira o arquivo gerado, não só a tela.
 
 ---
 
+### 4.5 Gráfico de série temporal com meses ausentes
+
+**(a) Problema.** O gráfico de receita mensal montava a série apenas com os meses
+que **tinham** competência no banco. Como só havia jan/25, jan/26, jul/26 e
+ago/26, o eixo categórico encostou jan/25 em jan/26 como se fossem meses
+consecutivos — e a interpolação `type="monotone"` do Recharts desenhou uma rampa
+suave de R$ 0 a R$ 2.955 entre eles. O resultado parecia crescimento gradual de
+receita ao longo do período. Nada disso aconteceu: foi um salto seco num mês.
+
+**(b) Solução.** Duas correções que andam juntas — preencher os meses ausentes
+com zero (eixo temporal regular) e usar reta em vez de spline entre os pontos.
+
+**(c) Como implantar.** Gere a janela de meses por aritmética inteira, sem `Date`
+(que traria o deslocamento de fuso da §4.2):
+
+```ts
+const [anoFim, mesFim] = ultimaCompetencia.slice(0, 7).split('-').map(Number);
+for (let i = 11; i >= 0; i--) {
+  const total = anoFim * 12 + (mesFim - 1) - i;            // meses desde o ano 0
+  const iso = `${Math.floor(total / 12)}-${String((total % 12) + 1).padStart(2, '0')}-01`;
+  linha.push({ mes: iso, valor: porMes.get(iso)?.valor ?? 0 });
+}
+```
+E `<Area type="linear">`, nunca `monotone`, para dado financeiro: a spline
+**arqueia acima dos pontos reais**, inventando valores que o banco não tem.
+Confira a virada de ano imprimindo a janela gerada — dez→jan é onde esse tipo de
+cálculo costuma errar.
+
 ## 5. Ambiente de desenvolvimento (Windows)
 
 ### 5.1 Backticks e crases quebram scripts no shell
@@ -533,6 +617,28 @@ tentar a quarta variação.
 - mesma senha em **outra conta** (isola conta × senha);
 - sonda de protocolo **sem** credencial (isola host/porta × autenticação);
 - documentação oficial sobre **limites de plano** (isola configuração × produto).
+
+### 7.1b Teste que fixa contagem quebra quando o dado de demonstração cresce
+
+**(a) Problema.** `rls.spec.ts` assertava `count(parceiros) === 1`. Quando o
+parceiro "Caminho Feliz" entrou na base pelo roteiro do `caminho_feliz.md`, a
+suíte ficou vermelha — sem que nada tivesse piorado. E a regra do projeto é
+justamente que **dado de demonstração fica gravado** (§7.3), então esse tipo de
+teste está programado para quebrar de novo.
+
+**(b) Solução.** Assertar o **recorte** que a RLS promete, não a quantidade.
+
+**(c) Como implantar.**
+```ts
+const total = await count(clientes.admin, 'parceiros');
+expect(total).toBeGreaterThan(0);
+expect(await count(clientes.presidente, 'parceiros')).toBe(total);  // vê tudo
+expect(await count(clientes.parceiro,   'parceiros')).toBe(1);      // vê só o seu
+expect(await count(clientes.juridico,   'parceiros')).toBe(0);      // não vê
+```
+Número absoluto só cabe onde a quantidade é **fixa por definição** (ex.: 5 perfis,
+29 municípios de base territorial, 5.570 municípios). Em tabela que cresce com o
+uso, número mágico é dívida.
 
 ### 7.2 "Passou" não é o mesmo que "funcionou"
 

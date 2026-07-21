@@ -1,5 +1,6 @@
-import type { ReactNode } from "react";
+import { lazy, Suspense, type ReactNode } from "react";
 import { createBrowserRouter, Navigate } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import { AppShell } from "./AppShell";
 import { RoleGate } from "./RoleGate";
 import { NAV, homeDoRole } from "./nav";
@@ -33,7 +34,30 @@ import type { PapelUsuario } from "@/lib/supabase";
  * Telas reais já implementadas, por rota — o restante do NAV/ROTAS_DETALHE
  * segue como Placeholder até a subetapa correspondente as substituir.
  */
+/**
+ * O dashboard carrega sob demanda: Recharts + Leaflet somam ~900 kB, e quem
+ * abre `/trabalhadores` ou o `/portal` não deve pagar por eles. O chunk
+ * continua entrando no precache do PWA, então o offline da 03.3 não perde
+ * nada — só deixa de bloquear o primeiro carregamento das demais telas.
+ */
+const DashboardPage = lazy(() =>
+  import("@/features/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })),
+);
+
+function CarregandoTela() {
+  return (
+    <div className="flex h-64 items-center justify-center text-texto-2">
+      <Loader2 className="h-6 w-6 animate-spin" aria-label="Carregando" />
+    </div>
+  );
+}
+
 const PAGINAS: Partial<Record<string, ReactNode>> = {
+  "/dashboard": (
+    <Suspense fallback={<CarregandoTela />}>
+      <DashboardPage />
+    </Suspense>
+  ),
   "/trabalhadores": <ListaTrabalhadoresPage />,
   "/empresas": <ListaEmpresasPage />,
   "/convencoes": <ConvencoesPage />,

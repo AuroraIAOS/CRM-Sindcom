@@ -139,7 +139,7 @@ Se esgotar: parar e emitir relatório curto.
 
 ---
 
-## ETAPA 02 — CONVÊNIO + MOTOR FINANCEIRO · Complexidade: ALTA · Status: ⬜
+## ETAPA 02 — CONVÊNIO + MOTOR FINANCEIRO · Complexidade: ALTA · Status: ✅ CONCLUÍDA (no ar em `crm.sindcompassos.org`)
 
 Objetivo geral: convênio girando + dinheiro cobrado e conciliado. Gerar HANDOFF_UPGRADE ao final.
 Modo predominante: [Manual Mode] + [Goal] (UI por `/goal`; funções SQL `security definer` e conciliação em Manual estrito).
@@ -211,7 +211,7 @@ Objetivo geral: gestão estratégica + integrações (site + agente WhatsApp) so
 Modo predominante: [Manual Mode] + [Goal] (dashboard por `/goal`; webhook com service_role em Manual).
 Observações: dashboard depende dos dados financeiros da Etapa 02. Versionamento: +0.1 para ajustes, +1.0 para novas integrações.
 
-### Subetapa 03.1 — Dashboard completo + snapshots [Goal] [Manual] [LLM: Sonnet]
+### Subetapa 03.1 — Dashboard completo + snapshots [Goal] [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 Objetivo: 5 KPIs, 5 gráficos, mapa Leaflet coroplético (GeoJSON IBGE × `codigo_ibge`), 11 dicas estratégicas; snapshots mensais ativos.
 Conclusão: dashboard **bate com queries manuais de conferência**; primeiro histórico de snapshot visível (`fn_snapshot_dashboard`).
 Qualidade: nenhum número inventado — todo KPI rastreável a uma query.
