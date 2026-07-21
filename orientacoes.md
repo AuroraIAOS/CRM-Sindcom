@@ -581,6 +581,40 @@ caminho como `C:\tmp` e falhou com `ENOENT`.
 **(c) Como implantar.** Use o diretório de scratchpad da sessão com caminho
 absoluto (`C:/Users/.../scratchpad/arquivo.json`). Barras normais funcionam.
 
+### 5.4b Acento/travessão vira `�` quando vai como argumento de linha de comando
+
+**(a) Problema.** Testando a Edge Function `formulario-filiacao` com
+`curl -d '{"nome_completo":"DEMO — Teste..."}'` (travessão embutido no
+argumento), o registro gravou no banco como `"DEMO � Teste..."` — confirmado
+tanto por query direta quanto na ficha renderizada no navegador, então não era
+artefato de exibição, era corrupção real do dado persistido. `echo "—" | xxd`
+isolado devolve os bytes UTF-8 corretos (`e2 80 94`), então o bash em si não é
+o culpado — o problema é especificamente quando esse texto vira **argumento de
+linha de comando** para um processo nativo (`curl.exe`) no Windows: a
+conversão para a codepage do console pelo caminho `CreateProcess` acontece
+antes do UTF-8 sobreviver.
+
+**(b) Solução.** Nunca embutir texto com acento/travessão/aspas curvas
+diretamente num argumento `-d '...'` de linha de comando. Escrever o payload
+num arquivo (com uma ferramenta que preserva UTF-8 de verdade — `Write`, não
+heredoc de shell) e mandar o curl ler o arquivo.
+
+**(c) Como implantar.**
+```bash
+# ERRADO — acento cru no argumento sobrevive ao bash, não ao curl.exe no Windows
+curl -d '{"nome":"São José — Filiação"}' https://...
+
+# CERTO — grava em arquivo primeiro (via Write, não aqui), depois --data-binary @arquivo
+curl --data-binary "@C:/caminho/absoluto/payload.json" https://...
+```
+Mesma família do §5.1 (backticks quebrando por irem crus pro shell), aplicada
+a um problema de encoding em vez de sintaxe: **qualquer texto não-ASCII ou com
+caracteres especiais que precise sobreviver intacto até um processo nativo no
+Windows vai por arquivo, nunca por argumento de linha de comando.** Ao
+suspeitar de corrupção, confirme em DUAS fontes independentes antes de
+investigar (aqui: query SQL direta + tela renderizada) — se só uma mostrasse o
+`�`, seria pista de artefato de exibição, não de dado.
+
 ### 5.4 Senhas com caracteres especiais em arquivos `.env`
 
 **(a) Problema.** `*`, `!`, `$` e `#` têm significado no shell e podem quebrar
