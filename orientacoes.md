@@ -252,6 +252,35 @@ select proname, array_to_string(proacl, E'\n') from pg_proc p
 **Regra transferível:** função chamada por cron **e** por botão tem dois caminhos
 de permissão distintos. Testar só o cron esconde a metade que o usuário usa.
 
+### 2.6d UPDATE/DELETE barrado por RLS não dá erro — só afeta zero linhas
+
+**(a) Problema.** `configuracoes` e `perfis` têm uma única policy `FOR ALL` com
+`USING (fn_eh('admin'))` para escrita (sem policy dedicada de UPDATE para os
+demais papéis). A expectativa era que a Secretária tentando editar
+`configuracoes` recebesse `42501` como em outras tabelas. Medido: `error: null`,
+`data: []`, HTTP 200. A policy `USING` filtra quais linhas o comando **enxerga**
+antes de agir — para quem não passa no `USING`, a linha simplesmente não existe
+para aquele UPDATE, e "atualizar zero linhas que não existem" não é uma
+violação, é um no-op válido.
+
+**(b) Solução.** Nunca inferir sucesso de `error === null` num UPDATE/DELETE
+protegido só por `USING` (sem `FOR UPDATE`/`FOR DELETE` dedicada). Sempre
+encadear `.select()` e conferir se **alguma linha voltou** — no cliente E na
+suíte de teste.
+
+**(c) Como implantar.**
+```ts
+const { data, error } = await supabase.from('tabela').update({ x: 1 }).eq('id', id).select();
+if (error) throw error;
+if (!data || data.length === 0) throw new Error('Sem permissão para esta operação.');
+```
+Em teste: `expect(error).toBeNull(); expect(data).toEqual([])` — não
+`expect(ehErroRls(error)).toBe(true)`, que falharia aqui porque não há erro
+nenhum. **Regra geral:** é a MESMA família do "200 + zero itens" da leitura
+(§3.2/§7.2), agora do lado da escrita — e mais perigosa, porque uma tela sem
+essa checagem mostraria "salvo com sucesso" para uma operação que não mudou
+nada.
+
 ### 2.7 Documentação divergindo do banco
 
 **(a) Problema.** `docs/handoff_02.md` afirmava que as funções `fn_gerar_*` já
@@ -639,6 +668,42 @@ expect(await count(clientes.juridico,   'parceiros')).toBe(0);      // não vê
 Número absoluto só cabe onde a quantidade é **fixa por definição** (ex.: 5 perfis,
 29 municípios de base territorial, 5.570 municípios). Em tabela que cresce com o
 uso, número mágico é dívida.
+
+### 7.4 `signInWithPassword` tem cota — logar por teste, não por suíte, estoura ela
+
+**(a) Problema.** `npm run test` (suíte RLS completa) começou a falhar com
+`"Request rate limit reached"` em vários arquivos, com nada de errado no
+código — era o Supabase Auth barrando novos logins. Causa: dois arquivos de
+teste novos (`dashboard.spec.ts`, `configuracoes.spec.ts`) chamavam
+`loginComo(papel)` **dentro de cada `it()`**, às vezes duas vezes no mesmo
+teste, contra o padrão já estabelecido em `rls.spec.ts` (login uma vez por
+papel, no `beforeAll`, cliente reaproveitado). Rodar os arquivos novos sozinhos
+algumas vezes durante a sessão (para depurar) mais a suíte inteira depois somou
+dezenas de chamadas a `signInWithPassword` na mesma hora e estourou a cota.
+
+**(b) Solução.** Um login por papel por ARQUIVO de teste, não por teste
+individual. `signInWithPassword` é a operação cara; reaproveitar o
+`SupabaseClient` autenticado entre `it()`s do mesmo arquivo é seguro (a suíte já
+roda com `fileParallelism: false`, então não há corrida entre arquivos).
+
+**(c) Como implantar.** Padrão de `rls.spec.ts`, agora também em
+`dashboard.spec.ts` e `configuracoes.spec.ts`:
+```ts
+const PAPEIS: Role[] = ["admin", "presidente", "secretaria", "juridico", "parceiro"];
+const clientes: Record<Role, SupabaseClient> = {} as never;
+
+beforeAll(async () => {
+  for (const papel of PAPEIS) clientes[papel] = (await loginComo(papel)).client;
+}, 60_000);
+
+afterAll(async () => {
+  for (const papel of PAPEIS) await clientes[papel]?.auth.signOut();
+});
+```
+Só logar papéis que o arquivo realmente usa — não os 5 por padrão. Se a suíte
+voltar a esbarrar na cota mesmo assim, esperar alguns minutos (janela
+deslizante) antes de rodar de novo — não adianta re-tentar em loop, o Supabase
+Free não expõe um jeito de resetar a cota manualmente.
 
 ### 7.2 "Passou" não é o mesmo que "funcionou"
 

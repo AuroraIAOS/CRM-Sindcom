@@ -241,7 +241,7 @@ Conclusão: agente identifica nível e bloqueio via CRM em produção.
 Qualidade: CPF normalizado; sem vazamento de dados sensíveis na resposta.
 Evidência: consulta real por CPF retornando nível/bloqueio do CRM.
 
-### Subetapa 03.5 — Tela `/configuracoes` [Goal] [Manual] [LLM: Haiku]
+### Subetapa 03.5 — Tela `/configuracoes` [Goal] [Manual] [LLM: Haiku] · Status: ✅ CONCLUÍDA
 Objetivo: parâmetros + perfis.
 Conclusão: parâmetros editáveis por Admin refletem no comportamento do sistema.
 Qualidade: acesso restrito por role.
