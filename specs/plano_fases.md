@@ -235,11 +235,11 @@ Esforço máximo do /goal: 3 tentativas.
 Escalonamento de LLM: Sonnet nas 2 primeiras; Opus na 3ª.
 Se esgotar: parar e emitir relatório curto.
 
-### Subetapa 03.4 — Agente WhatsApp consome o CRM [Manual] [LLM: Sonnet]
+### Subetapa 03.4 — Agente WhatsApp consome o CRM [Manual] [LLM: Sonnet] · Status: 🟡 PARCIAL — RPC pronta, agente ainda não construído
 Objetivo: RPC de nível/bloqueio por CPF substitui a lookup em Google Sheets — nasce a fonte única de verdade.
-Conclusão: agente identifica nível e bloqueio via CRM em produção.
-Qualidade: CPF normalizado; sem vazamento de dados sensíveis na resposta.
-Evidência: consulta real por CPF retornando nível/bloqueio do CRM.
+Conclusão parcial (2026-07-21): `fn_consulta_nivel_bloqueio(p_cpf)` criada e aplicada em produção (`sql/14_agente_whatsapp.sql`) — recebe CPF em qualquer formatação, devolve `encontrado`, `primeiro_nome`, `nivel`, `status_cadastro`, `bloqueado_contribuicao`, `bloqueado_mensalidade`. Só `service_role` executa (revoke de public/anon/authenticated — confirmado por `pg_proc.proacl`); lógica validada via SQL direto (todos os casos: nível por CPF formatado/cru, CPF não encontrado, CPF inválido). **O que falta para fechar de verdade:** o agente em si — Maxwell vai construí-lo no n8n self-host (fase de teste) e depois mover para VPS (Railway/Oracle Free Tier). O critério de aceite ("agente identifica nível e bloqueio via CRM em produção") só se cumpre quando esse workflow existir e chamar a RPC — não é algo que o Claude Code resolve sozinho nesta subetapa.
+Qualidade: CPF normalizado dentro da função (aceita formatado ou cru); resposta nunca ecoa CPF/e-mail/telefone/valor financeiro, só primeiro nome.
+Evidência: 6/6 testes em `tests/rls/agente-whatsapp.spec.ts` provando que nenhum papel do app (nem Admin) executa a função pela sessão normal — só quem detém a service_role. **Pendente:** consulta real feita PELO AGENTE em produção (depende do workflow n8n existir).
 
 ### Subetapa 03.5 — Tela `/configuracoes` [Goal] [Manual] [LLM: Haiku] · Status: ✅ CONCLUÍDA
 Objetivo: parâmetros + perfis.
