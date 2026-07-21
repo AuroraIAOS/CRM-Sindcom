@@ -120,6 +120,17 @@ export function NotificacoesPage() {
                 </Link>
               </div>
             )}
+
+            {notif.referencia_tabela === "trabalhadores" && notif.referencia_id && (
+              <div className="text-xs">
+                <Link
+                  to={`/trabalhadores/${notif.referencia_id}`}
+                  className="font-bold text-realce hover:underline"
+                >
+                  Ver cadastro →
+                </Link>
+              </div>
+            )}
           </Card>
         ))}
       </div>

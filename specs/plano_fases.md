@@ -220,11 +220,12 @@ Esforço máximo do /goal: 3 tentativas.
 Escalonamento de LLM: Sonnet nas 2 primeiras; Opus na 3ª.
 Se esgotar: parar e emitir relatório curto.
 
-### Subetapa 03.2 — Integração dos formulários do site [Manual] [LLM: Sonnet]
-Objetivo: webhook n8n → service_role → `status_cadastro = 'pendente'` + notificação à Denise.
-Conclusão: formulário do site vira cadastro pendente em **< 1 min**.
-Qualidade: service_role só no n8n/Edge, nunca no front.
-Evidência: submissão real do site → pendente + notificação.
+### Subetapa 03.2 — Integração dos formulários do site [Manual] [LLM: Sonnet] · Status: 🟡 PARCIAL — backend pronto, falta ligar o Apps Script no formulário real
+Objetivo: webhook → service_role → `status_cadastro = 'pendente'` + notificação à Denise.
+Conclusão parcial (2026-07-21): descoberto que "o site" na verdade são **dois Google Forms** (não WordPress) — "01. Filiação" (Titular, com upload de documentos) e "02. Beneficiários" (depende de achar o Titular por CPF). Escopo desta rodada, decidido com Maxwell: só Filiação; Beneficiários fica para depois. Entregue: Edge Function `formulario-filiacao` (`supabase/functions/formulario-filiacao/`, `verify_jwt=false` + segredo próprio `X-Formulario-Secret`) recebendo o payload do Apps Script, criando o trabalhador `pendente`/`origem_cadastro='formulario_site'`; trigger `fn_notifica_cadastro_site` (`sql/15_notificacao_formulario_site.sql`) notificando a Secretaria; link "Ver cadastro" novo em `/notificações` para `referencia_tabela='trabalhadores'`. Empresa/CNPJ do empregador ficam como texto cru em `observacoes` (decisão deliberada — evita empresa duplicada por digitação errada; Denise resolve o vínculo ao aprovar). Documentos continuam no Drive do formulário, fora do CRM por ora.
+**O que falta para fechar de verdade:** (1) Maxwell configurar o segredo da função no painel do Supabase; (2) colar o Apps Script (código pronto em `docs/formulario-filiacao.md`) no formulário real e ligar o gatilho `onFormSubmit`; (3) uma submissão real do formulário de verdade. Não testei contra o Google Forms real — só a Edge Function isoladamente e a cadeia dentro do banco (DEMO fixo), para não gravar uma resposta falsa na Planilha/Drive reais de Maxwell.
+Qualidade: service_role só dentro da Edge Function (nunca no front); segredo do webhook fora do repositório.
+Evidência: 3/3 testes em `tests/rls/formulario-site.spec.ts` (trigger dispara só para `origem_cadastro='formulario_site'`, Secretaria recebe, controle negativo não recebe) + verificação visual em produção do fluxo completo dentro do CRM (notificação → "Ver cadastro" → ficha com nível Prata-pendente e observações legíveis). **Pendente:** submissão real pelo Google Forms (depende dos passos 1–2 acima, que são do Maxwell).
 
 ### Subetapa 03.3 — PWA offline de leitura [Goal] [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 Objetivo: TanStack persister em IndexedDB + banner de dados desatualizados.
