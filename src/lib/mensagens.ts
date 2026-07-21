@@ -24,11 +24,21 @@ const POR_CODIGO: Record<string, string> = {
   PGRST116: "Registro não encontrado ou sem permissão de acesso.",
 };
 
+const MENSAGEM_OFFLINE =
+  "Sem conexão com a internet. Esta ação exige conexão — reconecte e tente novamente.";
+
 // Trechos conhecidos vindos do RLS/PostgREST que merecem tradução direta
 const POR_TRECHO: Array<[RegExp, string]> = [
   [/row-level security|violates row-level security/i, "Você não tem permissão para esta operação."],
   [/permission denied/i, "Você não tem permissão para esta operação."],
   [/JWT expired|invalid claim/i, "Sessão expirada. Faça login novamente."],
+  // Falha de rede (offline): o texto exato varia por navegador ("Failed to
+  // fetch" no Chrome, "NetworkError..." no Firefox, "Load failed" no
+  // Safari) — cobre os três em vez de depender de um só. Subetapa 03.3:
+  // escrita nunca deve ficar "pendurada" esperando reconexão (frontend.md
+  // §6) — mutations usam networkMode:'always' (lib/queryClient.ts), então
+  // falham na hora, e caem aqui com mensagem clara em vez do erro técnico.
+  [/Failed to fetch|NetworkError|Load failed|fetch failed/i, MENSAGEM_OFFLINE],
   [
     /ux_vinculo_principal_ativo/i,
     "Este trabalhador já tem um vínculo principal ativo. Desligue o vínculo atual antes de cadastrar um novo vínculo principal.",
@@ -43,6 +53,13 @@ const POR_TRECHO: Array<[RegExp, string]> = [
 /** Retorna uma mensagem amigável em PT-BR para exibir na UI. */
 export function mensagemErro(erro: unknown): string {
   if (!erro) return "Ocorreu um erro inesperado.";
+
+  // 0. `navigator.onLine` é o sinal mais confiável de "sem rede" — checado
+  //    antes de tentar interpretar o texto do erro, que varia por navegador
+  //    e às vezes nem chega a ter mensagem reconhecível (fetch abortado).
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    return MENSAGEM_OFFLINE;
+  }
 
   const e = erro as ErroPostgres;
   const msg = (e.message ?? "").trim();

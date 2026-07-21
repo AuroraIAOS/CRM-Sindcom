@@ -5,6 +5,7 @@ import { NAV, type NavItem } from "./nav";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/features/notificacoes/NotificationBell";
 import { useNotificacoesRealtime } from "@/features/notificacoes/api";
+import { OfflineBanner } from "@/components/shared/OfflineBanner";
 
 const GRUPOS: Array<{ id: NavItem["grupo"]; titulo: string }> = [
   { id: "principal", titulo: "" },
@@ -87,6 +88,8 @@ export function AppShell() {
             </button>
           </div>
         </header>
+
+        <OfflineBanner />
 
         {/* `print:*` libera a folha da guia das restrições de layout da tela
             (padding, scroll interno) — ver /servicos/:id/guia. */}

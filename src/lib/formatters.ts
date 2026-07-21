@@ -75,6 +75,15 @@ const MOEDA_BRL = new Intl.NumberFormat("pt-BR", {
   currency: "BRL",
 });
 
+/** timestamptz ISO → "HH:mm" no fuso local. Usado no banner offline
+ *  (Subetapa 03.3: "dados de {timestamp} — reconectando"). */
+export function formatarHora(valor: string | number | Date | null | undefined): string {
+  if (valor === null || valor === undefined) return "";
+  const data = valor instanceof Date ? valor : new Date(valor);
+  if (Number.isNaN(data.getTime())) return "";
+  return data.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
 /** number | string → "R$ 1.234,56". Vazio/inválido → "". */
 export function formatarMoeda(valor: number | string | null | undefined): string {
   if (valor === null || valor === undefined || valor === "") return "";

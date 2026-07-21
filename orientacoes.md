@@ -304,6 +304,41 @@ no repositório**.
 
 ---
 
+### 2.6e Tráfego automatizado pesado pode fazer o Cloudflare do Supabase "sumir" — sem 429, sem 503, timeout puro
+
+**(a) Problema.** No meio de uma sessão que já tinha estourado o limite de
+`signInWithPassword` (§7.4) e ainda rodou várias suítes de teste + chamadas
+MCP em sequência, o app parou de carregar por completo: `RoleGate` ficou
+preso em "Carregando…" (ele mesmo depende de `supabase.auth.getSession()` +
+leitura de `perfis`). `curl` direto para
+`https://<projeto>.supabase.co/rest/v1/` também não voltava — nem erro HTTP,
+**timeout puro** (`curl` exit 28, `%{http_code}` = `000`), e até `ping` no IP
+resolvido (Cloudflare) não respondia. Outros domínios (google.com,
+crm.sindcompassos.org, outro IP da Cloudflare) respondiam normalmente — não
+era a internet do computador, era especificamente aquele host.
+
+**(b) Solução.** Reconhecer o padrão como proteção de borda escalando
+(rate-limit HTTP primeiro → blackhole de pacotes depois, não é a hospedagem
+"caindo"), **não mexer em código** achando que é bug, e esperar. Recuperou
+sozinho depois de alguns minutos sem nenhuma ação — confirmado com um
+monitor em loop até o endpoint voltar a responder com código HTTP real.
+
+**(c) Como implantar.** Mesmo diagnóstico de "servidor fora do ar" da §1.3,
+aplicado a uma API em vez de um site: teste objetivo antes de agir.
+```bash
+# timeout puro (código 000) num host específico, outros hosts respondendo
+# normalmente = proteção de borda daquele projeto, não sua internet nem seu código
+curl -s -o /dev/null -w '%{http_code}' --max-time 8 "https://<projeto>.supabase.co/rest/v1/" -H "apikey: test"
+```
+Se confirmar: pare de bater na API (mais tentativas alimentam o mesmo
+bloqueio) e espere — um loop de verificação a cada 15–20s até o código HTTP
+voltar a ser um número real (200/401/404, não timeout) é suficiente para
+saber quando retomar. **Causa raiz provável:** volume de chamadas
+automatizadas na mesma sessão (múltiplas rodadas de suíte RLS completa +
+chamadas MCP diretas ao banco + reloads de navegador em sequência rápida) —
+em sessões de teste intensas, espace as rodadas da suíte completa em vez de
+repeti-la várias vezes seguidas "só para conferir".
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo

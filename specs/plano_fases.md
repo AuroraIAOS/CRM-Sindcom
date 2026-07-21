@@ -226,7 +226,7 @@ Conclusão: formulário do site vira cadastro pendente em **< 1 min**.
 Qualidade: service_role só no n8n/Edge, nunca no front.
 Evidência: submissão real do site → pendente + notificação.
 
-### Subetapa 03.3 — PWA offline de leitura [Goal] [Manual] [LLM: Sonnet]
+### Subetapa 03.3 — PWA offline de leitura [Goal] [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 Objetivo: TanStack persister em IndexedDB + banner de dados desatualizados.
 Conclusão: leitura offline funciona; banner sinaliza staleness.
 Qualidade: escrita nunca ocorre offline (só leitura).

@@ -9,6 +9,7 @@ import {
 import type { Session } from "@supabase/supabase-js";
 import { supabase, type PapelUsuario } from "./supabase";
 import type { Database } from "./database.types";
+import { limparCachePersistido } from "./queryClient";
 
 type Perfil = Database["public"]["Tables"]["perfis"]["Row"];
 
@@ -82,6 +83,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       async signOut() {
         await supabase.auth.signOut();
+        // Num computador compartilhado, o cache offline de quem saiu não
+        // pode sobreviver para o próximo login (Subetapa 03.3).
+        await limparCachePersistido();
       },
     }),
     [session, perfil, carregando],
