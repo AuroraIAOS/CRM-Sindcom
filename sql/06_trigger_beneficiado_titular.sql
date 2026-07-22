@@ -17,6 +17,12 @@ begin
   return new;
 end $$;
 
+-- search_path fixo: sem isso, `trabalhadores` seria resolvido pelo search_path
+-- de quem dispara a trigger — e a validação poderia consultar outra tabela
+-- (orientacoes.md §2.5). Vale para SECURITY INVOKER também, como esta.
+alter function public.fn_valida_beneficiado()
+  set search_path = public, extensions, pg_temp;
+
 drop trigger if exists trg_valida_beneficiado on beneficiados;
 create trigger trg_valida_beneficiado
   before insert or update of cpf, titular_id on beneficiados

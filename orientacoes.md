@@ -300,7 +300,14 @@ select table_name from information_schema.views where table_schema='public';
 E confira `src/lib/database.types.ts` — se um objeto não está nos tipos gerados,
 provavelmente não está no banco. Outro caso real: `docs/07_filiacao_valores_carta_oposicao.md`
 é citado em `sql/01_schema.sql:819` como fonte das regras 5.1–5.3 e **não existe
-no repositório**.
+no repositório**. Mais um caso: `.env.n8n` tinha `SUPABASE_SERVICE_ROLE_KEY`
+com valor **placeholder** (`eyJFICTICIO.troque.pela.serviceRoleKey...`, texto
+literal dizendo "fictício") em vez do valor real — usá-lo direto quebrou a
+autenticação de um nó novo com "Invalid API key" sem aviso nenhum de que a
+causa era o arquivo, não o código. **Antes de confiar num `.env*` para uma
+credencial que já funciona em produção**, confira contra onde ela realmente
+está sendo usada (aqui, outro nó do próprio n8n) — arquivo de exemplo/local
+pode ter ficado com valor de rascunho.
 
 ---
 
@@ -428,6 +435,78 @@ empresas, seria uma guia a cada 15 min, mais de 12 horas para completar o envio.
 **Teste sempre com pelo menos 2 itens na fila** — com um só, os dois modos se
 comportam igual e o defeito fica invisível. Confirme pela contagem: itens de
 entrada devem bater com itens processados.
+
+### 3.6 Telegram Trigger nativo exige webhook público — mesmo problema do §3.3
+
+**(a) Problema.** O nó `Telegram Trigger` do n8n registra um webhook
+(`setWebhook`) junto à Telegram, o que exige uma URL pública HTTPS. Este n8n
+roda self-host em `localhost`, sem túnel — a Telegram nunca conseguiria
+alcançá-lo, exatamente o mesmo obstáculo já resolvido para o Postgres (§3.3).
+
+**(b) Solução.** Inverter para *polling*: `Schedule Trigger` + `HTTP Request`
+chamando `getUpdates` com `offset` guardado no *workflow static data*, igual
+ao padrão já usado para o e-mail das guias — só conexões de saída, funciona
+em qualquer host.
+
+**(c) Como implantar.**
+```js
+// nó Code antes do getUpdates
+const staticData = $getWorkflowStaticData('global');
+const offset = staticData.lastUpdateId ? staticData.lastUpdateId + 1 : 0;
+return [{ json: { offset } }];
+
+// nó Code depois do getUpdates — atualiza o maior update_id visto
+staticData.lastUpdateId = maxId;
+```
+Antes de ativar, confirme que não existe webhook registrado no bot (senão
+`getUpdates` falha com `409 Conflict`):
+```bash
+curl "https://api.telegram.org/bot<token>/getWebhookInfo"   # "url" deve vir ""
+curl "https://api.telegram.org/bot<token>/deleteWebhook"    # se tiver, remova
+```
+**Importante:** só **publicar** o workflow (botão "Publish") ativa o Schedule
+Trigger de verdade — testar com "Execute workflow" no editor roda uma vez e
+não fixa o offset da mesma forma (uma execução manual repetiu o
+processamento das mesmas mensagens antes de o workflow ser publicado; depois
+de publicado, o polling ficou estável). Ver `n8n/README.md`.
+
+### 3.7 Bind mount num caminho parecido = dado NÃO persistido (o ponto do `.n8n`)
+
+**(a) Problema.** O `n8n_container` foi criado com
+`-v C:\...\_Docker_n8n:/home/node/n8n`, mas o n8n grava tudo em
+**`/home/node/.n8n`** — com ponto. O mount existia, o `docker inspect` mostrava
+tudo certinho, a pasta no host existia, e **nada dava erro**: o n8n
+simplesmente escrevia na camada de escrita do contêiner. Resultado: os 2
+workflows de produção e as 3 credenciais (service_role e senha de app do
+Gmail) estavam a um `docker rm` de sumir — durante ~4 dias, sem ninguém saber.
+Pior: o `n8n/README.md` mandava restaurar as credenciais "com os valores de
+`.env.n8n`", mas esse arquivo só tinha **placeholders** (`eyJFICTICIO...`), ou
+seja, o runbook de recuperação também não funcionaria.
+
+**(b) Solução.** Nunca confiar que "existe um mount" — **verificar que o dado
+que importa está do lado de fora**, comparando o caminho real do arquivo com o
+destino do mount.
+
+**(c) Como implantar.** Auditoria de 3 comandos, para qualquer contêiner com
+estado:
+```bash
+docker inspect <ctr> --format '{{range .Mounts}}{{.Source}} -> {{.Destination}}{{"\n"}}{{end}}'
+docker exec <ctr> ls -la /caminho/do/mount     # esperado: NÃO vazio
+docker exec <ctr> ls -la /caminho/real/do/banco # tem que estar DENTRO do mount
+```
+Mount vazio + banco gordo em outro caminho = dado não persistido. Backup
+imediato (não-destrutivo) antes de qualquer coisa:
+```bash
+docker cp <ctr>:/home/node/.n8n/. C:/caminho/BACKUP/
+```
+**Para n8n especificamente:** copie a pasta inteira, não só o
+`database.sqlite` — o arquivo **`config`** guarda a `encryptionKey` (32
+chars), e **sem ela as credenciais do banco não descriptografam**. Valide o
+backup abrindo o `.sqlite` e conferindo que `workflow_entity` e
+`credentials_entity` têm as linhas esperadas. **Regra transferível:** nomes de
+diretório que diferem por um ponto, um plural ou um hífen (`.n8n` × `n8n`,
+`data` × `.data`) são a classe de erro mais silenciosa de Docker — o sintoma
+só aparece no dia em que você recria o contêiner, quando já é tarde.
 
 ### 3.5 Contêineres Docker não se resolvem por nome
 
@@ -560,6 +639,42 @@ de script, escreva-o em **arquivo** (`node script.js`) em vez de `-e`, e
 **sempre verifique o resultado** relendo o trecho alterado — a ausência de erro
 não prova que o conteúdo está certo.
 
+### 5.1b Markdown volta escapado (`\*\*`) ao passar por editor/ferramenta externa
+
+**(a) Problema.** O `caminho_feliz.md` apareceu na árvore de trabalho com todo o
+Markdown **escapado**: `\*\*quando\*\*` no lugar de `**quando**`, `\---` no lugar
+de `---`, `## 0\.` no lugar de `## 0.`, e em alguns pontos escape triplo
+(`\\\*\\\*Estado\\\*\\\*`). O arquivo cresceu de 337 para 431 linhas só de linhas
+em branco duplicadas, e ainda perdeu 2 travessões (`antes de confiar —
+orientacoes.md` virou `antes de confiar orientacoes.md`). Renderizado, o
+documento mostra as barras invertidas na cara do leitor — o negrito e as regras
+horizontais somem. Nada disso dá erro: o arquivo continua sendo Markdown válido,
+só ilegível.
+
+**(b) Solução.** Antes de aceitar (ou commitar) um arquivo `.md` que passou por
+ferramenta externa, **medir o escape** em vez de olhar por cima — e comparar
+conteúdo normalizado contra a versão commitada para decidir entre corrigir e
+reverter.
+
+**(c) Como implantar.** Detecção barata, direto no repo:
+```bash
+grep -oF '\*' arquivo.md | wc -l          # esperado: 0
+git show HEAD:arquivo.md | grep -oF '\*' | wc -l
+```
+Se a working copy tem escapes e o HEAD não, **provar que não há conteúdo novo
+antes de descartar** — normalizar os dois (tirar `\`, marcações e espaços) e
+diferenciar por palavra:
+```js
+const norm = s => s.split('\\').join('').replace(/[*`|#>_-]/g,' ')
+                   .replace(/\s+/g,' ').trim().toLowerCase();
+// nenhuma palavra só na working copy → reverter é seguro
+```
+Escreva esse script em **arquivo** (`node script.js`), nunca `node -e` — a barra
+invertida do próprio padrão é comida pelo shell antes de chegar ao Node (isso
+aconteceu ao diagnosticar este caso, é o §5.1 se repetindo um nível acima).
+Guarde um `.bak` no scratchpad antes de `git checkout --`, mesmo com a prova na
+mão.
+
 ### 5.2 Python não está disponível
 
 **(a) Problema.** `python3` / `python` não existem neste ambiente (o alias do
@@ -684,6 +799,30 @@ grep -oE "eyJ[A-Za-z0-9_-]{20,}" n8n/*.json && echo "VAZOU" || echo "limpo"
 ```
 Documente no README como recompor os valores ao restaurar.
 
+### 6.5 Campo de credencial mascarado no n8n devolve texto-isca ao copiar por automação
+
+**(a) Problema.** Ao testar o workflow do agente Telegram, tentou-se reaproveitar
+a `service_role` já salva numa credencial do n8n (campo mascarado, exibido como
+bolinhas) copiando com `Ctrl+C`/`Ctrl+V` via automação de navegador para outro
+nó. O campo de destino recebeu, duas vezes seguidas, um texto completamente
+**não relacionado** ao segredo (um trecho do próprio `CLAUDE.md` da sessão, e
+depois uma frase genérica) — nunca o valor real. Não era instrução para seguir
+(não pedia nenhuma ação), só um resultado de copiar/colar que não é o que
+parece.
+
+**(b) Solução.** Interpretar isso como proteção **intencional** contra
+exfiltração de segredo por automação: campo mascarado não copia o valor real
+por `Ctrl+C`. Nunca tentar de novo supondo que foi falha pontual.
+
+**(c) Como implantar.** Para reaproveitar um segredo já existente em outro
+nó/credencial, obtenha o valor de uma fonte que você controla diretamente —
+arquivo de config (`.env.n8n`, mas **confira que não é placeholder**, ver
+§2.7) ou, na falta de outra fonte, leitura direta do `workflow_entity` no
+SQLite do próprio n8n (parâmetro cru de outro nó, nunca de uma credencial) —
+e **digite** o valor no campo (`type`), nunca `paste`. Depois de digitar,
+confirme o resultado executando o nó (efeito observável — §7.2), não
+inspecionando o campo visualmente (evite reprint do segredo em screenshot).
+
 ### 6.4 Proteção de senha vazada desativada
 
 **(a) Problema.** `auth_leaked_password_protection` (checagem contra o
@@ -773,6 +912,28 @@ Só logar papéis que o arquivo realmente usa — não os 5 por padrão. Se a su
 voltar a esbarrar na cota mesmo assim, esperar alguns minutos (janela
 deslizante) antes de rodar de novo — não adianta re-tentar em loop, o Supabase
 Free não expõe um jeito de resetar a cota manualmente.
+
+### 7.1c Testar bot de chat por automação de navegador: confirme o balão, não só o envio
+
+**(a) Problema.** Ao testar o agente Telegram digitando duas mensagens de teste
+em sequência rápida via automação de navegador, a segunda mensagem saiu **colada
+na primeira** (`"Meu CPF é ...qual meu nível?E o CPF 999.999.999-99?"`), porque
+a caixa de texto ainda tinha o rascunho da mensagem anterior quando o novo texto
+foi digitado. O teste do "CPF não encontrado" acabou testando o mesmo CPF de
+novo (a extração de dígitos pega o primeiro CPF de 11 dígitos do texto) — um
+falso positivo que só apareceu ao conferir a resposta do bot.
+
+**(b) Solução.** Nunca considerar uma mensagem de teste "enviada" só porque o
+`Enter` foi pressionado. Tirar um screenshot do balão na conversa **antes** de
+prosseguir para o próximo passo (rodar o workflow, assumir o resultado etc.).
+
+**(c) Como implantar.** Padrão ao testar qualquer bot de chat:
+1. Clique no campo, `Ctrl+A` + `Delete` para garantir que está vazio antes de
+   digitar (não confie que o envio anterior limpou o campo).
+2. Digite e **screenshot antes do Enter** para conferir o texto exato do rascunho.
+3. Envie, e **screenshot depois** para confirmar o balão próprio na conversa.
+Mesma família do §7.2 ("passou" ≠ "funcionou"), aplicada ao próprio ato de
+gerar o dado de teste, não só de ler o resultado.
 
 ### 7.2 "Passou" não é o mesmo que "funcionou"
 

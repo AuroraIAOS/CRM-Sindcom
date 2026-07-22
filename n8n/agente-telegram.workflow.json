@@ -1,0 +1,296 @@
+{
+  "name": "Sindcom — Agente Telegram (consulta nível/bloqueio)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "seconds",
+              "secondsInterval": 10
+            }
+          ]
+        }
+      },
+      "id": "2eb1aa14-d71e-4fee-9255-e4b6cc3781a9",
+      "name": "A cada 10 segundos",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1120,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst offset = staticData.lastUpdateId ? staticData.lastUpdateId + 1 : 0;\nreturn [{ json: { offset } }];"
+      },
+      "id": "ce557c69-83a4-41b8-be1a-5639ef8fe171",
+      "name": "Montar offset",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -896,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.telegram.org/bot<<SUBSTITUIR: TELEGRAM_HTTP_API>>/getUpdates",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "offset",
+              "value": "={{ $json.offset }}"
+            },
+            {
+              "name": "timeout",
+              "value": "0"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3319ce12-1e97-4c9a-ab4f-9d30111aaf8d",
+      "name": "Buscar mensagens (getUpdates)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -688,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst resp = $input.first().json;\nconst updates = resp.result || [];\nlet maxId = staticData.lastUpdateId ?? -1;\nconst saida = [];\nfor (const u of updates) {\n  if (u.update_id > maxId) maxId = u.update_id;\n  const msg = u.message;\n  if (!msg || !msg.text) continue;\n  const chatId = msg.chat.id;\n  const texto = msg.text.trim();\n  const digitos = texto.replace(/\\D/g, '');\n  const match = digitos.match(/\\d{11}/);\n  saida.push({ json: { chat_id: chatId, texto_original: texto, cpf: match ? match[0] : null } });\n}\nstaticData.lastUpdateId = maxId;\nreturn saida;"
+      },
+      "id": "66606911-ce99-4232-a522-252a3b5b8f98",
+      "name": "Extrair mensagens de texto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "dac91feb-6945-4510-9f9b-c26bb63ecb6e",
+              "leftValue": "={{ $json.cpf }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "68673547-79e4-4f07-9c3c-b677369aa543",
+      "name": "CPF no texto?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        128
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://vcswvscjqifelslsdjth.supabase.co/rest/v1/rpc/fn_consulta_nivel_bloqueio",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "<<SUBSTITUIR: SUPABASE_SERVICE_ROLE_KEY>>"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer <<SUBSTITUIR: SUPABASE_SERVICE_ROLE_KEY>>"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"p_cpf\": $json.cpf } }}",
+        "options": {}
+      },
+      "id": "2256a570-1448-4eff-bb3d-22fcc20e969d",
+      "name": "Consultar fn_consulta_nivel_bloqueio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const texto = 'Olá! Sou o Arthur, assistente do Sindcom. Envie seu CPF (formatado ou só números) para consultar seu nível de proteção e situação de bloqueio.';\nreturn { json: { chat_id: $json.chat_id, texto_resposta: texto } };"
+      },
+      "id": "cf5f912e-8b75-44da-b608-e4306cfe5550",
+      "name": "Formatar mensagem de ajuda",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const r = $json;\nconst chatId = $('Extrair mensagens de texto').item.json.chat_id;\nlet texto;\nif (!r.encontrado) {\n  texto = 'Não encontramos esse CPF em nossa base de filiados. Confira os números e tente de novo, ou fale com a secretaria.';\n} else {\n  const saudacao = r.primeiro_nome ? ('Olá, ' + r.primeiro_nome + '! ') : 'Olá! ';\n  const nomesNivel = { bronze: 'Bronze', prata: 'Prata', ouro: 'Ouro' };\n  const nivelTexto = nomesNivel[r.nivel] || r.nivel;\n  const linhas = [saudacao + 'Seu nível de proteção é ' + nivelTexto + '.'];\n  linhas.push('Situação do cadastro: ' + r.status_cadastro + '.');\n  if (r.nivel !== 'bronze') {\n    linhas.push(r.bloqueado_contribuicao\n      ? 'Atenção: contribuição sindical em atraso — pode haver bloqueio de benefícios.'\n      : 'Contribuição sindical em dia.');\n  }\n  if (r.nivel === 'ouro') {\n    linhas.push(r.bloqueado_mensalidade\n      ? 'Atenção: mensalidade do convênio em atraso.'\n      : 'Mensalidade do convênio em dia.');\n  }\n  texto = linhas.join('\\n');\n}\nreturn { json: { chat_id: chatId, texto_resposta: texto } };"
+      },
+      "id": "4f1de1fc-0a3c-4759-8221-ac4bfc85cb4f",
+      "name": "Formatar resposta da consulta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.telegram.org/bot<<SUBSTITUIR: TELEGRAM_HTTP_API>>/sendMessage",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"chat_id\": $json.chat_id, \"text\": $json.texto_resposta } }}",
+        "options": {}
+      },
+      "id": "fc17f8ae-eac0-414e-8253-21ed9fdf5c70",
+      "name": "Enviar resposta (sendMessage)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        128
+      ]
+    }
+  ],
+  "connections": {
+    "A cada 10 segundos": {
+      "main": [
+        [
+          {
+            "node": "Montar offset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar offset": {
+      "main": [
+        [
+          {
+            "node": "Buscar mensagens (getUpdates)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar mensagens (getUpdates)": {
+      "main": [
+        [
+          {
+            "node": "Extrair mensagens de texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair mensagens de texto": {
+      "main": [
+        [
+          {
+            "node": "CPF no texto?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CPF no texto?": {
+      "main": [
+        [
+          {
+            "node": "Consultar fn_consulta_nivel_bloqueio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Formatar mensagem de ajuda",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar fn_consulta_nivel_bloqueio": {
+      "main": [
+        [
+          {
+            "node": "Formatar resposta da consulta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar resposta da consulta": {
+      "main": [
+        [
+          {
+            "node": "Enviar resposta (sendMessage)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatar mensagem de ajuda": {
+      "main": [
+        [
+          {
+            "node": "Enviar resposta (sendMessage)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "pinData": {}
+}

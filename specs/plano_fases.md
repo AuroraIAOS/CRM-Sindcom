@@ -205,7 +205,7 @@ Esforço máximo do /goal: n/a (Manual estrito).
 
 ---
 
-## ETAPA 03 — INTELIGÊNCIA E INTEGRAÇÕES · Complexidade: MÉDIA · Status: ⬜
+## ETAPA 03 — INTELIGÊNCIA E INTEGRAÇÕES · Complexidade: MÉDIA · Status: ✅ CONCLUÍDA (no ar em `crm.sindcompassos.org`)
 
 Objetivo geral: gestão estratégica + integrações (site + agente WhatsApp) sobre o produto já em uso.
 Modo predominante: [Manual Mode] + [Goal] (dashboard por `/goal`; webhook com service_role em Manual).
@@ -236,11 +236,11 @@ Esforço máximo do /goal: 3 tentativas.
 Escalonamento de LLM: Sonnet nas 2 primeiras; Opus na 3ª.
 Se esgotar: parar e emitir relatório curto.
 
-### Subetapa 03.4 — Agente WhatsApp consome o CRM [Manual] [LLM: Sonnet] · Status: 🟡 PARCIAL — RPC pronta, agente ainda não construído
+### Subetapa 03.4 — Agente WhatsApp consome o CRM [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA (canal de teste: Telegram)
 Objetivo: RPC de nível/bloqueio por CPF substitui a lookup em Google Sheets — nasce a fonte única de verdade.
-Conclusão parcial (2026-07-21): `fn_consulta_nivel_bloqueio(p_cpf)` criada e aplicada em produção (`sql/14_agente_whatsapp.sql`) — recebe CPF em qualquer formatação, devolve `encontrado`, `primeiro_nome`, `nivel`, `status_cadastro`, `bloqueado_contribuicao`, `bloqueado_mensalidade`. Só `service_role` executa (revoke de public/anon/authenticated — confirmado por `pg_proc.proacl`); lógica validada via SQL direto (todos os casos: nível por CPF formatado/cru, CPF não encontrado, CPF inválido). **O que falta para fechar de verdade:** o agente em si — Maxwell vai construí-lo no n8n self-host (fase de teste) e depois mover para VPS (Railway/Oracle Free Tier). O critério de aceite ("agente identifica nível e bloqueio via CRM em produção") só se cumpre quando esse workflow existir e chamar a RPC — não é algo que o Claude Code resolve sozinho nesta subetapa.
+Conclusão (2026-07-21): `fn_consulta_nivel_bloqueio(p_cpf)` criada e aplicada em produção (`sql/14_agente_whatsapp.sql`) — recebe CPF em qualquer formatação, devolve `encontrado`, `primeiro_nome`, `nivel`, `status_cadastro`, `bloqueado_contribuicao`, `bloqueado_mensalidade`. Só `service_role` executa (revoke de public/anon/authenticated — confirmado por `pg_proc.proacl`); lógica validada via SQL direto (todos os casos: nível por CPF formatado/cru, CPF não encontrado, CPF inválido). **Agente construído e testado em produção** (decisão de Maxwell: canal de teste é Telegram, não WhatsApp — mais rápido de provisionar via BotFather, sem esperar BSP; troca para WhatsApp fica para quando o n8n for para a VPS). Bot `@Sindcom_Arthur_bot` no n8n self-host: workflow `Sindcom — Agente Telegram (consulta nível/bloqueio)` (`n8n/agente-telegram.workflow.json`, documentado em `n8n/README.md`) faz *polling* (`getUpdates`, a cada 10s — Telegram Trigger nativo exigiria webhook público, que este n8n não tem) e chama a RPC com os dois headers de service_role. Testado ponta a ponta com 3 casos reais pelo Telegram: CPF encontrado (DEMO Prata → nível/situação/contribuição corretos), CPF não encontrado (mensagem apropriada) e mensagem sem CPF (`/start` → onboarding). Workflow publicado/ativo.
 Qualidade: CPF normalizado dentro da função (aceita formatado ou cru); resposta nunca ecoa CPF/e-mail/telefone/valor financeiro, só primeiro nome.
-Evidência: 6/6 testes em `tests/rls/agente-whatsapp.spec.ts` provando que nenhum papel do app (nem Admin) executa a função pela sessão normal — só quem detém a service_role. **Pendente:** consulta real feita PELO AGENTE em produção (depende do workflow n8n existir).
+Evidência: 6/6 testes em `tests/rls/agente-whatsapp.spec.ts` provando que nenhum papel do app (nem Admin) executa a função pela sessão normal — só quem detém a service_role. **Mais:** 3/3 consultas reais feitas PELO AGENTE em produção via Telegram (encontrado/não encontrado/sem CPF), confirmadas nas respostas do bot e nos logs de execução do n8n.
 
 ### Subetapa 03.5 — Tela `/configuracoes` [Goal] [Manual] [LLM: Haiku] · Status: ✅ CONCLUÍDA
 Objetivo: parâmetros + perfis.
@@ -268,6 +268,53 @@ Observações: nada aqui quebra o fluxo do MVP; entra por versionamento (+0.1 co
 - **Fila de agenda/vagas dos parceiros** (V2 do fluxo de solicitações).
 - **Otimizações conhecidas** — select-wrap em `fn_eh` para relatórios full-table.
 - **RAG/pgvector** do agente.
+
+### Pendências herdadas da vistoria de fecho da Etapa 03 (2026-07-21)
+
+Levantadas na auditoria final do MVP. Nenhuma bloqueia o uso do sistema; as
+duas primeiras são de **infraestrutura do n8n** e devem andar juntas, numa só
+recriação de contêiner.
+
+- [ ] **🔴 PRIORIDADE — Recriar o `n8n_container` com o bind mount correto.**
+  O contêiner atual foi criado com o mount em `/home/node/n8n`, mas o n8n grava
+  em **`/home/node/.n8n`** (com ponto): o mount está vazio e os 2 workflows de
+  produção + as 3 credenciais (service_role, senha de app do Gmail) vivem na
+  camada de escrita do contêiner — **um `docker rm` apaga tudo**. Mitigado em
+  2026-07-21 com backup completo em
+  `C:\Users\maxwe\GitHub\_Docker_n8n\BACKUP_n8n_2026-07-21\` (inclui o arquivo
+  `config` com a `encryptionKey`, sem a qual as credenciais não descriptografam;
+  backup validado: 2 workflows + 3 credenciais). **Comando pronto e ordem de
+  execução em `n8n/README.md` (aviso no topo)** — é destrutivo, exige restaurar
+  o backup antes e só remover o contêiner antigo após conferir que os workflows
+  rodam de fato (`orientacoes.md` §7.2). Armadilha registrada em §3.7.
+- [ ] **Pruning do histórico de execuções do n8n.** O agente Telegram faz
+  polling a cada 10s (~3.500 execuções/dia, quase todas ciclos vazios — 264 em
+  1h47 na medição). As variáveis `EXECUTIONS_DATA_PRUNE` / `_MAX_AGE` /
+  `_PRUNE_MAX_COUNT` já estão no comando de recriação acima, então **sai de
+  graça junto com o item anterior**. A via alternativa pela UI (*Settings →
+  "Save successful production executions" → Do not save*) foi tentada em
+  2026-07-21 e **não persistiu** — o diálogo fecha mas `workflow_entity.settings`
+  não recebe `saveDataSuccessExecution`; se for por ali, conferir no banco.
+- [ ] **Repor os valores reais do `.env.n8n`.** As três variáveis
+  (`SMTP_USER`, `SMTP_PASS`, `SUPABASE_SERVICE_ROLE_KEY`) são **placeholders**
+  (`eyJFICTICIO...`), não valores reais — descoberto quando um nó novo falhou
+  com "Invalid API key". Hoje os valores reais existem **só** dentro do cofre do
+  n8n (e no backup acima). Enquanto não forem repostos, o runbook de restauração
+  depende exclusivamente do backup binário.
+- [ ] **Trocar o canal do agente de Telegram para WhatsApp** quando o n8n for
+  para a VPS (Railway/Oracle Free Tier). O Telegram foi decisão deliberada de
+  fase de teste (Subetapa 03.4); a lógica de extração de CPF, a RPC e a
+  formatação das respostas não mudam — troca-se só o par
+  `getUpdates`/`sendMessage`. Depende da decisão pendente "BSP oficial vs
+  Evolution".
+- [ ] **Timezone do n8n está em `America/New York`** (default da instância).
+  Não afeta os gatilhos atuais, que são por intervalo (10s / 15 min) e não por
+  horário do dia — mas **qualquer agendamento futuro em hora cheia** (ex.: "toda
+  segunda às 8h") sairá 1–2h deslocado. Ajustar para `America/Sao_Paulo` antes
+  de criar o primeiro workflow com horário fixo.
+- [ ] **Ativar `auth_leaked_password_protection`** (HaveIBeenPwned) assim que o
+  projeto migrar para o Supabase pago — hoje é o único achado real do
+  `get_advisors` fora os padrões arquiteturais by-design.
 
 ---
 
