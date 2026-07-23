@@ -1703,6 +1703,26 @@ export type Database = {
           },
         ]
       }
+      v_cartas_ano_base: {
+        Row: {
+          ano_base: number | null
+          carta_id: string | null
+          convencao: string | null
+          convencao_id: string | null
+          cpf: string | null
+          data_entrega: string | null
+          data_limite_oposicao: string | null
+          empresa: string | null
+          estabelecimento: string | null
+          estabelecimento_id: string | null
+          forma: Database["public"]["Enums"]["forma_entrega_carta"] | null
+          nivel: Database["public"]["Enums"]["nivel_protecao"] | null
+          reclassificada_em: string | null
+          trabalhador: string | null
+          trabalhador_id: string | null
+        }
+        Relationships: []
+      }
       v_dash_conversoes_mensais: {
         Row: {
           bronze_para_ouro: number | null

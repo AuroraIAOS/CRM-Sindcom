@@ -45,9 +45,19 @@ const ROTULO_FORMA = {
 
 const PODE_REGISTRAR = ["admin", "secretaria"] as const;
 
-/** Registrar carta é a ÚNICA forma deliberada de baixar o nível para Bronze
- *  nesta subetapa — por isso o fluxo passa por uma confirmação explícita. */
-export function CartasTab({ trabalhadorId }: { trabalhadorId: string }) {
+/** Registrar carta é a ÚNICA forma deliberada de baixar o nível para Bronze —
+ *  por isso o fluxo passa por uma confirmação explícita.
+ *
+ *  Exceção do Ouro (regra 5.2 + FAQ 15): a carta é registrada, mas o nível não
+ *  regride enquanto a adesão ao convênio não for cancelada formalmente. O
+ *  diálogo muda de texto conforme o caso — ver `useRegistrarCarta`. */
+export function CartasTab({
+  trabalhadorId,
+  nivel,
+}: {
+  trabalhadorId: string;
+  nivel: Database["public"]["Enums"]["nivel_protecao"] | null;
+}) {
   const { role } = useAuth();
   const podeRegistrar = role !== null && (PODE_REGISTRAR as readonly string[]).includes(role);
 
@@ -104,7 +114,11 @@ export function CartasTab({ trabalhadorId }: { trabalhadorId: string }) {
       )}
 
       {dialogAberto && (
-        <RegistrarCartaDialog trabalhadorId={trabalhadorId} onOpenChange={setDialogAberto} />
+        <RegistrarCartaDialog
+          trabalhadorId={trabalhadorId}
+          ehOuro={nivel === "ouro"}
+          onOpenChange={setDialogAberto}
+        />
       )}
 
       <ExcluirCartaDialog
@@ -118,9 +132,11 @@ export function CartasTab({ trabalhadorId }: { trabalhadorId: string }) {
 
 function RegistrarCartaDialog({
   trabalhadorId,
+  ehOuro,
   onOpenChange,
 }: {
   trabalhadorId: string;
+  ehOuro: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
   const registrar = useRegistrarCarta(trabalhadorId);
@@ -154,11 +170,22 @@ function RegistrarCartaDialog({
             <DialogTitle>Registrar carta de oposição</DialogTitle>
           </DialogHeader>
 
-          <p className="rounded-md bg-estado-alerta/10 p-3 text-sm text-estado-alerta">
-            Registrar esta carta define <strong>recolhe contribuição sindical</strong> e{" "}
-            <strong>recolhe mensalidade do convênio</strong> como "Não" — o trabalhador passa a
-            Bronze. Esta é a única forma de baixar o nível nesta tela; confira antes de confirmar.
-          </p>
+          {ehOuro ? (
+            <p className="rounded-md bg-estado-alerta/10 p-3 text-sm text-estado-alerta">
+              Este trabalhador é <strong>Ouro</strong>. A carta será registrada como fato
+              ocorrido, mas o <strong>nível não muda agora</strong>: a adesão ao convênio tem
+              fidelidade mínima de 1 ano e precisa ser cancelada formalmente antes da regressão.
+              Até lá, a mensalidade continua sendo cobrada e os benefícios seguem ativos. A
+              pendência aparece em <strong>Cartas de oposição</strong>.
+            </p>
+          ) : (
+            <p className="rounded-md bg-estado-alerta/10 p-3 text-sm text-estado-alerta">
+              Registrar esta carta define <strong>recolhe contribuição sindical</strong> e{" "}
+              <strong>recolhe mensalidade do convênio</strong> como "Não" — o trabalhador passa a
+              Bronze. Esta é a única forma de baixar o nível nesta tela; confira antes de
+              confirmar.
+            </p>
+          )}
 
           <EntityForm
             id="form-carta"
@@ -247,15 +274,27 @@ function RegistrarCartaDialog({
       <ConfirmDialog
         open={!!pendente}
         onOpenChange={(open) => !open && setPendente(null)}
-        titulo="Confirmar registro e mudança para Bronze"
+        titulo={
+          ehOuro ? "Confirmar registro da carta (nível permanece Ouro)" : "Confirmar registro e mudança para Bronze"
+        }
         descricao={
           <>
-            Ao confirmar, a carta de oposição {pendente?.ano_base} é registrada e este trabalhador
-            passa para o nível Bronze imediatamente.
+            {ehOuro ? (
+              <>
+                Ao confirmar, a carta de oposição {pendente?.ano_base} fica registrada, mas o
+                nível <strong>permanece Ouro</strong> até o cancelamento formal da adesão ao
+                convênio.
+              </>
+            ) : (
+              <>
+                Ao confirmar, a carta de oposição {pendente?.ano_base} é registrada e este
+                trabalhador passa para o nível Bronze imediatamente.
+              </>
+            )}
             {erro && <p className="mt-2 text-estado-erro">{erro}</p>}
           </>
         }
-        textoConfirmar="Confirmar e definir Bronze"
+        textoConfirmar={ehOuro ? "Registrar carta" : "Confirmar e definir Bronze"}
         carregando={registrar.isPending}
         onConfirmar={confirmar}
       />

@@ -95,14 +95,22 @@ export async function executarLoteVinculos(
 
 /**
  * Registra carta de oposição para cada trabalhador selecionado e, em seguida,
- * zera as duas flags de recolhimento (todos passam a Bronze — mesmo efeito do
- * registro individual). Duplicatas de ano-base (unique trabalhador_id+ano_base,
- * SQLSTATE 23505) são puladas e reportadas em vez de abortar o lote inteiro.
+ * zera as duas flags de recolhimento de quem NÃO é Ouro (mesmo efeito e mesma
+ * exceção do registro individual — ver `useRegistrarCarta` em `api.ts`).
+ *
+ * Ouro não regride: a fidelidade de 1 ano do convênio exige cancelamento
+ * formal da adesão antes (regra 5.2 + FAQ 15). A carta é registrada de todo
+ * jeito, e o retorno separa `rebaixadas` de `mantidasOuro` para a UI reportar
+ * nominalmente quem ficou de fora — silêncio sobre exclusão é pior que erro
+ * (orientacoes.md §4.3).
+ *
+ * Duplicatas de ano-base (unique trabalhador_id+ano_base, SQLSTATE 23505) são
+ * puladas e reportadas em vez de abortar o lote inteiro.
  */
 export async function executarLoteCartas(
   ids: string[],
   valores: CartaLote,
-): Promise<{ registradas: number; puladas: number }> {
+): Promise<{ registradas: number; puladas: number; rebaixadas: number; mantidasOuro: number }> {
   const anoBase = Number(valores.ano_base);
   const registrados: string[] = [];
   let puladas = 0;
@@ -125,15 +133,24 @@ export async function executarLoteCartas(
     registrados.push(id);
   }
 
+  let rebaixadas = 0;
   if (registrados.length > 0) {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("trabalhadores")
       .update({ recolhe_contribuicao_sindical: false, recolhe_mensalidade_convenio: false })
-      .in("id", registrados);
+      .in("id", registrados)
+      .neq("nivel", "ouro")
+      .select("id");
     if (error) throw error;
+    rebaixadas = data?.length ?? 0;
   }
 
-  return { registradas: registrados.length, puladas };
+  return {
+    registradas: registrados.length,
+    puladas,
+    rebaixadas,
+    mantidasOuro: registrados.length - rebaixadas,
+  };
 }
 
 // ---------------------------------------------------------------------------

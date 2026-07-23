@@ -407,7 +407,7 @@ export function ListaTrabalhadoresPage({ idInicial }: { idInicial?: string } = {
         secoes={secoesAtribuicao}
         avisos={{
           cartas:
-            "Registrar carta rebaixa TODOS os selecionados a Bronze (zera as duas flags de recolhimento). Duplicatas de ano-base são puladas.",
+            "Registrar carta rebaixa a Bronze os selecionados que NÃO são Ouro (zera as duas flags de recolhimento). Quem é Ouro tem a carta registrada mas mantém o nível: a adesão ao convênio tem fidelidade de 1 ano e precisa ser cancelada formalmente antes. Duplicatas de ano-base são puladas.",
         }}
         onConfirmar={confirmarAtribuicao}
       />

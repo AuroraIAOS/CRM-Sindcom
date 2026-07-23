@@ -327,17 +327,29 @@ export function useCartasTrabalhador(trabalhadorId: string | undefined) {
 }
 
 /**
- * Registra a carta de oposição E, no mesmo ato, zera as duas flags de
+ * Registra a carta de oposição e, quando cabível, zera as duas flags de
  * recolhimento (o trabalhador vira Bronze) — é a única forma deliberada de
- * baixar o nível nesta subetapa (frontend.md: nível nunca é campo editável
- * solto). As duas escritas são sequenciais (sem RPC transacional ainda); se a
- * 2ª falhar, a carta fica registrada mas o nível não muda — o erro é reportado
- * para nova tentativa.
+ * baixar o nível (frontend.md: nível nunca é campo editável solto).
+ *
+ * EXCEÇÃO DO OURO (regra 5.2 + FAQ 15, decisão de Maxwell em 2026-07-22):
+ * quem é **Ouro NÃO regride por aqui**. A adesão ao convênio tem fidelidade
+ * mínima de 1 ano e precisa ser cancelada formalmente antes; rebaixar no mesmo
+ * clique cancelaria o convênio por efeito colateral — sem o titular saber que
+ * perdeu o acesso aos benefícios, e sem o Sindcom decidir parar de receber a
+ * mensalidade. O motor `fn_reclassificar_convencao` já respeitava isso
+ * (`where t.nivel <> 'ouro'`); esta função passou a respeitar também.
+ *
+ * O `.neq("nivel", "ouro")` faz o recorte no próprio UPDATE: `nivel` é coluna
+ * gerada, então o banco decide quem é Ouro — não uma checagem do cliente que
+ * poderia estar lendo estado velho. A carta fica registrada nos dois casos: é
+ * fato ocorrido, com prazo legal, e nunca deve ser descartada.
+ *
+ * Retorna `{ rebaixado }` para a UI dizer a verdade sobre o que aconteceu.
  */
 export function useRegistrarCarta(trabalhadorId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (valores: CartaFormValues) => {
+    mutationFn: async (valores: CartaFormValues): Promise<{ rebaixado: boolean }> => {
       const { error: erroCarta } = await supabase.from("cartas_oposicao").insert({
         trabalhador_id: trabalhadorId,
         ano_base: valores.ano_base,
@@ -347,11 +359,14 @@ export function useRegistrarCarta(trabalhadorId: string) {
       });
       if (erroCarta) throw erroCarta;
 
-      const { error: erroFlags } = await supabase
+      const { data, error: erroFlags } = await supabase
         .from("trabalhadores")
         .update({ recolhe_contribuicao_sindical: false, recolhe_mensalidade_convenio: false })
-        .eq("id", trabalhadorId);
+        .eq("id", trabalhadorId)
+        .neq("nivel", "ouro")
+        .select("id");
       if (erroFlags) throw erroFlags;
+      return { rebaixado: (data?.length ?? 0) > 0 };
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["trabalhadores", "cartas", trabalhadorId] });

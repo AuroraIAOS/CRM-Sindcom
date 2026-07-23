@@ -10,7 +10,7 @@ import { BeneficiadosTab } from "./abas/BeneficiadosTab";
 import { CartasTab } from "./abas/CartasTab";
 import { FaturasTab } from "./abas/FaturasTab";
 import { SolicitacoesTab } from "./abas/SolicitacoesTab";
-import { AbaVazia } from "./abas/AbaVazia";
+import { AtendimentosTab } from "./abas/AtendimentosTab";
 
 /**
  * Painel de detalhe do trabalhador — layout mestre-detalhe (Tarefa 02.1),
@@ -72,7 +72,7 @@ export function DetalheTrabalhador({ trabalhadorId }: { trabalhadorId: string })
         <AccordionItem value="cartas">
           <AccordionTrigger>Cartas</AccordionTrigger>
           <AccordionContent>
-            <CartasTab trabalhadorId={t.id} />
+            <CartasTab trabalhadorId={t.id} nivel={t.nivel} />
           </AccordionContent>
         </AccordionItem>
 
@@ -93,7 +93,9 @@ export function DetalheTrabalhador({ trabalhadorId }: { trabalhadorId: string })
         <AccordionItem value="atendimentos">
           <AccordionTrigger>Atendimentos</AccordionTrigger>
           <AccordionContent>
-            <AbaVazia mensagem="Atendimentos jurídicos: disponível a partir da Etapa 02." />
+            <AtendimentosTab
+              trabalhador={{ id: t.id, nome: t.nome, cpf: t.cpf, nivel: t.nivel }}
+            />
           </AccordionContent>
         </AccordionItem>
       </Accordion>

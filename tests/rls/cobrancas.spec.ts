@@ -244,9 +244,16 @@ describe("Subetapa 02.6 — geração, idempotência e conciliação", () => {
     for (const f of faturas) expect(Number(f.valor)).toBe(VALOR_ESPERADO);
 
     // Vencimento = geração + 30 (config dias_vencimento_boleto).
-    const hoje = new Date().toLocaleDateString("sv-SE");
-    const esperado = new Date(Date.now() + 30 * 86_400_000).toLocaleDateString("sv-SE");
-    expect(faturas[0].data_vencimento, `hoje=${hoje}`).toBe(esperado);
+    //
+    // A data vem do `current_date` do Postgres, e o banco roda em **UTC** —
+    // então a referência aqui tem que ser UTC também (`toISOString`), NÃO o
+    // horário local (`toLocaleDateString('sv-SE')`). Entre 21h e meia-noite no
+    // horário de Brasília (UTC-3) o banco já virou o dia e o local não: o teste
+    // falhava por exatamente 1 dia, todas as noites, sem nada ter piorado.
+    // (`sv-SE` continua correto no FRONTEND — lá a referência é o usuário.)
+    const hojeUtc = new Date().toISOString().slice(0, 10);
+    const esperado = new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10);
+    expect(faturas[0].data_vencimento, `hoje(UTC)=${hojeUtc}`).toBe(esperado);
 
     // --- Idempotência das faturas -------------------------------------------
     const { data: data2 } = await clientes.admin.rpc("fn_gerar_faturas_contribuicao", {

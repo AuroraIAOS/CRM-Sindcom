@@ -39,6 +39,11 @@ const MAPA: Record<string, { label: string; tom: Tom }> = {
   paga: { label: "Paga", tom: "sucesso" },
   inadimplente: { label: "Inadimplente", tom: "erro" },
   isenta: { label: "Isenta", tom: "neutro" },
+  // atendimentos_juridicos.status (Subetapa 04.1 — chk_status_atendimento)
+  aberto: { label: "Aberto", tom: "alerta" },
+  em_andamento: { label: "Em andamento", tom: "alerta" },
+  concluido: { label: "Concluído", tom: "sucesso" },
+  arquivado: { label: "Arquivado", tom: "neutro" },
   // status_repasse (Subetapa 02.4)
   previsto: { label: "Previsto", tom: "neutro" },
   enviado: { label: "Enviado", tom: "alerta" },

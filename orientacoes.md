@@ -935,6 +935,68 @@ prosseguir para o próximo passo (rodar o workflow, assumir o resultado etc.).
 Mesma família do §7.2 ("passou" ≠ "funcionou"), aplicada ao próprio ato de
 gerar o dado de teste, não só de ler o resultado.
 
+### 7.5 Fallback silencioso de rota transforma "tela não construída" em "tela vazia"
+
+**(a) Problema.** As abas "Cartas de oposição" e "Jurídico" apareciam no menu,
+respondiam HTTP 200 e abriam sem erro — mostrando "Tela em construção". O
+router monta as rotas a partir do `NAV` e usa
+`PAGINAS[item.path] ?? <Placeholder titulo={item.label} />`. Como `Placeholder`
+é um componente perfeitamente válido, **nada acusava a ausência**: `npm run
+build` passava, o `typecheck` passava, a suíte (que testa banco, não tela)
+passava, e a navegação renderizava normal. `/juridico` chegou a atravessar as
+Etapas 01, 02 e 03 inteiras sem dono — estava especificada em
+`specs/frontend.md` §2.2, mas **nenhuma subetapa do `plano_fases.md` a
+assumia**. Pior: `homeDoRole()` manda o papel `juridico` direto para lá, então o
+único usuário cuja porta de entrada é essa rota via a página de construção como
+primeira tela do sistema.
+
+**(b) Solução.** Tratar "rota declarada × página implementada" como um
+**inventário conferível**, não como algo que alguém nota clicando. E, ao fechar
+etapa, conferir a spec de telas contra o mapa de rotas — não só os itens
+listados na subetapa.
+
+**(c) Como implantar.** Roda em segundos e cabe no fecho de qualquer etapa:
+```js
+const rotasNav  = [...nav.matchAll(/path:\s*"([^"]+)"/g)].map(m => m[1]);
+const bloco     = router.slice(router.indexOf('const PAGINAS'), router.indexOf('const PAGINAS_DETALHE'));
+const comPagina = [...bloco.matchAll(/"([^"]+)":/g)].map(m => m[1]);
+console.log(rotasNav.filter(r => !comPagina.includes(r)));  // esperado: []
+```
+**Regra transferível:** todo `?? <Fallback/>` que substitui funcionalidade
+ausente por algo que renderiza precisa de um teste ou inventário que conte
+quantos fallbacks estão ativos. Um default que "nunca quebra" também nunca
+avisa. E quando uma spec lista telas, a lista dela é o checklist — a soma das
+subetapas pode não cobri-la.
+
+### 7.6 Teste que compara data local com `current_date` do banco quebra à noite
+
+**(a) Problema.** Dois testes verdes há semanas falharam juntos às 23h:
+`cobrancas.spec.ts` esperava vencimento `2026-08-21` e recebeu `2026-08-22`, e
+`dashboard.spec.ts` não achava o snapshot recém-criado. Nada tinha piorado — o
+**banco roda em UTC** (`current_setting('TimeZone')` = `UTC`) e já havia virado
+o dia (`current_date` = 2026-07-23), enquanto os testes calculavam "hoje" pelo
+relógio local com `toLocaleDateString('sv-SE')` (2026-07-22). Entre 21h e
+meia-noite no horário de Brasília (UTC-3), a divergência é de exatamente 1 dia,
+todas as noites.
+
+**(b) Solução.** A referência de data precisa ser a **mesma do lado que gerou o
+valor**. Se quem calcula é o Postgres (`current_date`, `now()`), o teste usa
+UTC; se quem lê é o usuário na tela, aí sim vale o horário local.
+
+**(c) Como implantar.**
+```ts
+// TESTE comparando contra data calculada pelo BANCO → UTC
+const hoje = new Date().toISOString().slice(0, 10);
+
+// FRONTEND comparando contra o que o usuário enxerga → local (§4.2)
+const hoje = new Date().toLocaleDateString('sv-SE');
+```
+Cuidado: isto **não contradiz a §4.2** — são lados opostos da mesma fronteira.
+`sv-SE` continua certo no frontend. **Regra transferível:** um teste sensível a
+fuso só falha em algumas horas do dia; se algo ficou vermelho "sem motivo" no
+fim da noite, compare `current_date` do banco com a data local antes de
+investigar o código.
+
 ### 7.2 "Passou" não é o mesmo que "funcionou"
 
 **(a) Problema.** Duas vezes um resultado verde escondia falha: o workflow com

@@ -95,7 +95,7 @@ Esforço máximo do /goal: 3 tentativas.
 Escalonamento de LLM: Sonnet nas 2 primeiras; escalar p/ Opus na 3ª.
 Se esgotar: parar e emitir relatório curto (problema + causas + 2-3 alternativas).
 
-### Subetapa 01.2 — Vínculos, beneficiados e cartas de oposição [Goal] [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
+### Subetapa 01.2 — Vínculos, beneficiados e cartas de oposição [Goal] [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA (parcial — a "visão anual" `/cartas` foi deferida por decisão de Maxwell em 2026-07-13 e entregue na Subetapa 04.2)
 Objetivo: CRUD de vínculos empregatícios (Denise), beneficiados, e registro de cartas de oposição (+ visão anual).
 Conclusão: carta registrada reflete Bronze na ficha; beneficiado ≠ titular respeitado pelo trigger.
 Qualidade: mensagens de trigger traduzidas pelo mapa central.
@@ -113,7 +113,7 @@ Evidência: CCT completa + relatório da migração em lote.
 ### Subetapa 01.4 — Fila de solicitações ao Admin + aprovação de cadastros [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
 Objetivo: CRU-baixa da Denise → `solicitacoes_admin` com payload + diff para o Admin; aprovação executa a operação real. Fila de aprovação de cadastros pendentes.
 Conclusão: ciclo completo — Denise cria trabalhador → fila-admin → Maxwell aprova → ficha com vínculo e nível correto.
-Qualidade: nada destrutivo sem aprovação; medir tempo médio de aprovação desde o dia 1 (input p/ a válvula de auto-aprovação da Etapa 04).
+Qualidade: nada destrutivo sem aprovação; medir tempo médio de aprovação desde o dia 1 (input p/ a válvula de auto-aprovação da Etapa 05).
 Evidência: diff exibido ao Admin + operação real pós-aprovação.
 
 ### Subetapa 01.5 — Importação/exportação CSV [Goal] [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
@@ -135,7 +135,7 @@ Escalonamento de LLM: Haiku nas 2 primeiras; Sonnet na 3ª.
 Se esgotar: parar e emitir relatório curto.
 
 **Aceite da Etapa 01:** (1) importação dos CSVs reais dos 29 municípios com relatório de rejeitadas; (2) ciclo completo Denise→fila-admin→Maxwell aprova→ficha com vínculo e nível correto; (3) carta registrada refletindo Bronze na ficha.
-**Riscos:** gargalo do Admin na fila (medir tempo médio desde o dia 1 — válvula é auto-aprovação por entidade na Etapa 04); qualidade dos CSVs da Receita (mitigada por importa-válidas + relatório de rejeitadas).
+**Riscos:** gargalo do Admin na fila (medir tempo médio desde o dia 1 — válvula é auto-aprovação por entidade na Etapa 05); qualidade dos CSVs da Receita (mitigada por importa-válidas + relatório de rejeitadas).
 
 ---
 
@@ -197,7 +197,7 @@ Evidência: primeira geração mensal completa (faturas → guias → e-mails) e
 | `fn_gerar_guias(tipo, competencia)` | Cron (após a geração de faturas) | Agrupa faturas `holerite` sem repasse por empresa → cria a guia (`GP-`, valor = Σ faturas, status `previsto`, vencimento geração + 30) e vincula `faturas.repasse_id` |
 | n8n `guia-email` | Guias `previsto` com PDF | E-mail ao RH (e-mail do estabelecimento matriz; fallback: contato validado pela Denise no 1º envio) → status `enviado` |
 
-Idempotência garantida pelo `unique (trabalhador_id, tipo, competencia)`※⁴ em `faturas` — duplo clique não duplica cobrança. Integração bancária com baixa automática (`origem_baixa = integracao`) é Etapa 04.
+Idempotência garantida pelo `unique (trabalhador_id, tipo, competencia)`※⁴ em `faturas` — duplo clique não duplica cobrança. Integração bancária com baixa automática (`origem_baixa = integracao`) é Etapa 05.
 Esforço máximo do /goal: n/a (Manual estrito).
 
 **Aceite da Etapa 02:** ciclo real de solicitação até check-in por QR em celular físico na sede; primeira geração mensal completa (faturas → guias → e-mails) em empresa piloto; conciliação guia = Σ faturas exata.
@@ -255,7 +255,79 @@ Se esgotar: parar e emitir relatório curto.
 
 ---
 
-## ETAPA 04 — BACKLOG PÓS-MVP (prioriza-se com dado real, não com opinião) · Status: ⬜
+## ETAPA 04 — FECHAMENTO DO MAPA DE TELAS · Complexidade: MÉDIA · Status: ✅ CONCLUÍDA (no ar em `crm.sindcompassos.org`)
+
+Objetivo geral: fechar a dívida de escopo do MVP — as duas telas que estão
+especificadas em `specs/frontend.md` §2.2 mas nunca tiveram subetapa dona.
+Diagnóstico completo em `docs/plano_cartas_juridico.md`.
+Modo predominante: [Manual Mode] (regra de negócio sensível: gate do Jurídico e
+regra 5.2 do convênio).
+Observações: **não é backlog priorizável** — é escopo de MVP que caiu entre as
+etapas. `/juridico` nunca apareceu em nenhuma subetapa (só na 00.5 como destino
+de redirect e na 00.6 como célula da matriz RLS), e `/cartas` estava deferida
+para o fim do roteiro por decisão de 2026-07-13.
+
+### Subetapa 04.1 — `/juridico` (Atendimentos jurídicos) [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+Objetivo: destravar o papel `juridico`, que caía num Placeholder como primeira
+tela pós-login. Lista + registro + edição, respeitando a matriz RLS.
+Conclusão (2026-07-22): `features/juridico/` completa (lista com filtros de
+nome/CPF/tipo/situação/período, exportação CSV, diálogo de registro com seletor
+de trabalhador por busca no servidor, detalhe/edição, exclusão só do Admin) +
+aba "Atendimentos" real na ficha do trabalhador (era "disponível a partir da
+Etapa 02", frase errada desde o fecho da Etapa 02) + `sql/16_juridico.sql` com
+o CHECK `chk_status_atendimento` (`aberto · em_andamento · concluido ·
+arquivado`, decisão de Maxwell).
+Qualidade: a Secretaria **lê mas não registra** (inverso do papel dela nas
+demais telas) — botão escondido e RLS negando; UPDATE/DELETE conferem
+`.select()` porque policy só com `USING` devolve 200 + zero linhas
+(`orientacoes.md` §2.6d).
+Evidência: 11/11 em `tests/rls/juridico.spec.ts` — matriz RLS (6 atores) **e as
+4 células do trigger `fn_valida_atendimento_juridico`**, que nunca tinham sido
+exercidas (o teste anterior inseria `{}` e falhava no NOT NULL antes do
+trigger).
+
+### Subetapa 04.2 — `/cartas` (Visão anual de cartas de oposição) [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+Objetivo: quem entregou, quem falta, exportação da lista de reclassificação —
+por ano-base e por CCT (decisão D2 de Maxwell em 2026-07-22).
+Conclusão (2026-07-22): `sql/17_cartas.sql` cria `v_cartas_ano_base` **sobre**
+`v_relatorio_convencao`, então o universo da tela é o mesmo de
+`fn_reclassificar_convencao` por construção, não por coincidência.
+`features/cartas/` mostra **4 situações, não 2**: entregou→Bronze (5.1) · sem
+carta→Prata (5.3) · Ouro sem carta (5.2) · **Ouro COM carta, que não regride e
+exige ação humana** (5.2 + FAQ 15).
+Qualidade: deduplicação por trabalhador antes de qualquer contagem (a view é
+por vínculo — `orientacoes.md` §2.2); paginação explícita de 1000 em 1000 (§2.4);
+comparação de prazo string×string (§4.2); CSV consome a MESMA lista agregada da
+tela (§4.4); prazo em aberto sinalizado como contagem parcial.
+Evidência: 5/5 em `tests/rls/cartas.spec.ts` — RLS da view + igualdade de
+conjuntos com `v_relatorio_convencao` + os 4 baldes do cenário DEMO Kabum
+(**17 · 68 · 12 · 3** em 100 pessoas, batendo com a simulação do motor).
+
+### Subetapa 04.3 — Correção da regra 5.2 no frontend (decisão D3) [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+Objetivo: eliminar a divergência entre frontend e motor SQL sobre o Ouro,
+descoberta no diagnóstico da 04.2.
+Conclusão (2026-07-22): `useRegistrarCarta` e `executarLoteCartas` zeravam **as
+duas** flags de recolhimento sem olhar o nível — um Ouro que entregasse carta
+pela ficha virava Bronze na hora, cancelando a adesão ao convênio por efeito
+colateral (o titular perdia os benefícios sem saber; o Sindcom deixava de
+receber a mensalidade). O motor `fn_reclassificar_convencao` sempre respeitou a
+regra (`where t.nivel <> 'ouro'`). Agora os dois caminhos concordam: a carta é
+**sempre registrada** (é fato com prazo legal), e o rebaixamento só acontece
+para quem não é Ouro, via `.neq("nivel","ouro")` no próprio UPDATE — quem decide
+é a coluna gerada no banco, não uma checagem do cliente.
+Qualidade: a UI diz a verdade nos dois casos (texto do diálogo muda conforme o
+nível) e o lote reporta `rebaixadas` × `mantidasOuro` nominalmente (§4.3).
+Evidência: 2 testes dedicados em `tests/rls/cartas.spec.ts` provando que Prata
+com carta vira Bronze e Ouro com carta **permanece Ouro com as duas flags
+intactas**, com a carta gravada.
+
+**Aceite da Etapa 04 (cumprido):** nenhuma das 19 rotas do `NAV` cai em
+`Placeholder` (inventário `specs/frontend.md` §2.2 × chaves de `PAGINAS`);
+suíte 111/111 verde; deploy publicado e verificado por hash do bundle.
+
+---
+
+## ETAPA 05 — BACKLOG PÓS-MVP (prioriza-se com dado real, não com opinião) · Status: ⬜
 
 Objetivo geral: refinamentos guiados por evidência sobre o produto lançado.
 Modo predominante: definir por subetapa quando priorizado (depende de dados de uso da Etapa 03).
@@ -326,7 +398,8 @@ recriação de contêiner.
 | 01 | Alta | Etapa 00 | Denise operando: cadastros, CCTs, importação da base |
 | 02 | Alta | Etapa 01 | Convênio girando + dinheiro cobrado e conciliado |
 | 03 | Média | Etapa 02 (dashboard usa dados financeiros) | Gestão estratégica + integrações |
-| 04 | Variável | Etapa 03 + dados de uso | Refinamentos guiados por evidência |
+| 04 | Média | Etapa 03 | Fechamento do mapa de telas: `/juridico` e `/cartas` ✅ |
+| 05 | Variável | Etapa 04 + dados de uso | Refinamentos guiados por evidência |
 
 ---
 
@@ -344,11 +417,11 @@ recriação de contêiner.
 
 ## Backlog de versionamento (documento vivo)
 
-Anotar aqui ideias de melhoria, bugs pequenos e decisões futuras. Regra: só quebra o fluxo das etapas se impactar diretamente o MVP; caso contrário, aguarda a Etapa 04.
+Anotar aqui ideias de melhoria, bugs pequenos e decisões futuras. Regra: só quebra o fluxo das etapas se impactar diretamente o MVP; caso contrário, aguarda a Etapa 05.
 
 - [ ] Ativar `auth_leaked_password_protection` (HaveIBeenPwned) — impacto no MVP? não — versão alvo: ao migrar p/ Supabase pago.
 - [ ] Decisão WhatsApp API (BSP oficial vs Evolution) — impacto no MVP? não — versão alvo: +1.0 (produtos de disparo em massa).
-- [ ] Medir tempo médio de aprovação na fila-admin desde o dia 1 da Etapa 01 — impacto no MVP? não — insumo p/ auto-aprovação (Etapa 04).
+- [ ] Medir tempo médio de aprovação na fila-admin desde o dia 1 da Etapa 01 — impacto no MVP? não — insumo p/ auto-aprovação (Etapa 05).
 
 ---
 

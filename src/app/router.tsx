@@ -29,6 +29,8 @@ import { PortalRecepcionistasPage } from "@/features/portal-parceiro/PortalRecep
 import { ListaFaturasPage } from "@/features/financeiro/ListaFaturasPage";
 import { ListaGuiasPage } from "@/features/financeiro/ListaGuiasPage";
 import { ConfiguracoesPage } from "@/features/configuracoes/ConfiguracoesPage";
+import { ListaAtendimentosPage } from "@/features/juridico/ListaAtendimentosPage";
+import { ListaCartasPage } from "@/features/cartas/ListaCartasPage";
 import type { PapelUsuario } from "@/lib/supabase";
 
 /**
@@ -75,6 +77,8 @@ const PAGINAS: Partial<Record<string, ReactNode>> = {
   "/financeiro/faturas": <ListaFaturasPage />,
   "/financeiro/guias": <ListaGuiasPage />,
   "/configuracoes": <ConfiguracoesPage />,
+  "/juridico": <ListaAtendimentosPage />,
+  "/cartas": <ListaCartasPage />,
 };
 const PAGINAS_DETALHE: Partial<Record<string, ReactNode>> = {
   "/trabalhadores/:id": <FichaTrabalhadorPage />,

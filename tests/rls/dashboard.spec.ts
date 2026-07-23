@@ -256,7 +256,11 @@ describe("03.1 · snapshot mensal (G1)", () => {
 
     // Efeito observável, não ausência de erro: a fotografia tem que existir
     // no banco com as três linhas de nível + a linha global com o MRR.
-    const hoje = new Date().toLocaleDateString("sv-SE"); // AAAA-MM-DD local
+    // `fn_snapshot_dashboard` carimba `data_ref = current_date`, e o banco roda
+    // em UTC — a busca precisa usar a data UTC, não a local. Com o horário de
+    // Brasília (UTC-3), depois das 21h o banco já está no dia seguinte e a
+    // consulta por data local não achava a fotografia recém-tirada.
+    const hoje = new Date().toISOString().slice(0, 10); // AAAA-MM-DD UTC (= current_date)
     const { data: fotos } = await clientes.admin
       .from("snapshots_dashboard")
       .select("*")
