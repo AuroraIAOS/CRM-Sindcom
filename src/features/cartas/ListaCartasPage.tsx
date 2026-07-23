@@ -55,10 +55,15 @@ const ORDEM_SITUACAO: SituacaoCarta[] = [
   "ouro_pendente",
 ];
 
+/** O CSV precisa mostrar o MESMO rótulo da tela — exportar o valor cru do enum
+ *  (`prata`) onde o usuário lê um selo "Prata" é a divergência tela×arquivo do
+ *  `orientacoes.md` §4.4, em versão pequena. */
+const ROTULO_NIVEL = { bronze: "Bronze", prata: "Prata", ouro: "Ouro" } as const;
+
 const COLUNAS_CSV: ColunaCsv<TrabalhadorCarta>[] = [
   { titulo: "Trabalhador", valor: (l) => l.trabalhador },
   { titulo: "CPF", valor: (l) => formatarCpf(l.cpf) },
-  { titulo: "Nível atual", valor: (l) => l.nivel ?? "" },
+  { titulo: "Nível atual", valor: (l) => (l.nivel ? ROTULO_NIVEL[l.nivel] : "") },
   { titulo: "Convenção", valor: (l) => l.convencao },
   { titulo: "Ano-base", valor: (l) => l.ano_base },
   { titulo: "Entregou carta", valor: (l) => (l.carta_id ? "Sim" : "Não") },

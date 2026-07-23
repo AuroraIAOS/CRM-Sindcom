@@ -655,14 +655,14 @@ de confirmação e do lote reescritos para dizer a verdade nos dois casos.
 
 | Critério | Situação |
 |---|---|
-| C1–C2, C9 (telas renderizando) | Rotas 200 e nenhuma rota do `NAV` mapeada para `Placeholder`; **confirmação visual logada pendente** — ver §10 |
-| C3 (atendimento aparece nos 3 lugares) | Parcial: 4 atendimentos DEMO criados **por SQL**, não pela interface |
-| C4 (`atendimentos_juridicos` sai de 0) | ✅ 4 registros DEMO, gravados |
-| C5 (botão oculto p/ secretaria/presidente) | ✅ por código e por teste de RLS; **falta conferir com login real de cada papel** |
+| C1, C9 (telas renderizando) | ✅ confirmado em produção com login de Admin (2026-07-23) |
+| C3 (atendimento aparece nos 3 lugares) | ✅ registrado PELA INTERFACE para `DEMO — Kabum 097`; aparece na lista e no acordeão da ficha, com responsável = usuário logado |
+| C4 (`atendimentos_juridicos` sai de 0) | ✅ 5 registros DEMO, gravados |
+| C5 (botão oculto p/ secretaria/presidente) | Parcial: visível para Admin (confirmado na tela) e negado por RLS nos testes; **falta conferir visualmente com login de Jurídico** |
 | C6–C7 (trigger + suíte) | ✅ 11/11, as 4 células cobertas |
 | C8 (frase da Etapa 02 removida) | ✅ |
 | C10, C10b, C11, C11b, C13 (números) | ✅ 17 · 68 · 12 · 3 conferidos contra a simulação do motor e contra `v_relatorio_convencao` |
-| C12 (CSV = tela) | Código consome a mesma lista agregada; **arquivo gerado ainda não foi aberto e conferido** |
+| C12 (CSV = tela) | ✅ arquivo aberto e conferido: 100 linhas, distribuição 17/68/12/3 idêntica à tela, BOM UTF-8, acentos íntegros. **Um defeito encontrado e corrigido:** a coluna "Nível atual" exportava o enum cru (`prata`) em vez do rótulo da tela (`Prata`) |
 | C14 (suíte de cartas) | ✅ 5/5 |
 | C15 (suíte + typecheck) | ✅ 111/111 e `tsc --noEmit` limpo |
 | C16 (deploy verificado) | ✅ 21/21 arquivos, 0 divergências, hash do bundle conferido |

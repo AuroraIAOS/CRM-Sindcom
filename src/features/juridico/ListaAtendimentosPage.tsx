@@ -39,11 +39,17 @@ import {
  */
 const PODE_REGISTRAR = ["admin", "juridico"] as const;
 
+/** Mesmo rótulo da tela no arquivo exportado (`orientacoes.md` §4.4). */
+const ROTULO_NIVEL = { bronze: "Bronze", prata: "Prata", ouro: "Ouro" } as const;
+
 const COLUNAS_CSV: ColunaCsv<AtendimentoListItem>[] = [
   { titulo: "Data", valor: (a) => formatarDataBR(a.data) },
   { titulo: "Trabalhador", valor: (a) => a.trabalhador?.nome ?? "" },
   { titulo: "CPF", valor: (a) => formatarCpf(a.trabalhador?.cpf) },
-  { titulo: "Nível", valor: (a) => a.trabalhador?.nivel ?? "" },
+  {
+    titulo: "Nível",
+    valor: (a) => (a.trabalhador?.nivel ? ROTULO_NIVEL[a.trabalhador.nivel] : ""),
+  },
   { titulo: "Tipo", valor: (a) => ROTULO_TIPO[a.tipo] },
   { titulo: "Situação", valor: (a) => ROTULO_STATUS[a.status as StatusAtendimento] ?? a.status },
   { titulo: "Responsável", valor: (a) => a.responsavel_perfil?.nome ?? "" },
