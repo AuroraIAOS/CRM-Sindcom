@@ -346,6 +346,64 @@ chamadas MCP diretas ao banco + reloads de navegador em sequência rápida) —
 em sessões de teste intensas, espace as rodadas da suíte completa em vez de
 repeti-la várias vezes seguidas "só para conferir".
 
+### 2.8 `TRUNCATE` barra pela existência da FK no catálogo, não pelos dados
+
+**(a) Problema.** Ao zerar as tabelas de dados fictícios (reset pré-dados
+reais), `TRUNCATE parceiros` falhava com "cannot truncate a table referenced
+in a foreign key constraint" apontando `recepcionistas` — mesmo depois de
+`recepcionistas` já ter sido truncada (0 linhas) numa instrução anterior, na
+mesma transação. A tentação é achar que sobrou alguma linha escondida.
+
+**(b) Solução.** `TRUNCATE` (ao contrário de `DELETE`) verifica a **existência
+da constraint no catálogo**, não se há linha violando-a de fato. Qualquer
+tabela com FK apontando para a tabela-alvo tem que estar **na mesma instrução
+`TRUNCATE`** (ou usar `CASCADE`, que arrasta até tabelas fora da lista — perigoso
+se uma delas for uma tabela que deve ficar intocada, como `perfis`). Além
+disso, há um segundo tipo de trava: um `CHECK` como
+`chk_parceiro_exige_vinculo` (`role <> 'parceiro' or parceiro_id is not null`)
+impede simplesmente zerar a FK via `UPDATE ... SET parceiro_id = null` — a
+linha fica num estado que o próprio schema proíbe.
+
+**(c) Como implantar.** Para zerar um conjunto fechado de tabelas que têm FK
+só entre si (nenhuma tabela **fora** do conjunto aponta para dentro dele),
+`TRUNCATE tabela1, tabela2, ..., tabelaN restart identity;` numa única
+instrução funciona sem `CASCADE`. Se uma tabela **fora** do conjunto (ex.:
+`perfis`) aponta para dentro dele (ex.: `parceiros`) e não pode ser truncada
+nem ter a FK zerada por um `CHECK`, troque para `DELETE FROM` em vez de
+`TRUNCATE` — `DELETE` só barra por linha real violando a constraint, nunca
+pela mera existência dela — na ordem certa de dependência (filhos antes de
+pais) e resolvendo a linha que segura a FK (nesse caso, apagando o login de
+teste inteiro via `DELETE FROM auth.users WHERE id = ...`, que faz cascade em
+`perfis`, em vez de tentar só desvincular a coluna).
+
+### 2.9 Dados de teste "fictícios" podem ser infraestrutura de teste, não só demonstração
+
+**(a) Problema.** Ao zerar `parceiros`, o login `ana@almapura.com` (role
+`parceiro`) foi apagado por decisão deliberada (o parceiro "Alma Pura" era
+teste). Só depois, rodando `npm run test:rls`, descobriu-se que esse e-mail
+era exatamente o `TEST_PARCEIRO_EMAIL` do `.env.test` — um dos **5 atores
+fixos** que toda a suíte de RLS usa para logar como cada papel. Resultado: 10
+de 12 arquivos de teste falharam por `FALHA_CREDENCIAL`, não por regressão de
+RLS de verdade.
+
+**(b) Solução.** Recriado um novo ator de teste `parceiro@crm.local` (mesma
+`TEST_USER_PASSWORD`), vinculado a um parceiro placeholder claramente marcado
+(`DEMO — Parceiro de teste (ator RLS)`), e `.env.test` atualizado —
+`npm run test:rls` voltou a 10/12 arquivos verdes (os 2 restantes falham só
+por conteúdo, esperando dados que a limpeza removeu de propósito, não por
+regressão de RLS). Regra geral daqui pra frente: antes de apagar qualquer
+login em `perfis`, checar se o e-mail aparece em `.env.test`
+(`TEST_ADMIN_EMAIL` / `TEST_PRESIDENTE_EMAIL` / `TEST_SECRETARIA_EMAIL` /
+`TEST_JURIDICO_EMAIL` / `TEST_PARCEIRO_EMAIL`) — esses 5 são infraestrutura de
+teste permanente, não dado de negócio, mesmo quando o nome/e-mail parece
+fictício ou "de demonstração".
+
+**(c) Como implantar.** `grep -E "TEST_.*_EMAIL" .env.test` antes de excluir
+qualquer linha de `perfis` (ou o parceiro/empresa ao qual um desses logins
+está vinculado). Se o login precisar mesmo sumir, recriar um ator de teste
+equivalente (perfil + vínculo mínimo que a constraint exigir) **antes** de
+rodar a suíte, e atualizar `.env.test` se o e-mail mudar.
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo
