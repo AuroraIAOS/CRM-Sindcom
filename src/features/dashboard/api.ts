@@ -94,11 +94,22 @@ export function useKpisJuridico(habilitado = true) {
         }),
       );
 
+      // "MEUS atendimentos" (dashboard.md §3): filtra por `responsavel`, senão o
+      // card conta o de todo mundo sob um rótulo na primeira pessoa. O defeito
+      // existia desde a Subetapa 03.1 e era INVISÍVEL enquanto
+      // `atendimentos_juridicos` estava vazia — com zero linhas, "meus" e
+      // "todos" davam o mesmo 0. Só apareceu quando a tela /juridico (04.1)
+      // passou a produzir registros de autores diferentes.
       const trintaDiasAtras = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      const { count: atendimentos, error: erroAtend } = await supabase
-        .from("atendimentos_juridicos")
-        .select("id", { count: "exact", head: true })
-        .gte("created_at", trintaDiasAtras);
+      const { data: sessao } = await supabase.auth.getUser();
+      const uid = sessao.user?.id;
+      const { count: atendimentos, error: erroAtend } = uid
+        ? await supabase
+            .from("atendimentos_juridicos")
+            .select("id", { count: "exact", head: true })
+            .eq("responsavel", uid)
+            .gte("created_at", trintaDiasAtras)
+        : { count: 0, error: null };
       if (erroAtend) throw erroAtend;
 
       const [bronze, prata, ouro] = contagens;

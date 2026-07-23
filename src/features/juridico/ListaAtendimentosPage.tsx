@@ -23,6 +23,7 @@ import {
   FILTROS_VAZIOS,
   ROTULO_STATUS,
   ROTULO_TIPO,
+  rotuloResponsavel,
   useAtendimentos,
   type AtendimentoListItem,
   type AtendimentosFiltros,
@@ -52,7 +53,7 @@ const COLUNAS_CSV: ColunaCsv<AtendimentoListItem>[] = [
   },
   { titulo: "Tipo", valor: (a) => ROTULO_TIPO[a.tipo] },
   { titulo: "Situação", valor: (a) => ROTULO_STATUS[a.status as StatusAtendimento] ?? a.status },
-  { titulo: "Responsável", valor: (a) => a.responsavel_perfil?.nome ?? "" },
+  { titulo: "Responsável", valor: (a) => rotuloResponsavel(a) },
   { titulo: "Resumo", valor: (a) => a.resumo ?? "" },
 ];
 
@@ -134,7 +135,7 @@ export function ListaAtendimentosPage() {
         id: "responsavel",
         header: "Responsável",
         enableSorting: false,
-        cell: ({ row }) => row.original.responsavel_perfil?.nome ?? "—",
+        cell: ({ row }) => rotuloResponsavel(row.original),
       },
     ],
     [],

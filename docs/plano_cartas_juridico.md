@@ -658,7 +658,7 @@ de confirmação e do lote reescritos para dizer a verdade nos dois casos.
 | C1, C9 (telas renderizando) | ✅ confirmado em produção com login de Admin (2026-07-23) |
 | C3 (atendimento aparece nos 3 lugares) | ✅ registrado PELA INTERFACE para `DEMO — Kabum 097`; aparece na lista e no acordeão da ficha, com responsável = usuário logado |
 | C4 (`atendimentos_juridicos` sai de 0) | ✅ 5 registros DEMO, gravados |
-| C5 (botão oculto p/ secretaria/presidente) | Parcial: visível para Admin (confirmado na tela) e negado por RLS nos testes; **falta conferir visualmente com login de Jurídico** |
+| C2, C5 (home e botão por papel) | ✅ com os dois logins reais — ver §10 |
 | C6–C7 (trigger + suíte) | ✅ 11/11, as 4 células cobertas |
 | C8 (frase da Etapa 02 removida) | ✅ |
 | C10, C10b, C11, C11b, C13 (números) | ✅ 17 · 68 · 12 · 3 conferidos contra a simulação do motor e contra `v_relatorio_convencao` |
@@ -669,14 +669,54 @@ de confirmação e do lote reescritos para dizer a verdade nos dois casos.
 | C17 (documentação) | ✅ |
 | C18 (inventário de rotas) | ✅ 19/19 rotas com tela real |
 
-## 10. O que falta para o aceite integral
+## 10. Verificação em produção com login real (2026-07-22 e 23)
 
-Três itens dependem de sessão logada no navegador e **não foram verificados**:
+Todos os itens que dependiam de sessão logada foram fechados — os três que
+estavam abertos na versão anterior deste documento não existem mais.
 
-1. **Confirmação visual** de `/juridico` e `/cartas` renderizando as telas reais
-   (C1, C2, C9). O login por autofill do gerenciador de senhas não completa: o
-   campo é preenchido no DOM mas o React não registra a mudança, e digitar senha
-   está fora do que este agente faz.
-2. **Registro de um atendimento pela interface** (C3) e conferência do botão
-   "Novo atendimento" com login de cada papel (C5).
-3. **Abrir o CSV exportado** e conferir linha a linha contra a tela (C12).
+### Como Admin (Maxwell)
+
+- **C1, C9** — `/juridico` e `/cartas` renderizando as telas reais.
+- **C3, C4** — atendimento registrado **pela interface** para
+  `DEMO — Kabum 097`; aparece na lista, no acordeão da ficha e no KPI, com
+  responsável = usuário logado.
+- **C6 pela UI** — Bronze + Homologação recusado pelo trigger com a mensagem em
+  pt-BR ("apenas orientação geral… exige nível Prata"); Orientação aceita em
+  seguida, no mesmo trabalhador.
+- **C10, C10b** — CCT do Kabum: **17 · 68 · 12 · 3**, idêntico à simulação do
+  motor; o aviso de contagem parcial some quando o prazo está encerrado.
+- **C12** — CSV aberto e conferido: 100 linhas, mesma distribuição da tela,
+  BOM UTF-8, acentos íntegros.
+
+### Como Jurídico (Adenilson)
+
+- **C2** — `/` redireciona para `/juridico` e cai na **tela real**. Era
+  exatamente aqui que o papel batia no "Tela em construção" como primeira tela
+  do sistema.
+- **C5** — "Novo atendimento" **aparece** para o Jurídico; sidebar filtrada (sem
+  Financeiro, Parceiros, Benefícios, Solicitações, Aprovações, Importação e
+  Configurações).
+- **C3 (c)** — o KPI "Meus atendimentos (30 dias)" do dashboard dele reagiu ao
+  registro novo.
+
+### Dois defeitos encontrados nessa passagem — ambos corrigidos e no ar
+
+1. **O rótulo do responsável mentia por omissão.** `pol_perfis_select` só deixa
+   cada usuário ler o próprio perfil, então o embed de `perfis(nome)` volta nulo
+   para o Jurídico num atendimento registrado pelo Admin — e a tela imprimia
+   "—", afirmando "sem responsável" onde havia um. Agora distingue os casos:
+   **"Outro usuário"** quando existe mas não é legível, "—" quando de fato não
+   há. Mesma família do §2.6b do `orientacoes.md`.
+2. **O KPI "Meus atendimentos" contava os de todo mundo.** Defeito
+   pré-existente da Subetapa 03.1, **invisível enquanto
+   `atendimentos_juridicos` estava vazia** — com 0 linhas, "meus" e "todos"
+   empatam em 0. Só apareceu quando a 04.1 passou a produzir registros de
+   autores diferentes: mostrava 5 para quem tinha registrado 4. Passou a
+   filtrar por `responsavel`.
+
+Ambos registrados em `orientacoes.md` §7.7.
+
+**Um número ainda não conferido na tela:** após a correção, o card do Jurídico
+deve mostrar **4** (medido por SQL: Adenilson 4, Maxwell 1). A sessão do
+navegador caiu no hard reload seguinte ao deploy, então essa confirmação visual
+específica ficou para o próximo login — é o único item em aberto.

@@ -17,6 +17,7 @@ import { NovoAtendimentoDialog } from "@/features/juridico/NovoAtendimentoDialog
 import { DetalheAtendimentoDialog } from "@/features/juridico/DetalheAtendimentoDialog";
 import {
   ROTULO_TIPO,
+  rotuloResponsavel,
   useAtendimentosTrabalhador,
   type AtendimentoListItem,
   type TrabalhadorOpcao,
@@ -79,7 +80,7 @@ export function AtendimentosTab({ trabalhador }: { trabalhador: TrabalhadorOpcao
                   <TableCell>
                     <StatusBadge status={a.status} />
                   </TableCell>
-                  <TableCell>{a.responsavel_perfil?.nome ?? "—"}</TableCell>
+                  <TableCell>{rotuloResponsavel(a)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>

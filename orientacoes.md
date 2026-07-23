@@ -968,6 +968,44 @@ quantos fallbacks estão ativos. Um default que "nunca quebra" também nunca
 avisa. E quando uma spec lista telas, a lista dela é o checklist — a soma das
 subetapas pode não cobri-la.
 
+### 7.7 Bug que só aparece quando a tabela deixa de estar vazia
+
+**(a) Problema.** O card "**Meus** atendimentos (30 dias)" do dashboard do
+Jurídico (Subetapa 03.1) contava **todos** os atendimentos do período, sem
+filtrar por `responsavel` — um rótulo na primeira pessoa sobre um número de
+terceiros. O defeito estava lá desde que o card nasceu e **nenhum teste ou
+conferência o pegaria**, porque `atendimentos_juridicos` tinha ZERO linhas: com
+a tabela vazia, "meus" e "todos" dão o mesmo `0`. Ele só ficou visível quando a
+tela `/juridico` (04.1) passou a produzir registros de autores diferentes — e
+apareceu na hora, com o card mostrando `5` para quem tinha feito `4`.
+
+O mesmo aconteceu no rótulo de responsável (§2.6b aplicado a um embed): a
+`pol_perfis_select` só deixa cada um ler o próprio perfil, então o embed
+`perfis(nome)` volta nulo para o Jurídico quando o atendimento foi registrado
+pelo Admin. A tela imprimia `—`, afirmando "sem responsável" onde havia um.
+
+**(b) Solução.** Desconfiar de todo indicador calculado sobre tabela vazia — ele
+está **não testado**, não "correto". Quando a funcionalidade que popula a tabela
+finalmente chega, revisar os KPIs que dependem dela ANTES de considerar a
+entrega fechada. E, em embed que a RLS pode zerar, distinguir "não existe" de
+"você não pode ver": a chave estrangeira (`responsavel`) costuma ser legível
+mesmo quando o registro apontado não é.
+
+**(c) Como implantar.**
+```ts
+// KPI na primeira pessoa PRECISA do filtro de autoria
+const { data: sessao } = await supabase.auth.getUser();
+query.eq("responsavel", sessao.user.id).gte("created_at", trintaDiasAtras);
+
+// embed zerado pela RLS ≠ ausência de dado
+if (a.responsavel_perfil?.nome) return a.responsavel_perfil.nome;
+if (a.responsavel) return "Outro usuário";   // existe, você é que não vê
+return "—";                                   // aí sim: não existe
+```
+**Regra transferível:** "0 linhas na tabela" é o pior cenário de teste possível
+— empata todos os comportamentos errados com o certo. Ao entregar a primeira
+tela que escreve numa tabela, revise tudo que já lia dela.
+
 ### 7.6 Teste que compara data local com `current_date` do banco quebra à noite
 
 **(a) Problema.** Dois testes verdes há semanas falharam juntos às 23h:

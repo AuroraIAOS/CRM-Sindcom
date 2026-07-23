@@ -44,6 +44,29 @@ export function exigeNivelPrata(tipo: TipoAtendimento): boolean {
   return tipo !== "orientacao";
 }
 
+/**
+ * Rótulo do responsável pelo atendimento.
+ *
+ * `pol_perfis_select` (sql/03_rls.sql:136) só deixa cada usuário ler o PRÓPRIO
+ * perfil (`id = auth.uid() or fn_eh('admin')`). Então, para o Jurídico, o embed
+ * `perfis(nome)` de um atendimento registrado pelo Admin volta NULO — e imprimir
+ * "—" ali afirmaria que o atendimento não tem responsável, quando ele tem e o
+ * usuário é que não pode ver o nome. É a mesma armadilha do `orientacoes.md`
+ * §2.6b: a RLS **zera**, não recusa, e uma tela ingênua transforma isso em fato
+ * falso.
+ *
+ * A coluna `responsavel` (uuid) É legível na própria tabela, então dá para
+ * distinguir "sem responsável" de "responsável que você não pode ver".
+ */
+export function rotuloResponsavel(a: {
+  responsavel: string | null;
+  responsavel_perfil: { nome: string } | null;
+}): string {
+  if (a.responsavel_perfil?.nome) return a.responsavel_perfil.nome;
+  if (a.responsavel) return "Outro usuário";
+  return "—";
+}
+
 /** `nivel` é coluna GERADA no banco e vem tipada como nullable pelos tipos
  *  gerados — na prática o `case` sempre resolve, mas o front não inventa valor:
  *  guarda com `&&` na renderização, como já faz `DetalheTrabalhador.tsx`. */

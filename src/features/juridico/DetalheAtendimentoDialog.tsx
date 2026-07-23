@@ -26,6 +26,7 @@ import { mensagemErro } from "@/lib/mensagens";
 import {
   ROTULO_STATUS,
   ROTULO_TIPO,
+  rotuloResponsavel,
   useAtualizarAtendimento,
   useExcluirAtendimento,
   type AtendimentoListItem,
@@ -132,7 +133,7 @@ export function DetalheAtendimentoDialog({
               <div>
                 <dt className="text-texto-2">Responsável</dt>
                 <dd className="text-texto-1">
-                  {atendimento.responsavel_perfil?.nome ?? "—"}
+                  {rotuloResponsavel(atendimento)}
                 </dd>
               </div>
             </dl>
