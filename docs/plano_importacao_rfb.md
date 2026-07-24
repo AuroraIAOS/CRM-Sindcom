@@ -253,7 +253,25 @@ migração precisa falhar alto, não sobrescrever); nenhuma tabela dependente é
 formato + `select` provando 0 linhas em `empresas`/`estabelecimentos` no momento da migração.
 Esforço: n/a (Manual estrito — é DDL/DML em tabela de referência de produção).
 
-### Subetapa 06.1 — Ferramenta de filtragem + validação em 1 arquivo [Goal] [LLM: Sonnet]
+### Subetapa 06.1 — Ferramenta de filtragem + validação em 1 arquivo [Goal] [LLM: Sonnet] · Status: ✅ CONCLUÍDA (2026-07-23)
+
+> **Executada e verificada.** `scripts/rfb/filtrar.mjs` + `scripts/rfb/municipios.mjs`
+> (constantes dos 29 códigos TOM, prefixos CNAE, amostra de controle). Rodado contra
+> `estabelecimentos1.csv` (1,003 GB, 4.753.435 linhas, 61,1s):
+> - **Contagem de controle reproduzida exata: 2853** (amostra de 8 municípios, sem filtro
+>   de situação — o número já medido manualmente nesta sessão).
+> - **RAM estável em streaming real:** 74 → 106 → 103 → 104 → 132 MB ao longo do arquivo
+>   inteiro — achatada, não cresce com o volume lido. Bem abaixo do teto de 300 MB.
+> - **Acentuação verificada em dois níveis:** (1) bit a bit, a linha bruta com `NÚCLEO`
+>   decodificou corretamente; (2) dentro do próprio resultado filtrado, apareceu
+>   `PRAÇA DR LAFAYETE SOARES` com o Ç intacto — não é só o parser, é o pipeline completo
+>   (leitura → decodificação → filtro → amostra) preservando acentuação.
+> - **Primeira medição real da decisão D1:** dos 2.853 estabelecimentos da amostra de 8
+>   municípios (todas as situações), **apenas 627 (22,0%) estão ativos**. Isso recalibra a
+>   estimativa de §2.1 para BAIXO do que a faixa "20-35 mil" ali escrita — o número real
+>   sai da 06.2, mas o sinal já aponta para um volume final bem mais modesto.
+> - Decisão de arquitetura tomada no caminho: **sem `iconv-lite`** — Node decodifica Latin-1
+>   nativamente via `stream.setEncoding('latin1')` (`orientacoes.md` §2.11).
 
 **Objetivo:** escrever `scripts/rfb/filtrar.mjs` (streaming + papaparse) e provar que ele
 lê corretamente **um** arquivo, sem carregar nada em RAM.

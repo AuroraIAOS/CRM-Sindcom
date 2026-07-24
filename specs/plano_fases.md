@@ -342,7 +342,7 @@ CNAE principal ∈ `45|46|47` · situação cadastral = `02` (ativa). O filtro n
 | Subetapa | Status |
 |---|---|
 | 06.0 — Zero-padding canônico das tabelas de referência | ✅ CONCLUÍDA (2026-07-23) |
-| 06.1 — Ferramenta de filtragem + validação em 1 arquivo | ⬜ |
+| 06.1 — Ferramenta de filtragem + validação em 1 arquivo | ✅ CONCLUÍDA (2026-07-23) |
 | 06.2 — Passe completo sobre os 22 GB | ⬜ |
 | 06.3 — Normalização + reconciliação de FKs | ⬜ |
 | 06.4 — Carga em produção | ⬜ |
@@ -360,6 +360,19 @@ idempotência real.
 Evidência: hash md5 idêntico na 2ª execução (4/4); guarda testada com dependente forjado
 abortando corretamente e rollback sem rastro; suíte 93/98 (as 5 falhas pré-existentes de
 conteúdo, sem regressão).
+
+### Subetapa 06.1 — Ferramenta de filtragem + validação em 1 arquivo [Goal] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
+Objetivo: `scripts/rfb/filtrar.mjs`, provado em streaming contra 1 arquivo antes do passe
+completo nos 22 GB.
+Conclusão (2026-07-23): rodado contra `estabelecimentos1.csv` (4.753.435 linhas, 61,1s) —
+contagem de controle reproduzida exata (2853), RAM achatada em 74-132 MB, acentuação correta
+verificada bit a bit e dentro do próprio resultado filtrado ("PRAÇA..."). Primeira medição
+real da decisão D1: só 22,0% dos estabelecimentos da amostra estão ativos.
+Qualidade: parser real (papaparse) — aspas com `;` embutido não quebraram nenhuma linha das
+40 amostras inspecionadas; sem dependência desnecessária (`iconv-lite` descartado a favor do
+`setEncoding('latin1')` nativo, `orientacoes.md` §2.11).
+Evidência: script + log completo da execução, contagem batendo com o número medido
+manualmente na sessão anterior.
 
 ---
 

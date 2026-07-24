@@ -435,6 +435,33 @@ precisa falhar alto em vez de sobrescrever. Prove a idempotência por hash
 decorativa**: force a condição perigosa dentro de um bloco que termina em `raise exception`
 — a exceção final desfaz o teste e a mensagem confirma que a guarda disparou.
 
+### 2.11 Latin-1 dos CSVs da Receita: Node decodifica nativo, sem precisar de `iconv-lite`
+
+**(a) Problema.** Ao escrever `scripts/rfb/filtrar.mjs` (Subetapa 06.1), a primeira versão
+importava `iconv-lite` para decodificar os CSVs da RFB (Latin-1/ISO-8859-1). O pacote não
+está instalado — e um `ls node_modules/iconv-lite | head -1 && echo presente || echo
+ausente` deu falso-positivo: quando `ls` falha, escreve o erro em stderr (descartado),
+produz stdout vazio, e `head -1` sobre entrada vazia ainda sai com código 0 — então o `&&`
+disparou mesmo sem o pacote existir. Só o `node --eval "import('iconv-lite')"` revelou o
+`ERR_MODULE_NOT_FOUND` de verdade.
+
+**(b) Solução.** Não precisa de dependência nenhuma: Latin-1 é mapeamento direto byte→code
+point, e o Node já suporta como encoding nativo de `Buffer`/stream.
+`readStream.setEncoding('latin1')` faz o stream emitir strings JS já corretas — sem
+Transform, sem lib externa. Verificado bit a bit: a mesma linha bruta do CSV
+(`"N\xDACLEO"`) decodifica para `"NÚCLEO"`, e uma amostra real do resultado filtrado trouxe
+`"PRAÇA DR LAFAYETE SOARES"` com o Ç intacto.
+
+**(c) Como implantar.** Para qualquer stream de texto que não seja UTF-8:
+```js
+const s = fs.createReadStream(caminho);
+s.setEncoding('latin1'); // ou 'utf8', 'ascii', 'utf16le', 'base64', 'hex' — todos nativos
+```
+E para checar se um pacote *realmente* está instalado (não só "parece" via `ls | grep`),
+teste o import de verdade: `node -e "import('<pacote>').then(()=>console.log('OK'))"` —
+`ls`/`grep` em pipeline com `&&`/`||` mentem quando o comando anterior falha silenciosamente
+com stdout vazio.
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo
