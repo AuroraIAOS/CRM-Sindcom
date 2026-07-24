@@ -503,7 +503,40 @@ ter quebrado política nenhuma).
 **Evidência:** relatório + suíte verde + app em `crm.sindcompassos.org` listando as empresas
 reais nas telas `/empresas` e `/estabelecimentos`.
 
-### Subetapa 06.6 — Skill `atualizar-sindcom` (ciclo mensal) [Goal] [LLM: Opus]
+### Subetapa 06.6 — Skill `atualizar-sindcom` (ciclo mensal) [Goal] [LLM: Opus] · Status: ✅ CONCLUÍDA (2026-07-24)
+
+> **Entregue e testada.** Skill em `~/.claude/skills/atualizar-sindcom/SKILL.md`, com **cópia
+> versionada** em `skills/atualizar-sindcom/` (mesmo padrão do `n8n/` — se a máquina trocar, o
+> procedimento não se perde). Três scripts novos fecham o ciclo:
+>
+> | Script | Papel |
+> |---|---|
+> | `scripts/rfb/exportar_conhecidos.mjs` | Exporta os `cnpj_completo` do banco — insumo que permite explicar **por quê** um conhecido sumiu |
+> | `scripts/rfb/passe_06_2.mjs` (ampliado) | Passa a emitir `rejeitados_conhecidos.ndjson` com o motivo de cada rejeição |
+> | `scripts/rfb/delta.mjs` | Compara RFB × banco, reporta e aplica **só o delta** |
+>
+> **Idempotência provada:** rodado contra a base recém-carregada, deu **delta zero nas 6
+> categorias** (empresas e estabelecimentos × novas/alteradas/sumidas).
+>
+> **Detecção provada — porque delta zero sozinho é ambíguo** (poderia significar "comparação
+> quebrada"). Montei um cenário adulterado, em diretório separado, sem tocar em produção:
+> removi 1 estabelecimento, alterei 1 (logradouro + telefone) e adicionei 1 novo com sua
+> empresa. O delta acusou exatamente **1 nova empresa · 1 novo estabelecimento · 1 alterado ·
+> 1 sumido**, com diff campo a campo (`logradouro: "GASPARINO DE ANDRADE" → "RUA TESTE DELTA
+> ALTERADA"`) e o sumido nomeado (`LUMEN AGRO`) com motivo e detalhe. Produção conferida depois:
+> 16.687/17.319 intactas, 0 linhas alteradas, 0 vazamento do teste.
+>
+> **Classificação de motivo provada nos 3 casos:** plantei 7 CNPJs "conhecidos" que falham o
+> filtro por razões diferentes e o passe explicou cada um corretamente — 3 baixadas
+> (`situação atual: 08`, incluindo `BAR BAHIA` e `COMERCIAL BOA VISTA`), 2 com CNAE fora de
+> comércio (`8610101`, atividade hospitalar) e 2 que mudaram para município fora da base
+> territorial. É essa distinção que torna o relatório acionável: "fechou" a Denise resolve,
+> "sumiu do arquivo" é suspeito e pede conferência manual.
+>
+> **A regra que define a skill, implementada e documentada:** ela **nunca apaga**. Sumidos vão
+> para relatório agrupado por motivo, jamais para um `DELETE`. E `convencao_id` não entra no
+> payload de update — o vínculo de CCT que a Denise preenche à mão sobrevive a todos os ciclos
+> mensais por construção, não por lembrança.
 
 **Objetivo:** transformar as 06.1–06.5 num procedimento repetível que **dá sequência à skill
 `atualizar-cnpj`** (que hoje só baixa e extrai os arquivos da RFB).

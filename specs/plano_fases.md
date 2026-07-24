@@ -327,7 +327,7 @@ suíte 111/111 verde; deploy publicado e verificado por hash do bundle.
 
 ---
 
-## ETAPA 06 — REPOVOAMENTO DA BASE REAL (RFB) · Complexidade: ALTA · Status: 🔄 EM ANDAMENTO
+## ETAPA 06 — REPOVOAMENTO DA BASE REAL (RFB) · Complexidade: ALTA · Status: ✅ CONCLUÍDA (no ar em `crm.sindcompassos.org`)
 
 Objetivo geral: sair das tabelas vazias (reset de 2026-07-23) para a base real dos 29
 municípios — empresas e estabelecimentos filtrados dos 22 GB de Dados Abertos do CNPJ —
@@ -347,7 +347,7 @@ CNAE principal ∈ `45|46|47` · situação cadastral = `02` (ativa). O filtro n
 | 06.3 — Normalização + reconciliação de FKs | ✅ CONCLUÍDA (2026-07-24) |
 | 06.4 — Carga em produção | ✅ CONCLUÍDA (2026-07-24) |
 | 06.5 — Auditoria pós-carga | ✅ CONCLUÍDA (2026-07-24) |
-| 06.6 — Skill `atualizar-sindcom` (ciclo mensal) | ⬜ |
+| 06.6 — Skill `atualizar-sindcom` (ciclo mensal) | ✅ CONCLUÍDA (2026-07-24) |
 
 ### Subetapa 06.0 — Zero-padding das tabelas de referência [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
 Objetivo: alinhar `cnaes`/`naturezas_juridicas`/`qualificacoes_responsavel`/`motivos_situacao_cadastral`
@@ -423,6 +423,25 @@ Telefônica. **Prova de ponta a ponta da 06.0**: a ficha mostra "Sociedade Anôn
 "Presidente" — JOINs nas tabelas de referência que não resolveriam com os códigos antigos.
 Evidência: relatório de asserções + comparação por município + screenshot da tela real +
 suíte 93/98 (as 5 falhas pré-existentes de conteúdo).
+
+### Subetapa 06.6 — Skill `atualizar-sindcom` (ciclo mensal) [Goal] [LLM: Opus] · Status: ✅ CONCLUÍDA
+Objetivo: transformar as 06.1–06.5 num procedimento mensal repetível, dando sequência à skill
+`atualizar-cnpj` (que só baixa os arquivos).
+Conclusão (2026-07-24): skill em `~/.claude/skills/atualizar-sindcom/` (cópia versionada em
+`skills/`) + `exportar_conhecidos.mjs`, `delta.mjs` e ampliação do `passe_06_2.mjs` para emitir
+`rejeitados_conhecidos.ndjson` com o motivo de cada rejeição.
+Qualidade: **ela nunca apaga** — sumidos viram relatório agrupado por motivo, jamais DELETE; e
+`convencao_id` não entra no payload de update, então o vínculo de CCT feito à mão pela Denise
+sobrevive a todo ciclo mensal por construção.
+Evidência: delta zero nas 6 categorias contra a base recém-carregada (idempotência) **e**
+detecção provada com cenário adulterado em diretório separado (1 nova · 1 alterada com diff
+campo a campo · 1 sumida nomeada), mais a classificação de motivo verificada nos 3 casos reais
+(baixada · CNAE fora de comércio · município fora da base). Produção intacta após os testes.
+
+**Aceite da Etapa 06 (cumprido):** (1) base populada só com os 29 municípios, CNAE 45/46/47 e
+situação ativa, conferida município a município; (2) 0 órfãos de FK e `cnpj_completo` íntegro;
+(3) triggers de auditoria religados e verificados; (4) suíte verde (93/98, sem regressão) e
+telas listando dados reais; (5) skill rodada com delta zero na segunda execução.
 
 ---
 

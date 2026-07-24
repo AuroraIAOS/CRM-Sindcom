@@ -20,8 +20,11 @@ import path from "node:path";
 import Papa from "papaparse";
 import { MUNICIPIOS_TOM, CNAE_PREFIXOS, SITUACAO_ATIVA } from "./municipios.mjs";
 
-const DIR_ORIGEM = "D:/BD";
-const DIR_SAIDA = "D:/BD/filtrados";
+const DIR_ORIGEM = process.env.RFB_ORIGEM ?? "D:/BD";
+const DIR_SAIDA = process.env.RFB_DIR ?? "D:/BD/filtrados";
+// Faixa de arquivos (0-9). Usada só para testes pontuais; o ciclo real é 0..9.
+const IDX_INI = Number(process.env.RFB_IDX_INI ?? 0);
+const IDX_FIM = Number(process.env.RFB_IDX_FIM ?? 9);
 fs.mkdirSync(DIR_SAIDA, { recursive: true });
 
 const logPath = path.join(DIR_SAIDA, "log_06_2.txt");
@@ -55,6 +58,36 @@ function linhaEstabAprovada(linha) {
     cnaeAprovado(linha[COL_ESTAB.cnae_principal]) &&
     linha[COL_ESTAB.situacao_cadastral] === SITUACAO_ATIVA
   );
+}
+
+// Conjunto de cnpj_completo que JÁ ESTÃO no banco (exportado por
+// exportar_conhecidos.mjs). Serve para o ciclo mensal distinguir os dois
+// motivos de um registro "sumir" do resultado filtrado — e o motivo importa
+// muito: "fechou" é acionável pela Denise, "sumiu do arquivo" é suspeito.
+const ARQ_CONHECIDOS = path.join(DIR_SAIDA, "cnpj_conhecidos.txt");
+const CONHECIDOS = fs.existsSync(ARQ_CONHECIDOS)
+  ? new Set(fs.readFileSync(ARQ_CONHECIDOS, "utf8").split("\n").map((s) => s.trim()).filter(Boolean))
+  : new Set();
+
+// Por que esta linha (que o banco conhece) não passou no filtro?
+function motivoRejeicao(linha) {
+  const municipio = Number.parseInt(linha[COL_ESTAB.municipio_tom], 10);
+  const situacao = linha[COL_ESTAB.situacao_cadastral];
+  const cnae = linha[COL_ESTAB.cnae_principal];
+  if (situacao !== SITUACAO_ATIVA) {
+    const nomes = { "01": "nula", "03": "suspensa", "04": "inapta", "08": "baixada" };
+    return {
+      motivo_rejeicao: "situação cadastral deixou de ser 02 (ativa)",
+      detalhe: `situação atual: ${situacao} (${nomes[situacao] ?? "desconhecida"})`,
+    };
+  }
+  if (!cnaeAprovado(cnae)) {
+    return { motivo_rejeicao: "CNAE principal deixou de ser de comércio (45/46/47)", detalhe: `CNAE atual: ${cnae}` };
+  }
+  if (!MUNICIPIOS_TOM.has(municipio)) {
+    return { motivo_rejeicao: "mudou para município fora da base territorial", detalhe: `município TOM atual: ${municipio}` };
+  }
+  return { motivo_rejeicao: "motivo não determinado", detalhe: null };
 }
 
 // Contagem independente de linhas via bytes '\n' — não usa o parser CSV,
@@ -92,6 +125,8 @@ function parseArquivo(caminho, onLinha) {
 async function passe1() {
   log("\n=== PASSE 1: estabelecimentos0-9.csv ===");
   const wsNdjson = fs.createWriteStream(path.join(DIR_SAIDA, "estabelecimentos_filtrados.ndjson"));
+  const wsRejeitados = fs.createWriteStream(path.join(DIR_SAIDA, "rejeitados_conhecidos.ndjson"));
+  let rejeitadosConhecidos = 0;
   const cnpjAprovados = new Set();
   const porMunicipio = new Map();
   const porDivisaoCnae = new Map();
@@ -99,13 +134,30 @@ async function passe1() {
   let totalAprovado = 0;
   const conferenciaPorArquivo = [];
 
-  for (let i = 0; i <= 9; i++) {
+  for (let i = IDX_INI; i <= IDX_FIM; i++) {
     const arquivo = path.join(DIR_ORIGEM, `estabelecimentos${i}.csv`);
     const inicio = Date.now();
 
     const linhasBrutas = await contarLinhasBrutas(arquivo);
     const lidoNesteArquivo = await parseArquivo(arquivo, (linha) => {
-      if (!linhaEstabAprovada(linha)) return;
+      if (!linhaEstabAprovada(linha)) {
+        // Só interessa reportar rejeição de quem o banco já conhece — o resto
+        // do Brasil sempre foi rejeitado e não é notícia.
+        if (CONHECIDOS.size) {
+          const completo = `${linha[COL_ESTAB.cnpj_basico]}${linha[COL_ESTAB.cnpj_ordem]}${linha[COL_ESTAB.cnpj_dv]}`;
+          if (CONHECIDOS.has(completo)) {
+            rejeitadosConhecidos++;
+            wsRejeitados.write(JSON.stringify({
+              cnpj_basico: linha[COL_ESTAB.cnpj_basico],
+              cnpj_ordem: linha[COL_ESTAB.cnpj_ordem],
+              cnpj_dv: linha[COL_ESTAB.cnpj_dv],
+              nome_fantasia: linha[COL_ESTAB.nome_fantasia] || null,
+              ...motivoRejeicao(linha),
+            }) + "\n");
+          }
+        }
+        return;
+      }
       totalAprovado++;
       const municipio = Number.parseInt(linha[COL_ESTAB.municipio_tom], 10);
       const cnae = linha[COL_ESTAB.cnae_principal];
@@ -129,9 +181,13 @@ async function passe1() {
   }
 
   await new Promise((r) => wsNdjson.end(r));
+  await new Promise((r) => wsRejeitados.end(r));
   fs.writeFileSync(path.join(DIR_SAIDA, "cnpj_aprovados.txt"), [...cnpjAprovados].join("\n"));
+  if (CONHECIDOS.size) {
+    log(`  → ${rejeitadosConhecidos} estabelecimento(s) conhecido(s) do banco NÃO passaram mais no filtro (ver rejeitados_conhecidos.ndjson)`);
+  }
 
-  return { totalLido, totalAprovado, cnpjAprovados, porMunicipio, porDivisaoCnae, conferenciaPorArquivo };
+  return { totalLido, totalAprovado, cnpjAprovados, porMunicipio, porDivisaoCnae, conferenciaPorArquivo, rejeitadosConhecidos };
 }
 
 async function passe2(cnpjAprovados) {
@@ -142,7 +198,7 @@ async function passe2(cnpjAprovados) {
   const cnpjEncontrados = new Set();
   const conferenciaPorArquivo = [];
 
-  for (let i = 0; i <= 9; i++) {
+  for (let i = IDX_INI; i <= IDX_FIM; i++) {
     const arquivo = path.join(DIR_ORIGEM, `empresas${i}.csv`);
     const inicio = Date.now();
 
