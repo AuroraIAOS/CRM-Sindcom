@@ -498,6 +498,74 @@ que fecha) bater exatamente com o delta bruto−parseado, a divergência está e
 truncamento. Se não bater, aí sim investigar truncamento de verdade (comparar tamanho do
 arquivo baixado com o do servidor, checar se o processo de download foi interrompido).
 
+### 2.13 Carga em massa: desligar trigger de auditoria é seguro — desde que se prove que ele VOLTOU
+
+**(a) Problema.** A carga inicial de 34 mil linhas (Subetapa 06.4) dispararia
+`trg_*_auditoria`, que grava uma cópia JSONB de cada linha inserida: ~34 mil registros
+extras e uma estimativa de 60-90 MB dos 500 MB do plano Free, além de deixar a carga
+bem mais lenta. Mas desligar trigger em produção tem um risco pior que o problema que
+resolve: **esquecer ligado de volta** deixa um buraco silencioso na trilha de auditoria —
+nada falha, nada avisa, e só se descobre quando alguém precisa da trilha e ela não existe.
+
+**(b) Solução.** Desligar só os triggers de auditoria (os de `updated_at` são baratos e
+irrelevantes num INSERT), e tratar o religamento como parte obrigatória do procedimento,
+com **prova em dois níveis**: a flag e o comportamento. Conferir só
+`pg_trigger.tgenabled = 'O'` prova que a flag mudou, não que o trigger voltou a gravar.
+
+**(c) Como implantar.**
+```sql
+-- ANTES: capturar o baseline de TODOS os triggers da tabela (não só os que vai mexer)
+select c.relname, t.tgname, t.tgenabled from pg_trigger t
+  join pg_class c on c.oid = t.tgrelid
+ where not t.tgisinternal and c.relname in ('empresas','estabelecimentos');
+
+alter table empresas disable trigger trg_empresas_auditoria;
+-- ... carga ...
+alter table empresas enable trigger trg_empresas_auditoria;
+
+-- DEPOIS (nível 1): a flag voltou e bate com o baseline?
+-- DEPOIS (nível 2): o trigger REALMENTE grava? Testar com rollback proposital:
+do $$
+declare v_antes bigint; v_depois bigint;
+begin
+  select count(*) into v_antes from auditoria;
+  update empresas set porte = porte where cnpj_basico = (select cnpj_basico from empresas limit 1);
+  select count(*) into v_depois from auditoria;
+  raise exception 'delta=% %', v_depois - v_antes,
+    case when v_depois > v_antes then 'OK gravando' else 'NAO GRAVOU' end;
+end $$;
+```
+O `raise exception` final desfaz o UPDATE de teste **e** a linha de auditoria que ele gerou —
+o teste não polui nada. Economia real medida no projeto: `auditoria` ficou em 422 linhas
+durante toda a carga, e o banco inteiro terminou em 35 MB.
+
+### 2.14 `ON CONFLICT DO NOTHING` é o que torna uma carga em massa repetível sem medo
+
+**(a) Problema.** Uma carga de seed precisa poder ser reexecutada (interrupção de rede,
+retomada, conferência) sem duplicar nem estragar o que já está lá. `upsert` com merge (o
+default) reexecuta sem duplicar, mas **atualiza** as linhas existentes — o que dispara
+`updated_at`, gera auditoria, e pior: **sobrescreveria colunas que humanos editaram depois
+da carga**. No CRM Sindcom isso destruiria silenciosamente o `convencao_id`, que é o vínculo
+CCT↔estabelecimento preenchido à mão pela Denise.
+
+**(b) Solução.** Para seed/carga inicial e para o delta mensal, usar
+`ignoreDuplicates: true` no supabase-js (= `ON CONFLICT DO NOTHING`): insere o que falta,
+**não toca em nada que já existe**. Duas proteções somadas: a coluna sensível nem é enviada
+no payload, e a linha existente não é atualizada de forma alguma.
+
+**(c) Como implantar.**
+```js
+await client.from('estabelecimentos')
+  .upsert(lote, { onConflict: 'cnpj_basico,cnpj_ordem,cnpj_dv', ignoreDuplicates: true });
+```
+E a prova de idempotência não é "a contagem não mudou" — isso só descarta duplicação.
+A prova forte é que **nada foi tocado**:
+```sql
+select count(*) from estabelecimentos where updated_at <> created_at;  -- tem que ser 0
+```
+Se esse número for > 0 depois de uma 2ª execução, a carga está atualizando linhas existentes
+mesmo sem duplicá-las — e alguma edição manual pode ter sido sobrescrita.
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo

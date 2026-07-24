@@ -393,7 +393,43 @@ social com vírgula convertido sem perder centavos.
 transação com `ROLLBACK` — passa pelos CHECKs e FKs reais e não deixa rastro.
 Esforço: n/a (Manual estrito — é a subetapa que decide se a carga é segura).
 
-### Subetapa 06.4 — Carga em produção [Manual] [LLM: Opus]
+### Subetapa 06.4 — Carga em produção [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA (2026-07-24)
+
+> **Executada e verificada.** `scripts/rfb/carregar_06_4.mjs`, logado como
+> `admin@crm.local` com a **anon key** — passando pelas mesmas políticas de RLS que a
+> Denise enfrentaria, **sem `service_role`** (§3.5). Carga completa em **20 segundos**,
+> zero erros de lote.
+>
+> **Contagens finais — batem exatamente com o NDJSON da 06.2:**
+>
+> | | NDJSON | Banco | |
+> |---|---|---|---|
+> | empresas | 16.687 | **16.687** | ✅ |
+> | estabelecimentos | 17.319 | **17.319** | ✅ |
+>
+> **Integridade pós-carga:** 0 estabelecimentos órfãos de empresa · 0 fora da situação `02` ·
+> **29 municípios distintos** · `cnpj_completo` gerado pelo banco em 100% das linhas (0 nulos)
+> · **`convencao_id` NULL em 17.319/17.319** — nada foi vinculado a CCT por acidente.
+>
+> **Idempotência provada de fato:** segunda execução completa → contagens idênticas **e
+> `updated_at <> created_at` em 0 linhas**, ou seja, a carga não duplicou *nem tocou* nenhum
+> registro existente (`ON CONFLICT DO NOTHING`). Isso protege por construção o `convencao_id`
+> que a Denise vier a preencher — a coluna nem é enviada, e linhas existentes não são tocadas.
+>
+> **Triggers de auditoria (decisão D3):** desligados antes da carga e **religados ao final**,
+> com dupla verificação — (1) `pg_trigger.tgenabled` de volta a `ativo` nos 4 triggers,
+> idêntico ao baseline capturado antes de mexer; (2) **teste funcional com rollback** provando
+> que a auditoria voltou a *gravar* (um UPDATE gerou delta=1 em `auditoria`), não só que a
+> flag mudou. Economia confirmada: `auditoria` permaneceu em 422 linhas durante toda a carga,
+> em vez de ganhar ~34 mil.
+>
+> **Espaço:** `estabelecimentos` 10 MB + `empresas` 7,7 MB · **banco total 35 MB** dos 500 MB
+> do plano Free — folga enorme, em boa parte graças à decisão D3.
+>
+> **Conferência a olho contra a origem:** `PRAÇA GERALDO DA SILVA MAIA` (Passos) com acento
+> íntegro em produção, joins de CNAE e município resolvendo descrição correta, e a Telefônica
+> aparecendo com 13 filiais espalhadas pela base territorial — o caso multi-estabelecimento
+> funcionando como esperado. Suíte RLS 93/98 (as 5 falhas pré-existentes de conteúdo).
 
 **Objetivo:** subir `empresas` e depois `estabelecimentos`, logado como Admin.
 **Conclusão:** as duas tabelas populadas, contagem final = contagem do NDJSON, `importacoes_csv`

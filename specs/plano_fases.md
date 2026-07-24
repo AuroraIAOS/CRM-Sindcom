@@ -345,7 +345,7 @@ CNAE principal ∈ `45|46|47` · situação cadastral = `02` (ativa). O filtro n
 | 06.1 — Ferramenta de filtragem + validação em 1 arquivo | ✅ CONCLUÍDA (2026-07-23) |
 | 06.2 — Passe completo sobre os 22 GB | ✅ CONCLUÍDA (2026-07-24) |
 | 06.3 — Normalização + reconciliação de FKs | ✅ CONCLUÍDA (2026-07-24) |
-| 06.4 — Carga em produção | ⬜ |
+| 06.4 — Carga em produção | ✅ CONCLUÍDA (2026-07-24) |
 | 06.5 — Auditoria pós-carga | ⬜ |
 | 06.6 — Skill `atualizar-sindcom` (ciclo mensal) | ⬜ |
 
@@ -398,6 +398,18 @@ Qualidade: dry-run com **lote adversarial** (22 casos escolhidos por cobertura d
 `cnpj_completo` GENERATED e `numeric(15,2)` todos verificados; rollback sem rastro em `auditoria`.
 Evidência: `reconciliacao_06_3.json` + query de reconciliação com as 5 referências em 0 órfãos +
 mensagem do dry-run com os valores conferidos.
+
+### Subetapa 06.4 — Carga em produção [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+Objetivo: subir empresas → estabelecimentos, logado como Admin.
+Conclusão (2026-07-24): **16.687 empresas + 17.319 estabelecimentos** no ar em 20s, contagens
+idênticas ao NDJSON. 0 órfãos, 29 municípios, `cnpj_completo` gerado em 100%, `convencao_id`
+NULL em todas. Banco em 35 MB dos 500 MB do Free.
+Qualidade: rodou pela **anon key como Admin** (sem `service_role`, respeitando o `CLAUDE.md`);
+idempotência provada — 2ª execução com contagem igual **e 0 linhas com `updated_at <> created_at`**;
+triggers de auditoria religados e verificados em dois níveis (flag `pg_trigger.tgenabled` +
+teste funcional com rollback provando que voltou a gravar).
+Evidência: contagens antes/depois, 2ª execução com delta zero, estado dos triggers conferido,
+5 registros conferidos a olho contra a origem (acentuação, CNPJ, município, CNAE), suíte 93/98.
 
 ---
 
