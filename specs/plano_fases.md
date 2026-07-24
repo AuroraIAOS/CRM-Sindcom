@@ -327,6 +327,42 @@ suíte 111/111 verde; deploy publicado e verificado por hash do bundle.
 
 ---
 
+## ETAPA 06 — REPOVOAMENTO DA BASE REAL (RFB) · Complexidade: ALTA · Status: 🔄 EM ANDAMENTO
+
+Objetivo geral: sair das tabelas vazias (reset de 2026-07-23) para a base real dos 29
+municípios — empresas e estabelecimentos filtrados dos 22 GB de Dados Abertos do CNPJ —
+e automatizar o ciclo mensal numa skill.
+
+**Plano detalhado, decisões e critérios de aceite: [`docs/plano_importacao_rfb.md`](../docs/plano_importacao_rfb.md).**
+
+Filtros (decididos por Maxwell em 2026-07-23): município ∈ 29 `base_territorial` ·
+CNAE principal ∈ `45|46|47` · situação cadastral = `02` (ativa). O filtro nasce no
+**estabelecimento** (unidade de alocação do trabalhador) e cascateia para a empresa.
+
+| Subetapa | Status |
+|---|---|
+| 06.0 — Zero-padding canônico das tabelas de referência | ✅ CONCLUÍDA (2026-07-23) |
+| 06.1 — Ferramenta de filtragem + validação em 1 arquivo | ⬜ |
+| 06.2 — Passe completo sobre os 22 GB | ⬜ |
+| 06.3 — Normalização + reconciliação de FKs | ⬜ |
+| 06.4 — Carga em produção | ⬜ |
+| 06.5 — Auditoria pós-carga | ⬜ |
+| 06.6 — Skill `atualizar-sindcom` (ciclo mensal) | ⬜ |
+
+### Subetapa 06.0 — Zero-padding das tabelas de referência [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+Objetivo: alinhar `cnaes`/`naturezas_juridicas`/`qualificacoes_responsavel`/`motivos_situacao_cadastral`
+ao layout oficial do CNPJ, antes de qualquer carga.
+Conclusão (2026-07-23): `sql/18_padding_referencias.sql` aplicado — larguras 7/4/2/2 com as
+contagens **intactas** (1359 · 91 · 68 · 63) e 0 linhas fora do padrão. Descoberto que o banco,
+não a spec, estava divergente (`orientacoes.md` §2.10).
+Qualidade: 3 guardas (dependentes vazios · código não-numérico/largo · colisão de PK) e
+idempotência real.
+Evidência: hash md5 idêntico na 2ª execução (4/4); guarda testada com dependente forjado
+abortando corretamente e rollback sem rastro; suíte 93/98 (as 5 falhas pré-existentes de
+conteúdo, sem regressão).
+
+---
+
 ## ETAPA 05 — BACKLOG PÓS-MVP (prioriza-se com dado real, não com opinião) · Status: ⬜
 
 Objetivo geral: refinamentos guiados por evidência sobre o produto lançado.

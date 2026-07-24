@@ -404,6 +404,37 @@ está vinculado). Se o login precisar mesmo sumir, recriar um ator de teste
 equivalente (perfil + vínculo mínimo que a constraint exigir) **antes** de
 rodar a suíte, e atualizar `.env.test` se o e-mail mudar.
 
+### 2.10 Código de referência gravado sem zero à esquerda casa com NADA da RFB
+
+**(a) Problema.** Preparando a carga real de empresas/estabelecimentos, conferi as 4
+tabelas de referência carregadas na Fase 0 e elas guardavam os códigos **sem zeros à
+esquerda**: `motivos` = `0, 1, 2, 10…`, `qualificacoes` = `0, 10, 11…`, `naturezas` =
+`0, 1015…`, `cnaes` = `111301` (6 dígitos). Os CSVs de Dados Abertos do CNPJ entregam
+esses mesmos códigos com largura fixa: `01`, `05`, `0000`, `0111301`. Como essas colunas
+são FK em **todas** as linhas de empresas e estabelecimentos, a carga teria dado 100% de
+rejeição — e o pior: `specs/importacao.md` §3.1 já mandava "zero-pad", então o código
+estava certo e **o banco é que estava errado**, o oposto do que se supõe por instinto.
+Provável causa: a carga original passou por um intermediário numérico (`'05'::int` → `5`).
+
+**(b) Solução.** Alinhar o banco ao layout oficial em vez de deformar a importação:
+`sql/18_padding_referencias.sql` aplica `lpad` nas 4 tabelas (cnae 7 · natureza 4 ·
+qualificação 2 · motivo 2). Feito na janela em que `empresas`/`estabelecimentos` estavam
+**vazias** — com a base carregada, seria mexer em ~120 mil chaves estrangeiras.
+
+**(c) Como implantar.** Antes de qualquer carga que dependa de tabela de domínio, compare
+o formato dos dois lados — nunca presuma que a tabela de referência está no formato da fonte:
+```sql
+select min(length(codigo)), max(length(codigo)) from <tabela_referencia>;
+```
+Largura variável onde o layout manda largura fixa é o sintoma. Ao corrigir, **três guardas
+não-opcionais** no mesmo bloco da migração: (1) dependentes vazios; (2) nenhum código
+não-numérico ou acima da largura alvo; (3) **nenhuma colisão de PK após o padding** — se
+`1` e `01` coexistissem, o `lpad` fundiria dois domínios distintos numa linha só, e isso
+precisa falhar alto em vez de sobrescrever. Prove a idempotência por hash
+(`md5(string_agg(...))` antes × depois de uma 2ª execução) e prove que a guarda **não é
+decorativa**: force a condição perigosa dentro de um bloco que termina em `raise exception`
+— a exceção final desfaz o teste e a mensagem confirma que a guarda disparou.
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo
