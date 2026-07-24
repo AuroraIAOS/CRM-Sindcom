@@ -462,6 +462,42 @@ teste o import de verdade: `node -e "import('<pacote>').then(()=>console.log('OK
 `ls`/`grep` em pipeline com `&&`/`||` mentem quando o comando anterior falha silenciosamente
 com stdout vazio.
 
+### 2.12 Contagem de linhas por bytes `'\n'` é enganada por campo com quebra de linha entre aspas
+
+**(a) Problema.** Na Subetapa 06.2, para provar que nenhum dos 20 arquivos da Receita foi
+truncado, contei linhas de duas formas independentes por arquivo: bytes `'\n'` crus (rápido,
+sem parser) × linhas que o papaparse realmente produziu. 3 dos 20 arquivos divergiram por 1-3
+linhas — pareceu indício de truncamento, mas a direção do erro (bruto sempre MAIOR que
+parseado) é o padrão inverso de truncamento (que daria parseado > bruto ou os dois menores
+que o esperado). Investigado com um segundo diagnóstico (contar aspas `"` por linha física —
+número ÍMPAR de aspas significa que a aspa abriu e não fechou naquela linha, ou seja, o campo
+continua na próxima linha física): confirmou que as 3 divergências eram exatamente 7 registros
+(3 em `estabelecimentos0`, 1 em `estabelecimentos6`, 3 em `estabelecimentos8`) cujo
+`nome_fantasia` contém uma quebra de linha literal no dado original da Receita — CSV
+tecnicamente válido (RFC 4180 permite `\n` dentro de campo entre aspas), que o papaparse
+junta corretamente em 1 linha lógica, e que a contagem ingênua de bytes conta como 2.
+
+**(b) Solução.** Não tratar a contagem crua de `'\n'` como verdade absoluta — ela é só um
+sinal de alerta. Toda divergência precisa de uma segunda checagem antes de concluir
+truncamento: contar aspas por linha física resolve o caso mais comum (campo multi-linha).
+
+**(c) Como implantar.**
+```js
+// sinal de alerta: bruto !== parseado, arquivo a arquivo (não só no agregado —
+// arquivo por arquivo, senão divergências podem se cancelar por acaso)
+
+// diagnóstico: aspas ímpares numa linha física = ela não fecha o campo,
+// continua na próxima linha (readline + contagem de '"' por linha basta)
+for await (const linha of readline.createInterface({ input: stream })) {
+  const aspas = (linha.match(/"/g) || []).length;
+  if (aspas % 2 !== 0) { /* linha suspeita — o campo continua na próxima */ }
+}
+```
+Se o número de linhas de aspas ímpares (dividido por 2, já que vêm em pares — a que abre e a
+que fecha) bater exatamente com o delta bruto−parseado, a divergência está explicada e não é
+truncamento. Se não bater, aí sim investigar truncamento de verdade (comparar tamanho do
+arquivo baixado com o do servidor, checar se o processo de download foi interrompido).
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo

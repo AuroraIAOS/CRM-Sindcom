@@ -343,7 +343,7 @@ CNAE principal ∈ `45|46|47` · situação cadastral = `02` (ativa). O filtro n
 |---|---|
 | 06.0 — Zero-padding canônico das tabelas de referência | ✅ CONCLUÍDA (2026-07-23) |
 | 06.1 — Ferramenta de filtragem + validação em 1 arquivo | ✅ CONCLUÍDA (2026-07-23) |
-| 06.2 — Passe completo sobre os 22 GB | ⬜ |
+| 06.2 — Passe completo sobre os 22 GB | ✅ CONCLUÍDA (2026-07-24) |
 | 06.3 — Normalização + reconciliação de FKs | ⬜ |
 | 06.4 — Carga em produção | ⬜ |
 | 06.5 — Auditoria pós-carga | ⬜ |
@@ -373,6 +373,18 @@ Qualidade: parser real (papaparse) — aspas com `;` embutido não quebraram nen
 `setEncoding('latin1')` nativo, `orientacoes.md` §2.11).
 Evidência: script + log completo da execução, contagem batendo com o número medido
 manualmente na sessão anterior.
+
+### Subetapa 06.2 — Passe completo sobre os 22 GB [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
+Objetivo: rodar o filtro nos 20 arquivos (22,1 GB) e produzir os NDJSON filtrados.
+Conclusão (2026-07-24): 71.874.448 linhas lidas em estabelecimentos + 68.629.148 em empresas
+(todo o Brasil, lido de fato) → **17.319 estabelecimentos / 16.687 empresas** aprovados nos 29
+municípios + CNAE 45/46/47 + situação ativa — abaixo até da faixa recalibrada de 20-35 mil.
+Qualidade: 3 asserções de integridade — anti-truncamento (arquivo a arquivo, com 3 divergências
+pequenas investigadas e explicadas: 7 registros com quebra de linha literal no `nome_fantasia`,
+não truncamento, `orientacoes.md` §2.12), cascata 100% íntegra (0 CNPJ órfão), saída 100% dentro
+dos 3 filtros reverificada no próprio NDJSON gerado.
+Evidência: `relatorio_06_2.json` + `log_06_2.txt` em `D:\BD\filtrados\` (fora do repo) + amostra
+de dados inspecionada a olho.
 
 ---
 

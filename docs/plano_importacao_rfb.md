@@ -20,6 +20,13 @@ Medição real em `estabelecimentos1.csv` (1,077 GB): **4.753.435 linhas**. Extr
 razão de tamanho (15,54×), o conjunto de estabelecimentos tem **≈ 74 milhões de linhas** —
 todo o Brasil. É exatamente o volume que não pode subir para o Supabase.
 
+> **Atualizado na Subetapa 06.2 (2026-07-24) com o número real, não mais extrapolado:**
+> **71.874.448 linhas** em estabelecimentos, **68.629.148** em empresas — todo o Brasil, lido
+> por completo. Depois dos 3 filtros (29 municípios + CNAE 45/46/47 + situação ativa):
+> **17.319 estabelecimentos aprovados / 16.687 empresas distintas** — bem abaixo até da faixa
+> recalibrada de "20-35 mil" da 06.1, confirmando a tendência que a amostra de 22% ativos já
+> sinalizava.
+
 ### 1.2 Estrutura confirmada dos CSVs
 
 Sem cabeçalho, delimitador `;`, todos os campos entre aspas duplas, encoding **Latin-1
@@ -287,21 +294,43 @@ com acentuação correta (conferir um nome com `Ç`/`Ã` a olho); consumo de RAM
 Esforço máximo do /goal: 3 tentativas · Sonnet nas 2 primeiras, Opus na 3ª.
 Se esgotar: parar e relatar (problema + causas + alternativas).
 
-### Subetapa 06.2 — Passe completo sobre os 22 GB [Manual] [LLM: Sonnet]
+### Subetapa 06.2 — Passe completo sobre os 22 GB [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA (2026-07-24)
 
-**Objetivo:** rodar os dois passes sobre os 20 arquivos e produzir os NDJSON filtrados.
-**Conclusão:** `estabelecimentos_filtrados.ndjson` e `empresas_filtradas.ndjson` gerados,
-com **o número real** de linhas (substitui a estimativa de 55–70k) e relatório por município
-e por divisão CNAE.
-**Qualidade:** o total de linhas lidas bate com a soma esperada (~74M) — se ler menos, um
-arquivo foi truncado e a carga estaria incompleta **sem avisar**; todo `cnpj_basico` do
-arquivo de estabelecimentos existe no de empresas (integridade da cascata antes de tocar o
-banco); no resultado, **nenhum** município fora dos 29, **nenhum** CNAE fora de 45/46/47 e
-**nenhuma** situação diferente de `02` (as três asserções de filtro, verificadas na saída e
-não na intenção do código).
-**Evidência:** relatório `filtragem.md` com contagens por arquivo, por município e por CNAE,
-+ as 3 asserções de integridade acima explicitamente verdes.
-Esforço: n/a (Manual — é execução longa, ~45-60 min, não tentativa-e-erro).
+> **Executada e verificada.** `scripts/rfb/passe_06_2.mjs` rodado em background contra os 20
+> arquivos (`estabelecimentos0-9.csv` + `empresas0-9.csv`, 22,1 GB), 36,4 min de execução real.
+>
+> **Números finais:**
+>
+> | | Linhas lidas | Aprovados | CNPJs distintos |
+> |---|---|---|---|
+> | estabelecimentos | 71.874.448 | **17.319** | 16.687 |
+> | empresas | 68.629.148 | **16.687** | — |
+>
+> **Por divisão CNAE:** 45→3.073 · 46→1.557 · 47→12.689 (soma = 17.319, bate exato).
+> **Por município:** todos os 29 presentes, sem código fora da lista — Passos (4957) lidera
+> com 4.312, seguido de São Sebastião do Paraíso (5293) com 2.706 e Piumhi (5029) com 1.491;
+> o menor é Vargem Bonita (5411) com 52. Distribuição completa em
+> `D:\BD\filtrados\relatorio_06_2.json`.
+>
+> **As 3 asserções de integridade:**
+> 1. **Anti-truncamento (bruto × parseado, arquivo a arquivo):** inicialmente **3 de 20
+>    arquivos divergiram** (`estabelecimentos0/6/8.csv`, delta de 1-3 linhas cada). Investigado
+>    a fundo — não era truncamento: são **7 registros no total** cujo `nome_fantasia` contém
+>    uma quebra de linha literal no dado original da Receita (CSV válido, RFC 4180), que o
+>    papaparse junta corretamente em 1 linha lógica e que a contagem crua de bytes `'\n'`
+>    conta como 2. Confirmado com um segundo diagnóstico (contagem de aspas por linha física)
+>    batendo exato com cada delta. `orientacoes.md` §2.12. **Nenhuma linha perdida.**
+> 2. **Cascata íntegra:** ✅ todo `cnpj_basico` aprovado em estabelecimentos tem empresa
+>    correspondente — 0 órfãos.
+> 3. **Saída 100% dentro dos 3 filtros**, reverificada lendo o próprio NDJSON gerado (não a
+>    intenção do código): ✅ 0 fora de município, 0 fora de CNAE, 0 fora de situação ativa.
+>
+> **Qualidade dos dados inspecionada a olho:** amostra do NDJSON com nome fantasia, endereço
+> e e-mail legíveis e coerentes (`IMPACTO BIKE PIUNHI` em Piumhi, `TRIBO STAR CAPITOLIO` em
+> Capitólio). Saída: `D:\BD\filtrados\estabelecimentos_filtrados.ndjson` (9,5 MB) +
+> `empresas_filtradas.ndjson` (2,9 MB) + `cnpj_aprovados.txt` + `relatorio_06_2.json` +
+> `log_06_2.txt` — todos fora do repositório (`D:\BD\filtrados\`, decisão D4).
+Esforço: n/a (Manual — execução longa, 36,4 min, não tentativa-e-erro).
 
 ### Subetapa 06.3 — Normalização + reconciliação de FKs (sem tocar no banco) [Manual] [LLM: Opus]
 
