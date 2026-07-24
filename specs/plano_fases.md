@@ -346,7 +346,7 @@ CNAE principal ∈ `45|46|47` · situação cadastral = `02` (ativa). O filtro n
 | 06.2 — Passe completo sobre os 22 GB | ✅ CONCLUÍDA (2026-07-24) |
 | 06.3 — Normalização + reconciliação de FKs | ✅ CONCLUÍDA (2026-07-24) |
 | 06.4 — Carga em produção | ✅ CONCLUÍDA (2026-07-24) |
-| 06.5 — Auditoria pós-carga | ⬜ |
+| 06.5 — Auditoria pós-carga | ✅ CONCLUÍDA (2026-07-24) |
 | 06.6 — Skill `atualizar-sindcom` (ciclo mensal) | ⬜ |
 
 ### Subetapa 06.0 — Zero-padding das tabelas de referência [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
@@ -410,6 +410,19 @@ triggers de auditoria religados e verificados em dois níveis (flag `pg_trigger.
 teste funcional com rollback provando que voltou a gravar).
 Evidência: contagens antes/depois, 2ª execução com delta zero, estado dos triggers conferido,
 5 registros conferidos a olho contra a origem (acentuação, CNPJ, município, CNAE), suíte 93/98.
+
+### Subetapa 06.5 — Auditoria pós-carga [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
+Objetivo: provar que a base é confiável, não só que "subiu".
+Conclusão (2026-07-24): contagem por município **29/29 batendo** com `relatorio_06_2.json`
+(comparação programática, não a olho) e por divisão CNAE idem; 13 asserções de conformidade
+todas verdes (0 órfãos, 0 `convencao_id` preenchido, 0 fora de situação/UF/CNAE/município,
+0 FK quebrada, `cnpj_completo` correto em 100%).
+Qualidade: cada número saiu de uma query mostrada; app em produção listando 16.687 empresas
+com paginação server-side ("Página 1 de 835") e mestre-detalhe abrindo as 13 filiais da
+Telefônica. **Prova de ponta a ponta da 06.0**: a ficha mostra "Sociedade Anônima Aberta" e
+"Presidente" — JOINs nas tabelas de referência que não resolveriam com os códigos antigos.
+Evidência: relatório de asserções + comparação por município + screenshot da tela real +
+suíte 93/98 (as 5 falhas pré-existentes de conteúdo).
 
 ---
 

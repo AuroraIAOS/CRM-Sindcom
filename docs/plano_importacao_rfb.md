@@ -444,7 +444,53 @@ conferido; 5 registros conferidos a olho contra a linha original do CSV (acentua
 município, CNAE).
 Esforço: n/a (Manual estrito).
 
-### Subetapa 06.5 — Auditoria pós-carga [Manual] [LLM: Sonnet]
+### Subetapa 06.5 — Auditoria pós-carga [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA (2026-07-24)
+
+> **Executada e verificada.** Todo número abaixo saiu de uma query, e a conferência por
+> município foi feita **programaticamente** contra `relatorio_06_2.json` — não a olho.
+>
+> **Contagem por município: 29/29 batendo, 0 divergências.** Soma 17.319 dos dois lados.
+> Por divisão CNAE, idem: 45→3.073 · 46→1.557 · 47→12.689 (soma 17.319).
+>
+> **13 asserções de conformidade, todas verdes:**
+>
+> | Verificação | Valor |
+> |---|---|
+> | estabelecimentos / empresas | 17.319 / 16.687 |
+> | `cnpj_completo` gerado (não nulo) | 17.319 |
+> | `cnpj_completo` ≠ concatenação esperada | **0** |
+> | estabelecimento órfão de empresa | **0** |
+> | `convencao_id` preenchido | **0** (CCT é ato manual) |
+> | situação ≠ `02` · uf ≠ `MG` · CNAE fora de 45/46/47 | **0 · 0 · 0** |
+> | município fora da base territorial | **0** |
+> | FK de CNAE / natureza quebrada | **0 / 0** |
+> | `matriz_filial` fora de (1,2) | **0** |
+> | empresa sem estabelecimento | **0** |
+>
+> Informativos úteis: **15.694 estabelecimentos com e-mail** (insumo direto da cobrança da
+> 02.6) e **354 empresas com mais de um estabelecimento** na base territorial.
+>
+> **App em produção listando dados reais** (`crm.sindcompassos.org/empresas`, logado como
+> Admin): paginação server-side segurando bem — "1–20 de 16687", "Página 1 de 835". O
+> mestre-detalhe abre a Telefônica com **13 filiais** espalhadas pelos municípios (Conceição
+> da Aparecida, Alterosa, Carmo do Rio Claro, Guapé, Ilicínea, S. S. do Paraíso, Passos, Itaú
+> de Minas, Alpinópolis, Cássia, Nova Resende, Monte Santo, Piumhi), todas com coluna CCT em
+> "—" (`convencao_id` NULL, como esperado).
+>
+> **Prova de ponta a ponta da Subetapa 06.0:** a ficha da empresa mostra natureza jurídica
+> como **"Sociedade Anônima Aberta"** e qualificação como **"Presidente"** — descrições vindas
+> de JOIN nas tabelas de referência. Com os códigos no formato antigo (sem zero-padding),
+> esses joins não resolveriam e a tela mostraria o código cru ou vazio. É a confirmação
+> visual, na interface real, de que o alinhamento da 06.0 funcionou até a ponta.
+>
+> **Suíte RLS: 93/98** — as mesmas 5 falhas pré-existentes de conteúdo (testes que esperam os
+> dados de demonstração apagados no reset). Zero regressão causada pela carga.
+>
+> **Nota de método (não é bug do app):** a busca da tela não filtrava quando acionada pelo
+> `type` da automação — o texto entrava no DOM mas o `onChange` do React não disparava
+> (armadilha clássica de input controlado). Acionada pelo setter nativo + evento `input`,
+> funcionou de primeira: a requisição sai com `razao_social=ilike.%SOVEMAR%` e a tela responde
+> "1–1 de 1". Registrado em `orientacoes.md` §4.6.
 
 **Objetivo:** provar que a base é confiável, não só que "subiu".
 **Conclusão:** relatório de conformidade com: contagem por município (bate com §06.2);

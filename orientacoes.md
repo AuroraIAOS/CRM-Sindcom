@@ -843,6 +843,35 @@ E `<Area type="linear">`, nunca `monotone`, para dado financeiro: a spline
 Confira a virada de ano imprimindo a janela gerada — dez→jan é onde esse tipo de
 cálculo costuma errar.
 
+### 4.6 Automação de navegador não dispara `onChange` de input controlado do React
+
+**(a) Problema.** Verificando a tela `/empresas` com os 16.687 registros reais (Subetapa
+06.5), a busca "não filtrava": o texto aparecia no campo, mas a lista continuava mostrando
+"1–20 de 16687". Parecia bug de produção com dado real — o pior momento possível para um.
+Investigando: o texto **estava** no DOM (cheguei a digitar duas vezes e ver
+`TELEFONICATELEFONICA` no campo), mas nenhuma requisição saía.
+
+**(b) Solução.** Não era bug do app. React usa um setter próprio no `value` do input e
+escuta eventos sintéticos; o `type` da automação (CDP) altera o valor do DOM sem
+necessariamente disparar o `onChange` do React. Como o componente é controlado
+(`value={busca}`), o valor digitado fica visível até o próximo render — dando a ilusão de
+que o estado mudou quando não mudou. Acionando pelo **setter nativo do prototype + evento
+`input` com `bubbles`**, a busca funcionou de primeira.
+
+**(c) Como implantar.** Para dirigir qualquer input controlado de React por automação:
+```js
+const input = document.querySelector('input[placeholder*="Buscar"]');
+const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+setter.call(input, 'TEXTO');                                  // usa o setter nativo, não o do React
+input.dispatchEvent(new Event('input', { bubbles: true }));    // React ouve 'input', não 'change'
+```
+E **antes de declarar bug**, confirme pela rede se a requisição sai com o filtro esperado
+(`read_network_requests` → `razao_social=ilike.%TEXTO%`). Duas outras armadilhas de medição
+que apareceram na mesma sessão: (1) contar `document.querySelectorAll('tbody tr').length`
+logo após disparar o evento mede **antes** da resposta chegar — espere o debounce + a
+requisição; (2) um `Page.captureScreenshot` que estoura timeout não significa app travado —
+confirme com `get_page_text`, que é mais leve, antes de concluir qualquer coisa.
+
 ## 5. Ambiente de desenvolvimento (Windows)
 
 ### 5.1 Backticks e crases quebram scripts no shell
