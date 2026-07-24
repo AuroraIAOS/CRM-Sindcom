@@ -332,7 +332,52 @@ Se esgotar: parar e relatar (problema + causas + alternativas).
 > `log_06_2.txt` — todos fora do repositório (`D:\BD\filtrados\`, decisão D4).
 Esforço: n/a (Manual — execução longa, 36,4 min, não tentativa-e-erro).
 
-### Subetapa 06.3 — Normalização + reconciliação de FKs (sem tocar no banco) [Manual] [LLM: Opus]
+### Subetapa 06.3 — Normalização + reconciliação de FKs (sem tocar no banco) [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA (2026-07-24)
+
+> **Executada e verificada.** `scripts/rfb/normalizar_06_3.mjs` produziu
+> `estabelecimentos_normalizados.ndjson` (17.319) e `empresas_normalizadas.ndjson` (16.687).
+>
+> **Validação estrutural — tudo limpo:**
+> - **0 violações de CHECK** nos dois arquivos (`cnpj_basico ^\d{8}$`, `cnpj_ordem ^\d{4}$`,
+>   `cnpj_dv ^\d{2}$`, `matriz_filial in (1,2)`, `razao_social not null`).
+> - **0 duplicatas**: 17.319 `cnpj_completo` distintos (não violaria
+>   `ux_estabelecimentos_cnpj_completo`) e 16.687 `cnpj_basico` distintos (não violaria a PK).
+> - **Domínios conferidos:** `uf` = só `MG` · `matriz_filial` = só `1,2` · `situacao_cadastral`
+>   = só `02` (prova que o filtro D1 pegou) · `porte` = `01,03,05`.
+> - **158 datas descartadas** em `data_situacao_cadastral` — investigadas uma a uma: **todas
+>   são o literal `"0"`**, a forma da RFB de dizer "sem data". Virar NULL é o correto; nenhuma
+>   informação perdida. As outras duas colunas de data: 0 descartes.
+> - 90,6% dos estabelecimentos têm e-mail (15.694) — insumo direto para a cobrança da 02.6.
+>
+> **Reconciliação de FKs — 0 órfãos nas 5 referências**, contra as tabelas já corrigidas
+> pela 06.0:
+>
+> | Referência | Códigos distintos usados | Órfãos |
+> |---|---|---|
+> | `cnaes` | 204 | **0** |
+> | `naturezas_juridicas` | 11 | **0** |
+> | `qualificacoes_responsavel` | 10 (`05,10,12,13,16,34,49,50,64,65`) | **0** |
+> | `motivos_situacao_cadastral` | 1 (`00`) | **0** |
+> | `municipios` (via `codigo_rfb`) | 29 | **0** |
+>
+> Os códigos `05`, `10` e `00` casando é a prova prática de que a 06.0 era indispensável —
+> sem ela, seriam 3 FKs falhando em todas as linhas.
+>
+> **Dry-run contra o banco real, em transação com ROLLBACK:** em vez de 100 linhas
+> arbitrárias, montei um **lote adversarial de 22 casos** escolhidos para maximizar cobertura
+> de constraint (valores mais longos de cada coluna, nulos em cada coluna anulável,
+> apóstrofo, acentuação, datas extremas, matriz e filial, os 3 portes, capital máximo, 5
+> municípios distintos). Resultado: **22 empresas + 22 estabelecimentos aceitos** por todos os
+> CHECKs, FKs e triggers reais, com:
+> - acentuação íntegra no round-trip (`PRAÇA`, U+00C7);
+> - apóstrofo corretamente desescapado (`CASCA D'ANTA`);
+> - **`cnpj_completo` gerado pelo banco** = `02558157170408` (a coluna GENERATED funciona —
+>   confirmando §3.2: ela não deve ser enviada);
+> - `numeric(15,2)` aguentando R$ 56.071.415.865,09.
+>
+> **Rollback verificado sem rastro:** `empresas` e `estabelecimentos` de volta a 0 e **nenhum
+> CNPJ do dry-run em `auditoria`** (o crescimento da auditoria no período é da suíte de
+> testes, cujo último registro é anterior ao dry-run).
 
 **Objetivo:** aplicar as regras de §4.2 e **provar que toda FK casa** antes de qualquer INSERT.
 **Conclusão:** relatório de reconciliação mostrando, para cada uma das 5 referências

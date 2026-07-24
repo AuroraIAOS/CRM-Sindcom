@@ -344,7 +344,7 @@ CNAE principal ∈ `45|46|47` · situação cadastral = `02` (ativa). O filtro n
 | 06.0 — Zero-padding canônico das tabelas de referência | ✅ CONCLUÍDA (2026-07-23) |
 | 06.1 — Ferramenta de filtragem + validação em 1 arquivo | ✅ CONCLUÍDA (2026-07-23) |
 | 06.2 — Passe completo sobre os 22 GB | ✅ CONCLUÍDA (2026-07-24) |
-| 06.3 — Normalização + reconciliação de FKs | ⬜ |
+| 06.3 — Normalização + reconciliação de FKs | ✅ CONCLUÍDA (2026-07-24) |
 | 06.4 — Carga em produção | ⬜ |
 | 06.5 — Auditoria pós-carga | ⬜ |
 | 06.6 — Skill `atualizar-sindcom` (ciclo mensal) | ⬜ |
@@ -385,6 +385,19 @@ não truncamento, `orientacoes.md` §2.12), cascata 100% íntegra (0 CNPJ órfã
 dos 3 filtros reverificada no próprio NDJSON gerado.
 Evidência: `relatorio_06_2.json` + `log_06_2.txt` em `D:\BD\filtrados\` (fora do repo) + amostra
 de dados inspecionada a olho.
+
+### Subetapa 06.3 — Normalização + reconciliação de FKs [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+Objetivo: normalizar (datas, decimais, município TOM→id, vazio→NULL) e provar que toda FK casa
+**antes** de qualquer INSERT.
+Conclusão (2026-07-24): 17.319 + 16.687 registros normalizados com **0 violações de CHECK**,
+**0 duplicatas** de PK/índice único e **0 órfãos** nas 5 referências (204 CNAEs, 11 naturezas,
+10 qualificações, 1 motivo, 29 municípios). As 158 datas descartadas eram todas o literal `"0"`
+da RFB ("sem data") — conversão para NULL correta, sem perda.
+Qualidade: dry-run com **lote adversarial** (22 casos escolhidos por cobertura de constraint, não
+100 linhas arbitrárias) contra o banco real em transação com ROLLBACK — acentuação, apóstrofo,
+`cnpj_completo` GENERATED e `numeric(15,2)` todos verificados; rollback sem rastro em `auditoria`.
+Evidência: `reconciliacao_06_3.json` + query de reconciliação com as 5 referências em 0 órfãos +
+mensagem do dry-run com os valores conferidos.
 
 ---
 
