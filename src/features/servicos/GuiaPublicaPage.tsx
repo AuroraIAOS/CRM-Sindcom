@@ -46,7 +46,17 @@ export function GuiaPublicaPage() {
       setErroCheckin(mensagemErro(error));
       return;
     }
-    const r = data as { resultado?: string } | null;
+
+    // Desde sql/19_hardening_adversarial.sql, a recusa vem como RESULTADO e não
+    // como exceção: o freio contra força bruta do PIN precisa gravar a tentativa,
+    // e `raise exception` desfazia esse registro no rollback da transação. Aqui
+    // `error` ficou reservado a falha de transporte; a recusa de negócio (PIN
+    // errado, guia já processada, excesso de tentativas) chega em `data.erro`.
+    const r = data as { ok?: boolean; erro?: string; resultado?: string } | null;
+    if (r?.ok === false) {
+      setErroCheckin(r.erro ?? "Não foi possível registrar o check-in.");
+      return;
+    }
     setResultado(r?.resultado === "executada" ? "Atendimento confirmado. Obrigado!" : "Recusa registrada.");
     void guia.refetch();
   }

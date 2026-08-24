@@ -15,6 +15,10 @@ export default defineConfig({
     testTimeout: 20_000,
     hookTimeout: 30_000,
     fileParallelism: false,
+    // Autentica os 5 papéis UMA vez por execução (ver tests/rls/globalSetup.ts):
+    // sem isso, o rate limit de auth do Supabase derruba a suíte com sintoma
+    // idêntico ao de RLS quebrada.
+    globalSetup: ["./tests/rls/globalSetup.ts"],
     globals: false,
   },
 });

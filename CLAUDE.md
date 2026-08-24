@@ -74,6 +74,33 @@ Ciclo completo funcionando: faturas → guias → e-mail com PDF → guia marcad
 - [ ] **Criação de login novo em `/configuracoes`** (Subetapa 03.5, 2026-07-21) — a tela hoje só EDITA perfis existentes (nome/papel/parceiro vinculado/ativo), porque criar um login exige gravar em `auth.users`, e isso só é possível com `service_role` (`auth.admin.createUser`), que o `CLAUDE.md` proíbe no frontend. Os 5 perfis atuais nasceram direto no Supabase, na Fase 0. **Quando implementar:** exige uma Edge Function dedicada (padrão já usado em `specs/importacao.md` para a gravação em lote) que receba nome/e-mail/papel do Admin autenticado, valide com `fn_eh('admin')` antes de chamar a Admin API, e crie o `auth.users` + `perfis` numa operação — decisão de arquitetura que vale confirmar com Maxwell antes de começar, não é extensão trivial da tela atual.
 
 
+## Portão de segurança adversarial (obrigatório antes de mudança de etapa ou deploy que amplie superfície)
+
+**Gatilho:** qualquer etapa nova, integração nova ou deploy que aumente a superfície exposta.
+**Motivo, medido e não argumentado:** a ETAPA 07 rodou este portão pela primeira vez sobre um CRM
+que já estava em produção com a suíte verde e o advisor limpo — e achou **5 falhas reais**, entre
+elas a base empresarial inteira legível por qualquer anônimo. A suíte funcional prova que o
+comportamento *pretendido* funciona; ela não prova que não existe um caminho *não pretendido*.
+
+Os 7 passos e os 7 vetores estão em `docs/RELATORIO_ANALISE_VITRINE.md`; a execução, os achados e o
+método em `docs/RELATORIO_07_PORTAO_ADVERSARIAL.md`; os ataques vivem em `tests/adversarial/`.
+
+**Comece pelos três lugares que a RLS não alcança** — foi onde as 5 falhas se concentraram, aqui e
+no CRM Vitrine: (1) **view sem `security_invoker`** e coluna de credencial (RLS restringe *quais
+linhas*, nunca *quais colunas*); (2) **função exposta como RPC** (a RLS não olha `EXECUTE`);
+(3) **endpoint público e código com `service_role`**, onde a RLS não participa.
+
+**Duas regras de método:**
+- **Rode a varredura de catálogo, não releia migrations.** Coluna de credencial por nome cruzada com
+  `has_column_privilege`, e views cruzadas com `security_invoker` + `GRANT` — foi assim que 2 dos 5
+  achados apareceram, e nenhum deles sairia de leitura de código.
+- **Todo vermelho é hipótese até ser medido de novo.** Três "achados" da ETAPA 07 eram testes meus
+  mal escritos. Teste adversarial mal escrito produz falso achado tão facilmente quanto falso verde.
+
+**Regra não negociável — o merge nunca é decisão do Claude Code.** O trabalho acontece em bench
+(branch + projeto Supabase descartável), e mesmo com tudo 100% verde e parecer favorável o Claude
+Code entrega o relatório e **para**. Ordenar o merge é atribuição exclusiva do Maxwell.
+
 ## Vigilância de segurança pendente (lembrar o Maxwell)
 
 - **`auth_leaked_password_protection` (HaveIBeenPwned) está DESATIVADO** — é recurso do plano pago do Supabase; o projeto roda no Free. Mitigação atual: política de senha forte no Auth (mín. 8 caracteres, maiúsculas+minúsculas+dígitos+símbolos). **Assim que o projeto migrar para o Supabase pago, ativar este recurso** (Authentication → Sign In / Providers → Password) e conferir com `get_advisors`. Toda sessão que tocar em Auth/segurança deve checar se essa migração já ocorreu e lembrar o Maxwell.

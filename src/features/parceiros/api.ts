@@ -149,13 +149,22 @@ export function useExcluirParceiro() {
 
 export type Recepcionista = Database["public"]["Tables"]["recepcionistas"]["Row"];
 
+/**
+ * Colunas explícitas, nunca `*` — desde `sql/19_hardening_adversarial.sql`, a
+ * coluna `pin_hash` é revogada de `authenticated` (o PIN tem 4 a 6 dígitos e o
+ * hash quebra offline). Com o narrowing, `select('*')` devolve
+ * `42501 permission denied for table recepcionistas`, que PARECE falha de RLS e
+ * manda a investigação para o lado errado. Ver orientacoes.md.
+ */
+const COLUNAS_RECEPCIONISTA = "id, parceiro_id, nome, ativo, created_at, updated_at";
+
 export function useRecepcionistasDoParceiro(parceiroId: string | undefined) {
   return useQuery({
     queryKey: ["recepcionistas", "do-parceiro", parceiroId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("recepcionistas")
-        .select("*")
+        .select(COLUNAS_RECEPCIONISTA)
         .eq("parceiro_id", parceiroId as string)
         .order("nome");
       if (error) throw error;

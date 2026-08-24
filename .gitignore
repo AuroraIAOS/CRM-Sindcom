@@ -107,3 +107,4 @@ sandbox/
 # Podem expor caminhos, usuários e senhas visíveis na tela.
 # ============================================================
 screenshots/
+.sessoes-teste.json

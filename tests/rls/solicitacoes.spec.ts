@@ -266,6 +266,24 @@ describe("Página pública do QR — fn_dados_guia_publica (anon)", () => {
 });
 
 // ---------------------------------------------------------------------------
+
+/**
+ * Recusa do check-in, no contrato vigente desde sql/19_hardening_adversarial.sql.
+ *
+ * A função deixou de levantar exceção no caminho de recusa e passou a devolver
+ * `{ ok: false, erro }`. Não foi preferência de estilo: o freio contra força
+ * bruta do PIN precisa REGISTRAR cada tentativa, e `raise exception` desfazia
+ * esse registro no rollback da própria transação — o contador nunca saía de
+ * zero (medido na ETAPA 07). O `error` do supabase-js ficou reservado a falha
+ * de transporte.
+ */
+function motivoDaRecusa(resposta: { data: unknown; error: { message?: string } | null }): string {
+  if (resposta.error) return resposta.error.message ?? "";
+  const r = (resposta.data ?? {}) as { ok?: boolean; erro?: string };
+  if (r.ok === true) return "";
+  return r.erro ?? "";
+}
+
 describe("Máquina de estados — fn_registrar_checkin (anon, como o recepcionista)", () => {
   async function novaGuia() {
     const { data } = await criarSolicitacao({
@@ -340,24 +358,22 @@ describe("Máquina de estados — fn_registrar_checkin (anon, como o recepcionis
       p_pin: PIN_VALIDO,
       p_atendido: true,
     });
-    const { error } = await anon.rpc("fn_registrar_checkin", {
+    const segunda = await anon.rpc("fn_registrar_checkin", {
       p_token: guia.token_publico,
       p_pin: PIN_VALIDO,
       p_atendido: true,
     });
-    expect(error).toBeTruthy();
-    expect(error!.message).toMatch(/já processada/i);
+    expect(motivoDaRecusa(segunda)).toMatch(/já processada/i);
   });
 
   it("PIN inválido é rejeitado e não altera o status", async () => {
     const guia = await novaGuia();
-    const { error } = await anon.rpc("fn_registrar_checkin", {
+    const recusa = await anon.rpc("fn_registrar_checkin", {
       p_token: guia.token_publico,
       p_pin: "0000",
       p_atendido: true,
     });
-    expect(error).toBeTruthy();
-    expect(error!.message).toMatch(/Senha de recepcionamento inválida/i);
+    expect(motivoDaRecusa(recusa)).toMatch(/Senha de recepcionamento inválida/i);
 
     const { data: linha } = await clientes.admin
       .from("solicitacoes_servico")
@@ -368,13 +384,12 @@ describe("Máquina de estados — fn_registrar_checkin (anon, como o recepcionis
   });
 
   it("guia inexistente devolve 'Guia não encontrada'", async () => {
-    const { error } = await anon.rpc("fn_registrar_checkin", {
+    const recusa = await anon.rpc("fn_registrar_checkin", {
       p_token: crypto.randomUUID(),
       p_pin: PIN_VALIDO,
       p_atendido: true,
     });
-    expect(error).toBeTruthy();
-    expect(error!.message).toMatch(/Guia não encontrada/i);
+    expect(motivoDaRecusa(recusa)).toMatch(/Guia não encontrada/i);
   });
 
   it("solicitação cancelada não aceita check-in", async () => {
@@ -384,12 +399,11 @@ describe("Máquina de estados — fn_registrar_checkin (anon, como o recepcionis
       .update({ status: "cancelada" })
       .eq("id", guia.id);
 
-    const { error } = await anon.rpc("fn_registrar_checkin", {
+    const recusa = await anon.rpc("fn_registrar_checkin", {
       p_token: guia.token_publico,
       p_pin: PIN_VALIDO,
       p_atendido: true,
     });
-    expect(error).toBeTruthy();
-    expect(error!.message).toMatch(/já processada/i);
+    expect(motivoDaRecusa(recusa)).toMatch(/já processada/i);
   });
 });

