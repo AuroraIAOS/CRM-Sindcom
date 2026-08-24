@@ -368,10 +368,57 @@ A-01 é idempotente e já está aplicado) e o deploy do frontend (`lib/csv.ts`,
 
 ---
 
-## 9. Parada obrigatória
+## 9. Parada obrigatória — e o desfecho
 
-**Nenhum merge foi executado.** O passo 7 do seu roteiro e a regra herdada do Vitrine são
-explícitos: mesmo com tudo verde e parecer favorável — que é exatamente o caso aqui —, ordenar o
-merge é atribuição sua. `main` segue intocada; o trabalho está inteiro em
-`bench/07-seguranca-adversarial`, e o banco de produção recebeu **apenas** a correção do A-01, que
-você autorizou explicitamente por ser vazamento ativo.
+**Durante a auditoria, nenhum merge foi executado.** O passo 7 do roteiro e a regra herdada do
+Vitrine são explícitos: mesmo com tudo verde e parecer favorável — que era exatamente o caso —,
+ordenar o merge é atribuição do Maxwell. O parecer da §8 foi entregue com `main` intocada, e o
+banco de produção tinha recebido **apenas** a correção do A-01, autorizada à parte por ser
+vazamento ativo.
+
+**Desfecho registrado:** em **2026-08-24**, de posse do relatório, **Maxwell ordenou o merge e o
+deploy**. Executados em seguida **por ordem dele, nunca por iniciativa própria** — que é o que a
+regra prevê. A distinção que ela protege ficou preservada: o CODE atacou, corrigiu, relatou e
+parou; a decisão de fundir foi de quem é dono do projeto.
+
+### O que foi para produção (2026-08-24)
+
+| Passo | Resultado |
+|---|---|
+| Merge `--no-ff` do bench para `main` | `11ab2d5` |
+| Build | limpo (PWA, 21 entradas) |
+| Deploy FTP para `crm.sindcompassos.org` | **21/21 arquivos, zero falhas** |
+| `sql/19_hardening_adversarial.sql` em produção | 4 migrations, verificadas uma a uma |
+| Push de `main` e do bench | feito (bench mantido como registro auditável) |
+
+**Ordem de aplicação, escolhida de propósito: frontend ANTES do SQL.** O frontend novo é compatível
+com as duas versões da função de check-in (checa `error` antes de `data.ok`), mas o SQL novo
+quebraria o frontend antigo, que fazia `select('*')` em `recepcionistas`. Inverter a ordem abriria
+uma janela com a tela de parceiros quebrada.
+
+### Verificação pós-deploy, medida ao vivo
+
+| Verificação | Resultado |
+|---|---|
+| A-01 · `anon` em `empresas_estabelecimentos` | `[]` |
+| A-02 · `fn_gera_numero_guia` por RPC | `42501 permission denied` |
+| A-03 · `pin_hash` para `authenticated` | fechada — e `nome` continua aberta (o narrowing não fechou a tabela) |
+| A-02 · trigger de numeração | instalado; `DEFAULT` da coluna removido |
+| Contrato público preservado | `anon` mantém `EXECUTE` em `fn_registrar_checkin` |
+| A-07 · grants de fábrica | **zero** `TRUNCATE`/`REFERENCES`/`TRIGGER` para `anon`/`authenticated` |
+| PWA | `GET /` → 200 · `GET /dashboard` (rota profunda) → 200 · assets do build atual |
+| **Suíte contra produção** | **155/160 — os 49 ataques adversariais todos verdes** |
+| `get_advisors` (security) | nenhum achado novo problemático |
+
+As 5 falhas restantes da suíte são **exatamente as 5 anteriores a esta etapa** (`dashboard` e
+`cartas`, por falta de dados na base). Nenhuma regressão foi introduzida pelo deploy.
+
+O único item novo no advisor é `tentativas_checkin` com RLS ligada e **sem policy** — nível INFO e
+**deliberado**: ausência de policy nega por padrão, porque só a função `SECURITY DEFINER` e a
+`service_role` escrevem ali. Mesmo padrão que o Vitrine registrou para as tabelas de uso interno.
+
+### Lembrete de vigilância (regra do `CLAUDE.md`)
+
+`auth_leaked_password_protection` (HaveIBeenPwned) **continua desativado** — é recurso do plano pago
+do Supabase e o projeto segue no Free. Conferido nesta sessão: a migração de plano ainda não
+ocorreu. Mitigação atual mantida: política de senha forte no Auth.

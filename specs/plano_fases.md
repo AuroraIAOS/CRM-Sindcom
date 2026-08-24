@@ -445,7 +445,7 @@ telas listando dados reais; (5) skill rodada com delta zero na segunda execuçã
 
 ---
 
-## ETAPA 07 — PORTÃO DE SEGURANÇA ADVERSARIAL · Complexidade: ALTA · Status: 🟡 AGUARDANDO ORDEM DE MERGE
+## ETAPA 07 — PORTÃO DE SEGURANÇA ADVERSARIAL · Complexidade: ALTA · Status: ✅ CONCLUÍDA (no ar em `crm.sindcompassos.org`)
 
 Objetivo geral: submeter o CRM já em produção a um **teste de fogo adversarial** — atacar de
 propósito, procurando o caminho **não pretendido**, em vez de confirmar o caminho feliz. Método
@@ -512,11 +512,27 @@ Evidência: `docs/RELATORIO_07_PORTAO_ADVERSARIAL.md` — achado a achado, com o
 achados aceitos com motivo, os falsos achados e a verificação final. **Parecer favorável ao merge.**
 Suíte no bench: **159/160** (a única falha é anterior a esta etapa, por falta de dados).
 
-### Subetapa 07.6 — Merge, aplicação em produção e deploy [Manual] [LLM: Opus] · Status: ⬜ PENDENTE — DEPENDE DE ORDEM DO MAXWELL
-Objetivo: fundir o bench no `main`, aplicar `sql/19_hardening_adversarial.sql` no Supabase de
-produção e publicar o frontend em `crm.sindcompassos.org`.
-**Não iniciada por decisão de regra, não por falta de trabalho:** o parecer está entregue e o CODE
-parou. `main` intocada.
+### Subetapa 07.6 — Merge, aplicação em produção e deploy [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+Objetivo: fundir o bench no `main`, aplicar o hardening no Supabase de produção e publicar o PWA.
+**Ordenada por Maxwell em 2026-08-24**, com o relatório e o parecer em mãos — o CODE havia entregado
+o parecer e parado, como manda a regra.
+
+Conclusão: merge `--no-ff` (`11ab2d5`), `main` e bench no remoto. **Ordem de aplicação escolhida de
+propósito: frontend ANTES do SQL.** O frontend novo é compatível com as duas versões da função de
+check-in (checa `error` antes de `data.ok`), mas o SQL novo quebraria o frontend antigo, que fazia
+`select('*')` em `recepcionistas` — inverter a ordem abriria uma janela com a tela de parceiros
+quebrada. Deploy FTP: 21/21 arquivos, zero falhas. SQL aplicado em 4 migrations verificadas uma a uma.
+
+**Verificação em produção, medida:** `anon` na view devolve `[]`; `fn_gera_numero_guia` devolve
+`42501`; `pin_hash` fechada e `nome` aberta (o narrowing não fechou a tabela); trigger de numeração
+instalado e `DEFAULT` removido; `anon` mantém o check-in (contrato público preservado); zero grants
+de `TRUNCATE`/`REFERENCES`/`TRIGGER`. PWA: `GET /` e `GET /dashboard` → 200.
+
+**Suíte contra produção: 155 de 160** — os 49 ataques adversariais **todos verdes**, e as 5 falhas
+restantes são exatamente as 5 que já existiam antes desta etapa (ver pendência 3 abaixo).
+`get_advisors` (security): nenhum achado novo problemático. O único item novo é
+`tentativas_checkin` com RLS ligada e sem policy — nível INFO e **deliberado**: nega por ausência,
+porque só a função `SECURITY DEFINER` e a `service_role` escrevem ali.
 
 **Pendências abertas por esta etapa (ver relatório §3 e §6):**
 1. O token da guia pública **não expira** — decisão de produto nunca tomada, com teste que vira
