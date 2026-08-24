@@ -114,7 +114,7 @@ CRM ── exporta CSV segmentado (botão já existe) ──►  ESP (Brevo)
                                                    │
                                                    ▼
                         CRM: remessas_dados → revisão da Denise → trabalhadores + vínculos
-                             envios_campanha.respondido_em preenchido
+                             cobertura do contador recalculada (§5.5)
 ```
 
 **Reaproveitado sem alteração:** exportação CSV de qualquer `DataTable`, `parsers.ts`,
@@ -190,12 +190,51 @@ id uuid pk · campanha_id uuid fk not null
 contabilidade_id uuid fk null · estabelecimento_id uuid fk null
 email text not null · token uuid not null default gen_random_uuid()
 token_expira_em timestamptz not null default now() + interval '90 days'
-enviado_em timestamptz · respondido_em timestamptz
+token_revogado_em timestamptz null
+enviado_em timestamptz · primeira_remessa_em timestamptz · ultima_remessa_em timestamptz
 check (contabilidade_id is not null or estabelecimento_id is not null)
 ```
 
-`respondido_em` é preenchido **quando a planilha chega**, não quando o ESP diz que abriu. O
-acompanhamento mede o P0, não vaidade.
+#### O token é REUTILIZÁVEL — decisão explícita
+
+**O token é identidade da contabilidade, não senha descartável.** O mesmo link serve para quantos
+envios o contador precisar fazer. Isso não é conveniência: é o que torna o P0 viável.
+
+O caso que decide: `juridico@contss.com.br` responde por **129 estabelecimentos** e
+`rm2091adm@gmail.com` por **114**. Com envio único, o contador teria de preencher as 129 empresas
+antes de mandar qualquer coisa — e se parasse no meio, nada chegaria. Quatro razões, então:
+
+1. 129 estabelecimentos não cabem numa sessão de trabalho
+2. **Envio parcial vale muito mais que envio nenhum** — 40 de 129 já são 40
+3. Correção de erro exige reenvio
+4. É a semente da Área do Contador, que por definição é identidade persistente
+
+**O reenvio é seguro por construção:** a política de duplicata de `trabalhadores` casa por CPF,
+**ignora existentes e só atualiza dados de contato** (`specs/importacao.md` §5). Reenviar o mesmo
+arquivo progressivamente mais completo não duplica ninguém.
+
+Consequência para a orientação ao contador — que vai na copy: **"envie quantas vezes quiser, com
+quantas empresas conseguir por vez"**, e não "trabalhe offline até terminar tudo". Ele pode até
+repassar o link internamente para a equipe do escritório dividir os clientes.
+
+**Revogação:** `token_revogado_em` permite invalidar e regerar o link de uma contabilidade sem
+perder o histórico dela — necessário no dia em que um contador avisar que o link vazou, ou quando
+sair da empresa o funcionário que o recebeu.
+
+#### "Respondeu" não é binário — mede-se COBERTURA
+
+Como o envio é parcial por natureza, um campo `respondido_em` esconderia o que importa. O
+acompanhamento mede:
+
+```
+cobertura = estabelecimentos do contador COM trabalhador vinculado
+            ────────────────────────────────────────────────────────
+                    total de estabelecimentos do contador
+```
+
+A tela da Denise mostra `juridico@contss.com.br — 40 de 129 (31%)`, que é acionável, em vez de um
+"respondeu" que esconderia 89 empresas faltando. O follow-up passa a ser **"faltam estas 89"**,
+com a lista nominal. `primeira_remessa_em` e `ultima_remessa_em` registram o ritmo.
 
 ### 5.6 `remessas_dados`
 
@@ -204,8 +243,13 @@ id uuid pk · envio_id uuid fk not null · modelo_coleta_id uuid fk not null
 arquivo_path text not null           -- bucket PRIVADO
 status text not null default 'recebida'   -- recebida|validada|importada|rejeitada
 linhas_recebidas int · linhas_com_erro int · relatorio jsonb
+ip_origem inet · user_agent text     -- rastro, ver §6
 recebida_em timestamptz default now() · processada_em timestamptz · processada_por uuid fk
 ```
+
+**Uma linha por upload, e a remessa é imutável.** Correção não altera remessa antiga: cria uma
+nova. Isso dá o histórico completo de quem enviou o quê e quando — e é o que permite reconstruir
+a origem de qualquer dado da base cadastral.
 
 ---
 
@@ -217,15 +261,28 @@ ensinou:
 
 | Decisão | Origem da lição |
 |---|---|
-| Link por token (`/enviar-dados/:token`), com merge do ESP | Identifica quem enviou sem exigir login, e alimenta `respondido_em` sozinho |
+| Link por token (`/enviar-dados/:token`), com merge do ESP | Identifica quem enviou sem exigir login, e liga cada remessa à contabilidade certa sozinho |
 | **Token com validade (90 dias, renovável)** | O token da guia pública **não expira** — pendência aberta na ETAPA 07. Não repetir o erro numa tabela nova |
 | **Rate limit por token** no upload | Mesmo padrão do `fn_registrar_checkin` corrigido: freio no recurso atacado, nunca no dono legítimo |
 | Arquivo em **bucket privado**, servido por URL assinada | Planilha com CPF jamais em link público |
 | **RLS com policy explícita** nas 5 tabelas, desde a criação | O grant de fábrica do projeto vem aberto demais — medido e corrigido na ETAPA 07 (A-07) |
 | Validação no navegador antes do envio | `validarTrabalhadores.ts` valida dígito de CPF e mostra preview: o contador corrige antes de enviar |
 | Upload **não grava** direto em `trabalhadores` | Cai em `remessas_dados` para revisão da Denise. **Ninguém de fora escreve na base cadastral sem revisão humana** |
+| **IP e user-agent gravados** em cada remessa | O token é reutilizável e de vida longa (§5.5): se houver contestação sobre quem enviou o quê, existe rastro |
+| **Token revogável e regerável** (`token_revogado_em`) | Contrapartida obrigatória da reutilização: link vazado ou funcionário que saiu do escritório precisam de desligamento imediato, sem perder o histórico |
 
 Quem abre o link só consegue **enviar**; nunca listar nem ler.
+
+### O risco assumido pela reutilização do token
+
+Token reutilizável e de vida longa é **credencial permanente circulando por e-mail** — e-mail é
+encaminhado, funcionário sai do escritório. É uma troca consciente: sem reutilização, o P0 não
+acontece (§5.5).
+
+O que fecha o risco a um nível aceitável: o token **não lê nada**, tem validade de 90 dias, é
+revogável, deixa rastro de IP, e **nenhuma remessa toca a base cadastral sem aprovação humana**.
+O pior caso de um token vazado é alguém submeter uma planilha que a Denise vai revisar e rejeitar
+— não é leitura de dado alheio nem escrita direta.
 
 ---
 
@@ -259,6 +316,8 @@ Duas características reduzem erro e atrito:
 1. **Pré-preenchido com os estabelecimentos daquele contador.** O token identifica quem é, então
    o download já traz as empresas dele com CNPJ e razão social nas linhas. Ele só completa os
    trabalhadores sob cada CNPJ — o que elimina o erro mais provável, CNPJ digitado errado.
+   **A partir da segunda visita, o modelo marca as empresas já cobertas**, para que o contador
+   veja de imediato o que falta — decorrência direta do token reutilizável (§5.5).
 2. **Colunas de CPF e CNPJ formatadas como texto.** O Excel converte números longos para notação
    científica e **come zeros à esquerda** (`00123456789` → `123456789`) — a mesma dor registrada
    em `orientacoes.md` §2.10. A pré-formatação da célula é a defesa, **e esta segunda só é
@@ -376,9 +435,17 @@ Itens 2, 3 e 4 correm em paralelo. **Caminho crítico: 2 → 5 → 8.**
 **Métrica principal, e é uma só: estabelecimentos com ao menos um trabalhador vinculado.** Hoje
 são **zero**. Abertura e clique são diagnóstico, não resultado.
 
+**Métrica de acompanhamento: cobertura por contabilidade** (§5.5) — porque o envio é parcial por
+natureza. É ela que dirige o follow-up: `40 de 129` diz o que fazer; "respondeu" não diz nada.
+
 **Gatilho de revisão, não de comemoração:** ao fim da onda 2, ter recebido remessa de **pelo menos
 15 das 337 contabilidades** (≈4,5%). Abaixo disso, o problema está na copy ou no argumento
 jurídico — e insistir com volume maior só queima base.
+
+Nota sobre o alvo: 15 remessas das contabilidades certas valem muito mais que 15 de empresas
+isoladas. Se as três maiores caixas responderem por inteiro — 129 + 114 + a terceira —, isso
+sozinho já são centenas de estabelecimentos cobertos. **A meta é de remessas, mas a leitura é de
+cobertura.**
 
 ---
 
