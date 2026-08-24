@@ -445,6 +445,92 @@ telas listando dados reais; (5) skill rodada com delta zero na segunda execuçã
 
 ---
 
+## ETAPA 07 — PORTÃO DE SEGURANÇA ADVERSARIAL · Complexidade: ALTA · Status: 🟡 AGUARDANDO ORDEM DE MERGE
+
+Objetivo geral: submeter o CRM já em produção a um **teste de fogo adversarial** — atacar de
+propósito, procurando o caminho **não pretendido**, em vez de confirmar o caminho feliz. Método
+portado do CRM Vitrine (repo irmão, mesma stack), que institucionalizou este portão e, na primeira
+execução, encontrou 6 falhas reais num projeto que estava com a suíte 100% verde e o advisor limpo.
+
+Motivo: a suíte funcional prova que o comportamento *pretendido* funciona; ela não tem como provar
+que não existe um caminho *não pretendido*. O Sindcom nunca havia passado por esse teste, e a base
+tem CPF de trabalhadores, 16.687 empresas e 17.319 estabelecimentos.
+
+Modo: auditoria adversarial, sem teto de tentativas · LLM: Opus do início ao fim.
+
+**Bench:** branch `bench/07-seguranca-adversarial` + projeto Supabase descartável
+`CRM Sindcom - TESTE` (`ikculjjvvyajhfxifuga`), com os 18 SQLs aplicados e fixture **fictícia** —
+nenhum dado real do sindicato foi copiado para lá (LGPD).
+
+**Regra herdada e não negociável:** o CODE executa, corrige e relata dentro do bench, mas **nunca**
+funde o bench no `main` por conta própria — mesmo com tudo verde e parecer favorável. Ordenar o
+merge é atribuição exclusiva do Maxwell.
+
+### Subetapa 07.0 — Análise do repositório CRM Vitrine [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+Objetivo: extrair do repo irmão o método, os 7 vetores, os achados e as técnicas de teste, medindo
+o que se aplica ao Sindcom e o que não se aplica.
+Evidência: `docs/RELATORIO_ANALISE_VITRINE.md`. Diferença estrutural registrada: o Vitrine é
+multi-inquilino (a fronteira é `account_id`), o Sindcom é mono-organização (a fronteira é o papel e,
+para o parceiro, `parceiro_id`) — o achado A06 de lá, de travessia entre contas, não tem análogo aqui.
+
+### Subetapa 07.1 — Bench isolado [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+Objetivo: branch dedicada + banco descartável, para que ataque destrutivo nunca toque a base real.
+Conclusão: 18 SQLs aplicados no projeto de teste, 5 usuários (um por papel), 2 parceiros (isolamento
+entre parceiros não se prova com um), 2 trabalhadores, 2 guias e 5.570 municípios — tudo fictício.
+Qualidade: a trava `exigirBench()` recusa ataque destrutivo se a URL for a de produção, com o ref de
+produção **cravado no código** em vez de vir de variável de ambiente.
+
+### Subetapa 07.2 — Infraestrutura de teste adversarial [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+Objetivo: dar à suíte o que ela não tinha — `service_role` para semear fixture, usuário descartável,
+sessão reaproveitada e trava de alvo.
+Conclusão: `tests/rls/helpers.ts` estendido por adição (`clienteServico`, `criarUsuarioDescartavel`,
+`loginAvulso`, `exigirBench`, `ehProducao`, `ataqueBarrado`) e `tests/rls/globalSetup.ts` novo.
+**Duas armadilhas de método vencidas aqui**, ambas em `orientacoes.md`: a suíte anunciava
+`alvo=BENCH` enquanto atacava **produção** (§2.20), e `getUser()` por arquivo estourava o rate limit
+de auth com sintoma idêntico ao de RLS quebrada (§2.21).
+
+### Subetapa 07.3 — Os ataques [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+Objetivo: escrever o ataque deliberado sobre os 7 vetores.
+Conclusão: **49 ataques** em 4 arquivos — `tests/adversarial/01_nucleo.spec.ts` (V1/V5, destrutivo,
+só no bench), `02_superficie.spec.ts` (V2/V4/V6/V7, seguro em produção), `03_publico.spec.ts` (os 3
+endpoints públicos) e `04_renderizacao.spec.ts` (V3: XSS e CSV).
+Qualidade: todo caso afirma o comportamento **seguro** — vermelho é achado, não teste mal escrito.
+E todo vermelho foi confirmado por medição independente antes de virar achado: **3 falsos achados
+foram descartados** exatamente assim (relatório §5).
+
+### Subetapa 07.4 — Correções [Goal] [LLM: Opus] · Status: ✅ CONCLUÍDA
+Objetivo: fechar cada falha real, com controle negativo provando que o acesso legítimo sobrevive.
+Conclusão: `sql/19_hardening_adversarial.sql` (idempotente) + 3 arquivos de frontend.
+**5 falhas reais, 5 corrigidas:** A-01 vazamento anônimo da base empresarial (CRÍTICO, já aplicado em
+produção com autorização do Maxwell), A-04 força bruta do PIN sem freio (ALTO), A-03 hash do PIN
+legível pelos 5 papéis (ALTO), A-05 injeção de fórmula no CSV (MÉDIO/ALTO), A-02 numeração de guia
+consumível por RPC (MÉDIO). **1 regressão introduzida e corrigida:** o trigger de numeração nascera
+`SECURITY INVOKER` e quebrou a criação de guias em 12 testes — `orientacoes.md` §2.17.
+
+### Subetapa 07.5 — Relatório e parecer [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+Evidência: `docs/RELATORIO_07_PORTAO_ADVERSARIAL.md` — achado a achado, com o que resistiu, os
+achados aceitos com motivo, os falsos achados e a verificação final. **Parecer favorável ao merge.**
+Suíte no bench: **159/160** (a única falha é anterior a esta etapa, por falta de dados).
+
+### Subetapa 07.6 — Merge, aplicação em produção e deploy [Manual] [LLM: Opus] · Status: ⬜ PENDENTE — DEPENDE DE ORDEM DO MAXWELL
+Objetivo: fundir o bench no `main`, aplicar `sql/19_hardening_adversarial.sql` no Supabase de
+produção e publicar o frontend em `crm.sindcompassos.org`.
+**Não iniciada por decisão de regra, não por falta de trabalho:** o parecer está entregue e o CODE
+parou. `main` intocada.
+
+**Pendências abertas por esta etapa (ver relatório §3 e §6):**
+1. O token da guia pública **não expira** — decisão de produto nunca tomada, com teste que vira
+   vermelho no dia em que houver expiração.
+2. `solicitacoes_servico.token_publico` é legível por `authenticated` — aceito e medido: é
+   credencial de operação (a Secretaria precisa dela para imprimir a guia) e a RLS de linha já
+   garante que cada parceiro só alcança as próprias.
+3. **A suíte já não estava 100% verde em produção antes desta etapa** — 5 falhas em `dashboard` e
+   `cartas`, todas porque a base tem 3 trabalhadores e nenhum aprovado, e os testes esperam números
+   da base antiga. Não é risco de segurança; é decisão pendente entre restaurar os dados ou
+   reescrever os testes.
+
+---
+
 ## ETAPA 05 — BACKLOG PÓS-MVP (prioriza-se com dado real, não com opinião) · Status: ⬜
 
 Objetivo geral: refinamentos guiados por evidência sobre o produto lançado.

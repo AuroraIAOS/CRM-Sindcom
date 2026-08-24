@@ -242,13 +242,26 @@ describe("Subetapa 02.1 — RPCs de recepcionista (PIN sempre com hash)", () => 
     const id = data as string;
     recepcionistasParaLimpar.push(id);
 
-    const { data: linha } = await clientes.admin
+    // Desde sql/19_hardening_adversarial.sql, `pin_hash` é revogada de
+    // `authenticated` — o PIN tem 4 a 6 dígitos e o hash quebra offline (achado
+    // A-03 da ETAPA 07). O teste não pode mais conferir o hash lendo a coluna, e
+    // isso é a proteção funcionando, não um obstáculo: o que se afirma agora é
+    // que a coluna está de fato fechada, inclusive para o Admin.
+    const { error: erroLeitura } = await clientes.admin
       .from("recepcionistas")
       .select("pin_hash")
       .eq("id", id)
       .single();
-    expect(linha?.pin_hash).not.toBe("1234");
-    expect(linha?.pin_hash).toMatch(/^\$2/); // bcrypt (pgcrypto gen_salt('bf'))
+    expect(ehErroRls(erroLeitura), "pin_hash voltou a ser legível pela API").toBe(true);
+
+    // Controle negativo: esconder a credencial não pode ter fechado a tabela.
+    const { data: linha, error: erroColunas } = await clientes.admin
+      .from("recepcionistas")
+      .select("id, nome, ativo")
+      .eq("id", id)
+      .single();
+    expect(erroColunas, "o narrowing quebrou a leitura legítima de recepcionistas").toBeNull();
+    expect(linha?.id).toBe(id);
   });
 
   it("fn_criar_recepcionista: PIN fora do padrão (4-6 dígitos) é rejeitado mesmo pelo admin", async () => {
@@ -283,15 +296,24 @@ describe("Subetapa 02.1 — RPCs de recepcionista (PIN sempre com hash)", () => 
     });
     expect(erroAnon).toBeTruthy();
 
-    const { data: antes } = await clientes.admin.from("recepcionistas").select("pin_hash").eq("id", id).single();
     const { error: erroSecretaria } = await clientes.secretaria.rpc("fn_definir_pin_recepcionista", {
       p_recepcionista_id: id,
       p_pin: "9999",
     });
     expect(erroSecretaria).toBeNull();
-    const { data: depois } = await clientes.admin.from("recepcionistas").select("pin_hash").eq("id", id).single();
-    expect(depois?.pin_hash).not.toBe(antes?.pin_hash);
-    expect(depois?.pin_hash).not.toBe("9999");
+
+    // Comparar o hash antes/depois deixou de ser possível pela API: `pin_hash`
+    // é revogada de `authenticated` desde a ETAPA 07 (achado A-03). O que sobra
+    // provar aqui é a autorização — quem pode redefinir e quem não pode —, e a
+    // prova de que o PIN foi de fato gravado com hash é funcional: só o
+    // check-in aceita o PIN novo, e isso é medido em
+    // tests/adversarial/03_publico.spec.ts contra o endpoint real.
+    const { error: erroLeitura } = await clientes.admin
+      .from("recepcionistas")
+      .select("pin_hash")
+      .eq("id", id)
+      .single();
+    expect(ehErroRls(erroLeitura), "pin_hash voltou a ser legível pela API").toBe(true);
   });
 });
 
