@@ -547,6 +547,468 @@ porque só a função `SECURITY DEFINER` e a `service_role` escrevem ali.
 
 ---
 
+## ETAPA 08 — COMUNICAÇÃO EXTERNA E COLETA DE DADOS · Complexidade: ALTA · Status: ⬜
+
+Objetivo geral: converter a base de **empresas** em base de **pessoas**. O CRM está em produção
+com 17.300 estabelecimentos e 16.671 empresas vinculados às suas CCTs, e com **1 trabalhador e
+zero vínculos** — sem pessoas, nada do produto opera: não há a quem prestar serviço Prata, não há
+a quem oferecer o convênio Ouro, e o motor de cobrança construído na Etapa 02 não tem base de
+cálculo. Esta etapa constrói a campanha de comunicação externa que resolve o gargalo, o canal de
+retorno dos dados e o rastreio dentro do CRM.
+
+**Spec aprovada por Maxwell:** [`docs/superpowers/specs/2026-08-24-comunicacao-externa-design.md`](../docs/superpowers/specs/2026-08-24-comunicacao-externa-design.md)
+— decisões D1 a D8, modelo de dados, segurança do canal público e cronograma de ondas. **Este
+plano executa a spec; não a redesenha.**
+
+Prioridades declaradas: **P0 — obter os dados dos trabalhadores** · **P1 — converter Prata em Ouro**.
+
+Modo predominante: [Manual] estrito no que toca RLS, superfície pública, dado pessoal e escrita em
+massa; [Goal] só no frontend de critério mecânico. **LLM: Opus em tudo que toca segurança, dado
+pessoal ou endpoint público** — a ETAPA 07 mediu o custo de errar aí (5 falhas reais num CRM que
+estava com a suíte verde e o advisor limpo). **A ordem real de execução está em "Circuito de
+execução" abaixo, não na numeração das subetapas.**
+
+### Estado medido em 2026-08-24 (reconferido nesta sessão, contra produção)
+
+| | |
+|---|---|
+| `trabalhadores` / `vinculos_empregaticios` | **1** / **0** |
+| Estabelecimentos com trabalhador vinculado | **0** ← é esta a métrica da etapa |
+| Estabelecimentos / empresas | 17.300 / 16.671 |
+| Estabelecimentos com e-mail | 15.679 |
+| **Caixas de e-mail únicas** | **9.191** |
+| Concentração A (20+) · B (5–19) · C (2–4) · D (1) | 89 / 248 / 613 / 8.241 caixas → 3.758 / 2.189 / 1.491 / 8.241 estabs |
+| SPF do domínio | `v=spf1 include:spf.titan.email ~all` |
+| **DMARC** | **não existe** (`_dmarc.sindcompassos.org` → NXDOMAIN) |
+| `envios.sindcompassos.org` | **não existe** (NXDOMAIN) |
+| Tabelas da spec já existentes | **nenhuma** das 5 |
+| Buckets de Storage no projeto | **zero** — o Storage nunca foi usado neste CRM |
+
+Todos os números da spec foram reconferidos por query e batem **exatamente**. Nada precisou ser
+recalibrado.
+
+### Três correções de medição à spec (medidas, não supostas)
+
+1. **A gravação em lote de 500 linhas NÃO é uma Edge Function** (a spec §4 diz que é). Ela vive em
+   `src/features/importacao/api.ts` e roda no navegador, pela anon key, como o Admin logado. Isso
+   é melhor, não pior: continua sem `service_role` no frontend, como manda o `CLAUDE.md`. A
+   Subetapa 08.10 reaproveita `importarTrabalhadores` de lá — a Edge Function nova (08.5) só
+   **recebe** o arquivo e cria a remessa, e nunca escreve em `trabalhadores`.
+2. **Não existe biblioteca de planilha no projeto.** `papaparse` lê CSV; a D6 (só `.xls`/`.xlsx`)
+   e o modelo pré-formatado da §7 exigem uma dependência nova de leitura/escrita de XLSX no
+   navegador. **Decisão tomada por Maxwell em 2026-08-24: entra `exceljs`** — tem formatação de
+   célula (`numFmt: '@'`, que é a defesa contra o Excel comer zero à esquerda) e é mantido, ao
+   contrário do pacote `xlsx` do npm, parado em 0.18.5. Não é troca de stack: `papaparse` continua
+   sendo o leitor de CSV da importação interna, e o `exceljs` só atende o canal externo (08.7 e
+   08.6), onde a D6 proíbe CSV.
+3. **Zero buckets de Storage existem.** O bucket privado da 08.5 é território novo neste projeto —
+   policies de `storage.objects` são um mecanismo distinto da RLS das tabelas e entram no escopo
+   do portão adversarial da 08.12.
+
+### Dependências externas (não são tarefa do CODE)
+
+| Dependência | De quem | O que bloqueia |
+|---|---|---|
+| Registro **DMARC** e DNS do subdomínio | Maxwell (painel DNS) | **tudo** — sem isso o aquecimento é desperdício |
+| Conta no ESP e verificação de domínio | Maxwell | 08.13 em diante |
+| **Nota técnica jurídica** (LGPD art. 11) | Adenilson | só o **eixo Requisição**; os eixos Estrutural e Informativo seguem sem ela |
+| Aprovação das copies e ordem de disparo | Maxwell | 08.15 |
+
+### Ordem de construção e caminho crítico (spec §11)
+
+**Caminho crítico: 08.1 → 08.4 → 08.5 → 08.6 → 08.12 → 08.15.** Um dia parado na 08.1 é um dia
+parado no fim.
+
+Uma dependência que a spec não explicita e que a execução exige: **a 08.9 (semeadura) vem antes da
+08.7**, porque o modelo pré-preenchido precisa saber quais estabelecimentos são de cada contador —
+e antes da 08.13, que gera um `envios_campanha` por contabilidade. Ela só depende das tabelas
+(08.4), então sobe cedo.
+
+### Circuito de execução (cravado — 4 circuitos, 2 trocas de modelo)
+
+As subetapas **não se executam na ordem numérica**: elas se executam em blocos que respeitam a
+dependência **e** agrupam o mesmo modelo, para que uma sessão vá do começo ao fim sem trocar de
+LLM no meio. Numeração é endereço; circuito é itinerário.
+
+| Circuito | Subetapas, nesta ordem | LLM | O que fecha o circuito |
+|---|---|---|---|
+| **1 — Preparo externo** | **08.1** → 08.0 → 08.2 → 08.3(a) rascunho | **Opus** | DMARC publicado e `dmarc=pass` medido; links conferidos; rascunho na mão do Adenilson |
+| **2 — Núcleo seguro** | **08.4** → **08.9** → **08.5** → **08.6** → **08.10** | **Opus** | O caminho completo do dado: tabela fechada → contabilidade semeada → recepção → página do contador → cadastro pela Denise |
+| **3 — Superfície do contador** | 08.7 → 08.8 → 08.11 → 08.13 | **Sonnet** | Modelo `.xlsx`, formulário, tela de cobertura e as 4 listas por caixa |
+| **4 — Portão e disparo** | **08.12** → 08.14 → 08.3(b) → **08.15** | **Opus** | Relatório adversarial verde, copies aprovadas, nota assinada no ar, onda 1 disparada |
+
+**Por que assim:**
+
+- **O circuito 1 roda em Opus mesmo carregando duas subetapas de Sonnet** (08.0 e 08.2). São
+  medição curta e configuração de assinatura; trocar de modelo por elas custaria mais que
+  executá-las no modelo já carregado.
+- **O circuito 2 é o que não pode ser partido.** As cinco subetapas são a mesma cadeia de
+  raciocínio sobre a mesma superfície — RLS, token, bucket, dado pessoal, escrita cadastral —, e
+  todas são Opus por decisão da etapa. Partir aqui é justamente onde a ETAPA 07 mostrou que se
+  perde contexto de segurança. **A 08.6 se prova com um token de bench criado à mão**; ela não
+  espera a 08.13, que é a geração dos tokens reais da campanha.
+- **O circuito 3 é o único bloco Sonnet**, e é inteiro de frontend com critério mecânico — os três
+  `[Goal]` da etapa e a exportação. Entra depois do 2 porque tudo ali consome o que o 2 criou.
+- **O circuito 4 volta para Opus** e absorve a 08.15, que isolada seria Sonnet: é 1 item, está
+  colada no portão adversarial, e uma anomalia de entregabilidade precisa ser diagnosticada na
+  hora, não numa sessão seguinte.
+
+**Os circuitos 1 e 2 podem correr na mesma sessão Opus** (o 1 depende de Maxwell no painel de DNS;
+o 2 não espera por ele). Só a **08.3(b)** e a **08.15** dependem de terceiros para fechar — e
+ambas estão no fim, de propósito.
+
+**Trocas de modelo em toda a etapa: duas** — 2→3 e 3→4.
+
+### Portão de saída da etapa
+
+**Métrica principal, e é uma só: estabelecimentos com ao menos um trabalhador vinculado.** Hoje
+zero. Abertura e clique são diagnóstico, não resultado.
+
+**Gatilho de revisão (não de comemoração):** ao fim da onda 2, ter recebido remessa de **pelo menos
+15 das 337 contabilidades** (≈4,5%). Abaixo disso, o problema está na copy ou no argumento
+jurídico — e insistir com volume maior só queima base.
+
+**Regra herdada da ETAPA 07 e não negociável:** o CODE executa, mede e relata; **ordenar o disparo
+para fora e ordenar qualquer merge são atribuição exclusiva do Maxwell** — mesmo com tudo verde.
+
+### Fora de escopo nesta etapa (YAGNI declarado, spec §12)
+
+Login de contador / Área do Contador completa · editor de campanhas dentro do CRM · espelhamento
+de métricas de abertura/clique no CRM · WhatsApp, agente de resposta automática e agente 24/7.
+**Nada de n8n e nada de `pg_cron` no envio** (decisão D2): o n8n ainda não é self-hosted 24/7 e
+depender dele cria falha invisível — "achar que enviou". O `pg_cron` volta depois, e só para
+vigilância interna.
+
+---
+
+### Subetapa 08.0 — Verificação do site e dos links públicos [Manual] [LLM: Sonnet] · Status: ⬜
+Objetivo: saber, antes de mandar 9.191 pessoas para o site, que tudo que a copy vai citar está de pé.
+Conclusão: tabela URL → código HTTP de todas as páginas e links que as copies citarão (home, quem
+somos, CCTs, contatos institucionais, formulário de filiação), com **zero** respostas fora de 200 —
+e as pendentes (a página da nota técnica, que ainda não existe) nomeadas explicitamente como
+pendentes, não como falhas.
+Qualidade: verificação por requisição real, nunca por leitura de menu. Link quebrado citado em
+e-mail de campanha custa credibilidade em escala, e a lista precisa ser reconferida imediatamente
+antes da 08.15, não só aqui.
+Evidência: tabela de URLs com status, datada, em `docs/plano_comunicacao_externa.md`.
+Esforço máximo: 1 passada (não é `/goal`).
+Escalonamento de LLM: Sonnet; não escala — é medição.
+Se esgotar: listar o que está quebrado e parar; corrigir o site não é escopo desta etapa.
+
+### Subetapa 08.1 — Subdomínio de envio, ESP e autenticação de e-mail [Manual] [LLM: Opus] · Status: ⬜
+Objetivo: `envios.sindcompassos.org` existindo, verificado no ESP, com SPF, DKIM e **DMARC** —
+que hoje não existe — de modo que o disparo em massa não queime o e-mail institucional (D1).
+Conclusão: (1) `nslookup -type=TXT _dmarc.sindcompassos.org` devolve um registro `v=DMARC1`;
+(2) o painel do ESP mostra SPF e DKIM **verificados** para o subdomínio; (3) um e-mail de teste
+enviado pelo ESP chega à caixa de entrada de um Gmail **e** de um Outlook, e o cabeçalho
+`Authentication-Results` do original mostra `spf=pass dkim=pass dmarc=pass`.
+Qualidade: o DMARC nasce em `p=none` com `rua` apontando para uma caixa monitorada — endurecer
+para `quarantine` só depois de duas semanas de relatório limpo, porque `p=reject` com DKIM mal
+configurado derruba o e-mail institucional inteiro. E **o SPF do Titan não é tocado**: a
+comunicação institucional (contato, presidência, jurídico) não pode parar por causa da campanha.
+Evidência: saída literal do `nslookup` das três consultas + cabeçalho `Authentication-Results`
+colado dos dois e-mails de teste recebidos.
+Esforço máximo: 2 rodadas de ajuste de DNS (propagação conta como espera, não como tentativa).
+Escalonamento de LLM: Opus desde a 1ª — é identidade de e-mail, superfície de spoofing.
+Se esgotar: parar e relatar qual dos três (SPF/DKIM/DMARC) não fecha e por quê. **Nenhum disparo
+acontece com este item vermelho.**
+
+### Subetapa 08.2 — Assinaturas institucionais padronizadas [Manual] [LLM: Sonnet] · Status: ⬜
+Objetivo: toda caixa institucional respondendo com a mesma assinatura, para que a resposta humana
+à campanha pareça a mesma instituição que mandou o e-mail.
+Conclusão: cada caixa institucional em uso tem assinatura configurada com nome, cargo, telefone e
+site; um e-mail de teste enviado de cada uma exibe a assinatura corretamente no Gmail web e no
+aplicativo de celular.
+Qualidade: identidade visual conforme `docs/design-tokens.md` — nunca inventar paleta; sem imagem
+remota pesada (assinatura com imagem externa é bloqueada por padrão em muitos clientes e vira
+retângulo vazio); texto em pt-BR.
+Evidência: print de um e-mail recebido por caixa, nas duas telas.
+Esforço máximo: 1 passada por caixa.
+Escalonamento de LLM: Sonnet; não escala.
+Se esgotar: relatar as caixas que ficaram sem assinatura. Não bloqueia o caminho crítico.
+
+### Subetapa 08.3 — Nota técnica jurídica (LGPD art. 11) [Manual] [LLM: Opus] · Status: ⬜
+Objetivo: ter, público e assinado, o fundamento legal do pedido — porque "sindicalizado ou
+oposição" é **dado pessoal sensível** (LGPD art. 5º, II) e não se apoia nas bases comuns do art. 7º.
+Conclusão: **duas metades, e só a segunda fecha a subetapa.** (a) O CODE entrega ao Adenilson um
+rascunho estruturado com a linha de argumentação e os dispositivos — CF art. 8º, III; CLT art. 513;
+LGPD art. 7º e art. 11 com as hipóteses candidatas e o motivo de cada uma. (b) A versão **revisada
+e assinada pelo Adenilson** está publicada como página fixa no site e a URL responde 200.
+Qualidade: **o CODE não decide a base legal e não assina nada.** Um contador bem informado que
+perguntar "qual sua base do art. 11?" precisa receber resposta precisa e citada; resposta genérica
+nesse ponto desmonta o pedido inteiro — e não só com aquele contador, porque contadores conversam
+entre si.
+Evidência: o rascunho commitado em `docs/` + a URL pública da nota assinada respondendo 200.
+Esforço máximo: 1 rascunho + 1 rodada de ajuste após leitura do jurídico.
+Escalonamento de LLM: Opus desde a 1ª — argumentação jurídica sobre dado sensível.
+Se esgotar / se o Adenilson não devolver: **o eixo Requisição fica bloqueado** (08.14 e 08.15); os
+eixos Estrutural e Informativo seguem. Relatar o bloqueio a Maxwell, nunca improvisar fundamentação.
+
+### Subetapa 08.4 — Esquema das tabelas novas, com RLS e policy explícita [Manual] [LLM: Opus] · Status: ⬜
+Objetivo: `contabilidades`, `contabilidade_estabelecimentos`, `modelos_coleta`, `campanhas`,
+`envios_campanha` e `remessas_dados` no banco, nascidas fechadas (spec §5).
+Conclusão: `sql/20_comunicacao_externa.sql` aplicado e **idempotente** (2ª execução com delta
+zero), e as quatro medições abaixo, todas por query de catálogo — não por leitura de migration:
+(1) toda tabela nova com `rowsecurity = true` **e** ao menos uma policy nomeada;
+(2) zero grants de `TRUNCATE`/`REFERENCES`/`TRIGGER` para `anon`/`authenticated` nelas (§2.16);
+(3) nenhuma view nova sem `security_invoker = on` (§2.15);
+(4) `tests/rls/comunicacao.spec.ts` verde, com `anon` recebendo `[]` nas seis tabelas e o Admin
+lendo — o controle negativo prova que a política não é "negar tudo".
+Qualidade: `envios_campanha.token_expira_em` é **NOT NULL com default de 90 dias** — o token da
+guia pública não expira, e isso ficou como pendência aberta da ETAPA 07; não repetir o erro numa
+tabela nova. `token_revogado_em` desde a criação. `check (contabilidade_id is not null or
+estabelecimento_id is not null)`. `remessas_dados` é **imutável**: correção cria remessa nova.
+Nenhum `DEFAULT` de coluna chamando função cujo `EXECUTE` será revogado depois (§2.17).
+`modelos_coleta` recebe o modelo v1 "Cadastro sindical 2026" por `INSERT` na própria migration,
+com as 6 colunas mapeadas ao template de `specs/importacao.md` §3.3 — **nenhuma alteração em
+`trabalhadores` é necessária**, e `nivel` continua coluna gerada, jamais escrita.
+Evidência: saída das 4 queries de catálogo + resultado da suíte + delta zero na 2ª aplicação.
+Esforço máximo: 2 tentativas (não é `/goal` — RLS é Manual estrito por regra do projeto).
+Escalonamento de LLM: Opus desde a 1ª.
+Se esgotar: parar com o SQL **não aplicado** e relatar. Tabela nova aberta é pior que tabela nova
+inexistente.
+
+### Subetapa 08.5 — Bucket privado + Edge Function de recepção da remessa [Manual] [LLM: Opus] · Status: ⬜
+Objetivo: o endpoint que recebe a planilha do contador — **público, sem login, recebendo dado
+pessoal**: mesma classe de risco do check-in por QR da Subetapa 02.2.
+Conclusão: seis comportamentos medidos por requisição real, não por leitura de código:
+(1) POST com token válido + `.xlsx` grava o objeto no bucket **privado** `remessas` e cria a linha
+em `remessas_dados` com `status='recebida'`, `ip_origem` e `user_agent` preenchidos;
+(2) token inexistente, expirado ou revogado devolve **`{ok:false, erro:...}` como resultado, com
+HTTP 200** — nunca `raise exception`, porque a exceção desfaz o próprio registro da tentativa (§2.18);
+(3) a partir da 6ª tentativa no mesmo token dentro da janela, recusa por rate limit **e o
+contador de tentativas realmente subiu** — foi exatamente aqui que a 1ª correção do check-in
+falhou em silêncio na ETAPA 07;
+(4) GET direto na URL pública do objeto devolve erro — o bucket não é legível nem listável por `anon`;
+(5) arquivo `.csv` renomeado para `.xlsx` é **recusado no servidor**, por assinatura de conteúdo e
+não por extensão (D6);
+(6) a função **não escreve uma linha sequer** em `trabalhadores` nem em `vinculos_empregaticios`.
+Qualidade: `service_role` só **dentro** da função, pela variável que o Supabase injeta — nunca no
+frontend (padrão já usado em `supabase/functions/formulario-filiacao`). **Rate limit por token,
+nunca por contabilidade** — travar a contabilidade inteira deixaria um atacante silenciar um
+contador legítimo só errando token de propósito, que é a mesma lição do freio do check-in. Tamanho
+máximo de arquivo validado no servidor. Quem abre o link **só consegue enviar**: nunca listar,
+nunca ler.
+Evidência: log das 6 requisições com corpo e código de resposta + a linha de `remessas_dados`
+gerada + o `select count(*)` provando que `trabalhadores` não mudou.
+Esforço máximo: 3 tentativas.
+Escalonamento de LLM: Opus desde a 1ª — endpoint público com dado pessoal.
+Se esgotar: parar com a função **não publicada** e emitir relatório curto (problema + causas +
+2-3 alternativas).
+
+### Subetapa 08.6 — Página pública `/enviar-dados/:token` (planilha) [Goal] [LLM: Opus] · Status: ⬜
+Objetivo: a tela que o contador abre pelo link do e-mail, valida a planilha **no navegador dele** e
+envia — sem login (D3).
+Conclusão: o contador abre `/enviar-dados/:token` sem sessão, vê o nome da própria contabilidade,
+anexa um `.xlsx`, o preview mostra erro por linha (DV de CPF inválido, CNPJ fora da carteira dele,
+obrigatória vazia), o envio só habilita sem erro bloqueante, e **ao enviar aparece uma remessa em
+`remessas_dados` com `status='validada'`**. Com token expirado ou revogado, a página mostra "link
+inválido" e não oferece upload nenhum.
+Qualidade: reaproveita `validarTrabalhadores.ts` e `PreviewTable.tsx` **sem fork** — duas cópias
+divergentes da validação de CPF é como a regra some. A página **não lê o banco**: só ecoa o que o
+próprio arquivo trouxe, e jamais exibe CPF de quem já está cadastrado. Rota pública no mesmo padrão
+de `/guia/:token` em `src/app/router.tsx`, fora do `AppShell`. Toda query em
+`features/<domínio>/api.ts` como hook TanStack. Texto em pt-BR, tokens de `docs/design-tokens.md`.
+Evidência: gravação/print do ciclo completo com um token real de bench + a linha de
+`remessas_dados` resultante + o print do token revogado recusando.
+Esforço máximo: 3 tentativas.
+Escalonamento de LLM: Opus nas 2 primeiras; **não rebaixar para Sonnet na 3ª** — é superfície pública.
+Se esgotar: parar e emitir relatório curto (problema + causas + 2-3 alternativas).
+
+### Subetapa 08.7 — Modelo `.xlsx` gerado sob demanda, pré-preenchido [Goal] [LLM: Sonnet] · Status: ⬜
+Objetivo: eliminar o erro mais provável do contador — CNPJ digitado errado — entregando a planilha
+já com as empresas dele nas linhas (spec §7).
+Conclusão: "baixar modelo" gera **no navegador** um `.xlsx` com uma linha por estabelecimento
+daquele token (CNPJ e razão social preenchidos) e cabeçalhos idênticos aos de `specs/importacao.md`
+§3.3; reaberto no Excel e salvo, **um CPF com zero à esquerda continua com 11 dígitos** e o CNPJ
+não vira notação científica; a partir da 2ª visita, os estabelecimentos já cobertos vêm marcados.
+Qualidade: as colunas `cpf` e `cnpj_estabelecimento` nascem formatadas como **texto**
+(`numFmt: '@'`) — essa é a defesa, e ela **só existe por causa da D6**: em CSV não há formatação de
+célula (§2.10). Nenhum arquivo estático a manter. O mapeamento
+"sindicalizado → `recolhe_contribuicao = true`" / "oposição → `false`" vive num **único** lugar,
+compartilhado com 08.8 e 08.10. **A dependência `exceljs` está cravada** (decisão de Maxwell em
+2026-08-24, ver "correções de medição" acima): é ela que fornece o `numFmt: '@'`, e é ela também
+que **lê** o `.xlsx` que o contador devolve na 08.6 — um único formato de planilha no projeto, sem
+uma segunda biblioteca para manter. `papaparse` permanece intocado como leitor de CSV da
+importação interna.
+Evidência: o arquivo gerado, aberto no Excel de verdade e reexportado, com o CPF `00123456789`
+sobrevivendo ao ciclo completo.
+Esforço máximo: 3 tentativas.
+Escalonamento de LLM: Sonnet nas 2 primeiras; Opus na 3ª.
+Se esgotar: parar e relatar. Modelo que corrompe CPF é pior que modelo nenhum.
+
+### Subetapa 08.8 — Formulário direto na página (empresa isolada) [Goal] [LLM: Sonnet] · Status: ⬜
+Objetivo: atender os **8.241 grupos de 1 estabelecimento — 53% da base** — que têm 2 ou 3
+funcionários e nunca vão baixar planilha alguma. Ignorar esse caso perderia mais da metade do alcance.
+Conclusão: na mesma página do token, sem download, a empresa preenche de 1 a N trabalhadores e o
+envio produz uma remessa em `remessas_dados` **pelo mesmo caminho da planilha** — mesma Edge
+Function, mesmo status inicial, mesma revisão humana depois.
+Qualidade: mesma validação de DV de CPF do caminho da planilha, mesmo mapeamento de status,
+`react-hook-form` + `zod` como no resto do projeto. Não abre um segundo caminho de escrita: se o
+formulário virar um atalho que pula a revisão, a garantia central da etapa cai.
+Evidência: ciclo completo com 2 trabalhadores fictícios + a remessa gerada, lado a lado com uma
+remessa vinda de planilha, mostrando o mesmo formato.
+Esforço máximo: 3 tentativas.
+Escalonamento de LLM: Sonnet nas 2 primeiras; Opus na 3ª.
+Se esgotar: parar e emitir relatório curto.
+
+### Subetapa 08.9 — Semeadura de `contabilidades` e dos vínculos [Manual] [LLM: Opus] · Status: ⬜
+Objetivo: transformar o agrupamento por e-mail — que hoje é implícito e se perde quando a empresa
+troca de escritório — em entidade persistida e editável (spec §5.2).
+Conclusão: `contabilidades` com **950 linhas** (as caixas com 2+ estabelecimentos: 89 + 248 + 613)
+e `contabilidade_estabelecimentos` com **7.438 vínculos** `origem = 'agrupamento_email'`,
+`confirmado = false` em 100% — números que batem exatamente com a medição desta etapa. Segunda
+execução com **delta zero**.
+Qualidade: **a semeadura nunca apaga** — mesmo princípio da skill `atualizar-sindcom` (06.6):
+divergência vira relatório, jamais `DELETE`. Nenhum e-mail duplicado em `contabilidades`.
+`confirmado = false` porque o agrupamento é heurística, não declaração do contador — o dia em que
+ele disser "essa empresa não é mais minha", o CRM registra em vez de esquecer. Roda pela anon key
+como Admin, sem `service_role` (padrão da carga da 06.4). As 8.241 caixas de 1 estabelecimento
+**não** viram contabilidade: são empresas isoladas.
+Evidência: contagens antes/depois, 2ª execução com delta zero, e conferência a olho de casos
+grandes contra a origem (`juridico@contss.com.br` = 129, `rm2091adm@gmail.com` = 114).
+Esforço máximo: 2 tentativas.
+Escalonamento de LLM: Opus desde a 1ª — escrita em massa em produção.
+Se esgotar: parar sem gravar e relatar.
+
+### Subetapa 08.10 — Revisão e importação da remessa pela Denise [Manual] [LLM: Opus] · Status: ⬜
+Objetivo: o único ponto em que dado vindo de fora vira cadastro — **e ele é humano**.
+Conclusão: com uma remessa `recebida`, a tela interna abre a planilha por **URL assinada**, mostra
+o preview e exige confirmação; ao confirmar, `trabalhadores` e `vinculos_empregaticios` recebem as
+linhas válidas via a `importarTrabalhadores` **já existente** em
+`src/features/importacao/api.ts`, a remessa passa a `importada` com `processada_por` e
+`processada_em` preenchidos, e **reenviar o mesmo arquivo não duplica ninguém** — a política de
+duplicata de `trabalhadores` casa por CPF e ignora existentes (`specs/importacao.md` §5). É essa
+propriedade que torna o token reutilizável seguro por construção (spec §5.5).
+Qualidade: **nenhuma remessa vira cadastro sem clique humano** — é a garantia central da etapa.
+A remessa é imutável: correção cria remessa nova, preservando o histórico de quem enviou o quê e
+quando. As três flags de nível (`recolhe_contribuicao_sindical`, `recolhe_mensalidade_convenio`,
+`forma_pagamento_preferida`) seguem **protegidas de alteração em registro existente** — regra
+inviolável do `CLAUDE.md`, e é a que impede uma planilha reclassificar 500 pessoas em silêncio.
+A URL assinada expira. Os trabalhadores marcados como oposição entram **sem lastro documental**
+(D7): a tela `/cartas` passa a ter um grupo que ela não previa — **Bronze sem carta registrada** —
+e isso é decisão consciente de Maxwell, não bug a corrigir.
+Evidência: ciclo completo com remessa de demonstração (registros nomeados `DEMO —`, que **ficam
+gravados**) + reenvio do mesmo arquivo com contagem de `trabalhadores` inalterada + query provando
+as 3 flags intocadas.
+Esforço máximo: 3 tentativas.
+Escalonamento de LLM: Opus desde a 1ª — escreve na base cadastral.
+Se esgotar: parar e relatar.
+
+### Subetapa 08.11 — Acompanhamento por cobertura e revogação de token [Goal] [LLM: Sonnet] · Status: ⬜
+Objetivo: responder "quais contabilidades ainda não mandaram, e o que exatamente falta em cada
+uma" como tela, não como cruzamento manual repetido a cada rodada de cobrança (D4).
+Conclusão: a tela lista as contabilidades ordenadas por cobertura, mostrando
+**`juridico@contss.com.br — 40 de 129 (31%)`**; abre a lista **nominal** dos estabelecimentos
+daquele contador ainda sem trabalhador vinculado; exporta CSV; e o botão "revogar token" preenche
+`token_revogado_em`, gera um novo token e faz o link antigo passar a ser recusado pela página
+pública — **sem apagar histórico**.
+Qualidade: cobertura é **query**, nunca campo materializado — um `respondido_em` booleano
+esconderia 89 empresas faltando, e é justamente esse número que dirige o follow-up. O token não
+aparece em claro para quem não é Admin. A exportação passa por `lib/csv.ts`, que neutraliza
+fórmula do Excel (§2.19). Nenhum teste fixa contagem que o dado de demonstração vá quebrar (§7.1b).
+Evidência: print da tela com uma cobertura parcial real + o CSV exportado + prova de que o link
+revogado é recusado e o novo funciona.
+Esforço máximo: 3 tentativas.
+Escalonamento de LLM: Sonnet nas 2 primeiras; Opus na 3ª.
+Se esgotar: parar e emitir relatório curto.
+
+### Subetapa 08.12 — Portão de segurança adversarial da nova superfície [Manual] [LLM: Opus] · Status: ⬜
+Objetivo: atacar de propósito o que esta etapa criou. **Obrigatório pelo `CLAUDE.md`** — o gatilho
+é "qualquer etapa nova, integração nova ou deploy que amplie a superfície exposta", e esta etapa é
+as três coisas.
+Conclusão: `tests/adversarial/05_comunicacao.spec.ts` verde, cobrindo no mínimo: token de outra
+contabilidade; token expirado; token revogado; força bruta de token; leitura das seis tabelas novas
+por `anon`; leitura do objeto do bucket sem URL assinada; **listagem** do bucket por `anon`; CSV
+disfarçado de `.xlsx`; fórmula do Excel chegando pela planilha do contador e saindo na exportação
+da 08.11 (§2.19); e a **varredura de catálogo** de views sem `security_invoker` e de grants de
+fábrica (§2.15 e §2.16). A suíte completa roda **sem regressão** contra o número anterior.
+Qualidade: **rodar a varredura de catálogo, não reler migrations** — 2 dos 5 achados da ETAPA 07
+apareceram assim, e nenhum sairia de leitura de código. Ataque destrutivo só no bench, com
+`exigirBench()` (§2.20). **Todo vermelho é hipótese até ser medido de novo**: 3 "achados" da ETAPA
+07 eram testes meus mal escritos. Policies de `storage.objects` são mecanismo distinto da RLS de
+tabela e precisam de caso próprio — é território novo neste projeto.
+Evidência: `docs/RELATORIO_08_ADVERSARIAL.md` — achado a achado, o que resistiu, os aceitos com
+motivo, os falsos achados descartados e a verificação final, no formato do relatório da ETAPA 07.
+Esforço máximo: sem teto — é auditoria, não implementação.
+Escalonamento de LLM: Opus do início ao fim.
+Se esgotar / se houver achado aberto: **nenhum disparo acontece.** O CODE entrega o relatório e
+**para**; ordenar o merge e o disparo é atribuição exclusiva do Maxwell.
+
+### Subetapa 08.13 — Listas segmentadas por caixa e campanhas registradas [Manual] [LLM: Sonnet] · Status: ⬜
+Objetivo: os 4 CSVs que vão para o ESP e os `envios_campanha` correspondentes, com um token por
+destinatário.
+Conclusão: 4 arquivos exportados — **89 / 248 / 613 / 8.241 linhas, somando 9.191** — montados
+**por caixa de e-mail**, com **zero e-mail repetido dentro de um arquivo e zero entre arquivos**
+(conferido por query, não a olho); as campanhas correspondentes existem em `campanhas` e os
+`envios_campanha` batem **1:1** com as linhas de cada CSV.
+Qualidade: **a lista é montada por CAIXA, nunca por estabelecimento** — um contador com 129
+estabelecimentos receberia 129 e-mails idênticos, e isso é marcação como spam garantida logo no
+aquecimento, exatamente na semana em que a reputação do subdomínio novo está se formando. O CSV
+que sobe para o ESP **não leva CPF nem dado de trabalhador nenhum**: nome da caixa, e-mail e o
+link com token, e nada mais. Reaproveita a exportação nativa do `DataTable` (`onExportar` +
+`lib/csv.ts`), que já neutraliza fórmula.
+Evidência: as 4 contagens + a query de e-mail duplicado devolvendo zero + amostra de 3 linhas de
+cada arquivo + `count(*)` de `envios_campanha` por campanha.
+Esforço máximo: 2 tentativas.
+Escalonamento de LLM: Sonnet; Opus se a conferência de duplicata não fechar.
+Se esgotar: parar e relatar. Lista errada não se corrige depois do disparo.
+
+### Subetapa 08.14 — Copies das trilhas A e B [Manual] [LLM: Opus] · Status: ⬜
+Objetivo: os textos — **1 e-mail** para contabilidades (trilha A) e **3** para empresas isoladas
+(trilha B: estrutural, informativo, requisição), spec §9.
+Conclusão: as 4 copies escritas e **aprovadas por Maxwell**; a do eixo **Requisição** só é dada por
+pronta quando o link da nota técnica (08.3) responder 200 dentro do próprio texto.
+Qualidade: contador não lê newsletter institucional — a trilha A é pedido objetivo, com os 6
+campos, prazo, link do modelo já preenchido e canal humano para dúvida. A orientação **"envie
+quantas vezes quiser, com quantas empresas conseguir por vez"** está no texto: é consequência
+direta do token reutilizável (§5.5), e sem ela o contador de 129 empresas trava esperando terminar
+tudo — **envio parcial vale muito mais que envio nenhum**. Descadastro nas quatro. Nenhum anexo
+(anexo em disparo em massa derruba entregabilidade). O link com token é o único CTA da copy de
+Requisição. Texto em pt-BR, tom conforme `docs/design-tokens.md`.
+Evidência: as 4 copies em `docs/`, com o registro da aprovação de Maxwell e a URL da nota técnica
+conferida.
+Esforço máximo: 2 rodadas de revisão por copy.
+Escalonamento de LLM: Opus — a copy de Requisição carrega o argumento jurídico.
+Se esgotar: entregar as 3 copies não bloqueadas e relatar que a de Requisição aguarda a 08.3.
+
+### Subetapa 08.15 — Onda 1: as 89 contabilidades grandes [Manual] [LLM: Opus] · Status: ⬜
+Objetivo: o primeiro disparo real — 89 envios que alcançam **3.758 estabelecimentos, 24% da base**.
+Se a copy estiver ruim, descobre-se com 89 e não com 9.000 (D8).
+Conclusão: os 89 e-mails enviados no ritmo de aquecimento (**20 → 40 por dia**), com
+`envios_campanha.enviado_em` preenchido nos 89, **taxa de rejeição medida abaixo de 2%** no painel
+do ESP, e a tela de cobertura (08.11) mostrando as primeiras remessas chegando.
+Qualidade: **nunca subir volume com rejeição acima de 2%**, e **parar e investigar ao cair em
+spam** em vez de insistir — insistir com volume maior só queima a base, e a base é finita e não se
+recompra. O disparo é **ordenado por Maxwell**, nunca iniciado pelo CODE. Os links são reconferidos
+imediatamente antes (08.0). As 89 maiores caixas valem contato telefônico direto no follow-up:
+são 24% da base em 89 ligações.
+Evidência: print do painel do ESP com entregues/rejeitados/spam + `select count(*) from
+envios_campanha where enviado_em is not null` = 89 + a primeira leitura de cobertura.
+Esforço máximo: 1 disparo; qualquer anomalia interrompe em vez de reenviar.
+Escalonamento de LLM: já nasce em Opus — não por complexidade própria, mas por **circuito**: roda
+colada à 08.12, e anomalia de entregabilidade precisa de diagnóstico na hora, não numa sessão nova.
+Se esgotar: parar o agendamento no ESP e relatar. **Onda 2 não sai com a onda 1 no vermelho.**
+
+---
+
+**Aceite da Etapa 08:** (1) DMARC publicado e um e-mail de teste passando `spf/dkim/dmarc=pass` nas
+duas caixas; (2) as seis tabelas novas com RLS, policy explícita e zero grant de fábrica sobrando;
+(3) um contador envia `.xlsx` pelo token e a remessa aparece em `remessas_dados` com status
+`validada`, **sem tocar `trabalhadores`**; (4) a Denise revisa e importa, e o reenvio do mesmo
+arquivo não duplica ninguém; (5) portão adversarial verde, com relatório; (6) onda 1 disparada com
+rejeição abaixo de 2%; (7) a métrica que decide tudo — **estabelecimentos com ao menos um
+trabalhador vinculado — saiu de zero.**
+
+**Riscos (spec §14):** domínio marcado como spam (mitigado por D1 + aquecimento + regra dos 2%) ·
+contador recusa por LGPD (nota técnica pública e assinada) · contador não responde (tela de
+cobertura + telefone nas 89 maiores) · planilha volta com CPF corrompido pelo Excel (coluna texto +
+DV validado antes do envio) · um contador recebe N e-mails iguais (lista por caixa) · dado pessoal
+exposto no canal público (bucket privado, token com validade, rate limit, sem leitura pela página,
+revisão humana antes de qualquer escrita).
+
+---
+
 ## ETAPA 05 — BACKLOG PÓS-MVP (prioriza-se com dado real, não com opinião) · Status: ⬜
 
 Objetivo geral: refinamentos guiados por evidência sobre o produto lançado.
@@ -619,7 +1081,10 @@ recriação de contêiner.
 | 02 | Alta | Etapa 01 | Convênio girando + dinheiro cobrado e conciliado |
 | 03 | Média | Etapa 02 (dashboard usa dados financeiros) | Gestão estratégica + integrações |
 | 04 | Média | Etapa 03 | Fechamento do mapa de telas: `/juridico` e `/cartas` ✅ |
-| 05 | Variável | Etapa 04 + dados de uso | Refinamentos guiados por evidência |
+| 06 | Alta | Etapa 04 | Base empresarial real: 16.687 empresas + 17.319 estabelecimentos ✅ |
+| 07 | Alta | Etapa 06 | Portão adversarial: 5 falhas reais fechadas ✅ |
+| 08 | Alta | Etapa 07 (portão) + DMARC + nota jurídica | Base de **pessoas**: campanha, coleta por token e rastreio por cobertura |
+| 05 | Variável | Etapa 08 + dados de uso | Refinamentos guiados por evidência |
 
 ---
 
