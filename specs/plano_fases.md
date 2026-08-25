@@ -704,7 +704,7 @@ Esforço máximo: 1 passada (não é `/goal`).
 Escalonamento de LLM: Sonnet; não escala — é medição.
 Se esgotar: listar o que está quebrado e parar; corrigir o site não é escopo desta etapa.
 
-### Subetapa 08.1 — Subdomínio de envio, ESP e autenticação de e-mail [Manual] [LLM: Opus] · Status: 🟡 EM ABERTO (uma medição pendente)
+### Subetapa 08.1 — Subdomínio de envio, ESP e autenticação de e-mail [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
 **Feito e medido em 2026-08-24.** DMARC organizacional publicado (`p=none`, `rua` para
 `deploycrm@`, `adkim=r`, `aspf=r`) e conferido idêntico em 3 resolvedores. ESP escolhido:
 **Brevo**, conta criada por Maxwell. `envios.sindcompassos.org` **autenticado e com a marca**
@@ -721,21 +721,30 @@ adversarial); e o `_dmarc.envios` foi publicado com o **nosso** `rua` em vez do 
 que receberia os relatórios da nossa própria campanha (`orientacoes.md` §3.8). A verificação
 da Brevo passou verde nas duas.
 
-**Pendência que impede o fechamento:** no Outlook o DMARC passa, mas o **DKIM devolve
-`timeout`**. Medido salto a salto: a instabilidade está no **salto 2, que é da Brevo**
-(`b2.envios-…dkim.brevo.com`, oscilando entre 28 e 380 ms); a nossa zona responde em 27–39 ms,
-estável. Não era cache frio — o reenvio falseou essa hipótese. **Não bloqueia envio**, porque
-o SPF alinha graças ao `aspf=r`, mas cria risco real para esta campanha: se o contador
-**encaminhar** o e-mail internamente — e a spec §5.5 conta com isso —, o encaminhamento
-quebra o alinhamento de SPF e o DMARC passa a depender do DKIM que a Microsoft não verifica.
-**Consequência para o plano: não endurecer o DMARC para `quarantine` enquanto o DKIM não
-estiver confiável na Microsoft** — o critério deixa de ser calendário e passa a ser medição.
-Reconfirmar antes da onda 1.
+**Fechamento em 2026-08-25.** No primeiro teste o Outlook devolvia `dkim=timeout` — DMARC
+passava pelo SPF, mas o DKIM não era verificado. **Resolvido sozinho no dia seguinte, sem
+alteração nossa**: medido no código-fonte da mensagem recebida, `dkim=pass` **true**,
+`dkim=timeout` **false**, mais `spf=pass`, `dmarc=pass` e `compauth=pass`, com
+`header.d=envios.sindcompassos.org` e seletor `brevo2`. O Gmail passa igual. **Critério
+cumprido nos dois receptores.**
 
-**Defeito encontrado e ainda não corrigido:** o `Reply-To` sai como
-`sindicato@envios.sindcompassos.org`, e **esse subdomínio não tem MX** — quem responder
-recebe erro de entrega. Corrigir na 08.14: toda campanha real com
-`Reply-To: secretaria@sindcompassos.org`.
+**Correção de diagnóstico, registrada de propósito.** Atribuí o timeout à latência da cadeia
+de CNAME da Brevo. **A medição do dia seguinte falseou essa explicação:** a cadeia ficou mais
+lenta (108–923 ms, contra 83–239 ms na véspera), com o salto da Brevo firme em 243–503 ms — e
+mesmo assim passou. Logo, latência não era a causa. A hipótese remanescente é cache negativo
+no resolvedor da Microsoft, com TTL expirado, **mas não foi medida e não deve ser afirmada**.
+O que fica é operacional: **a verificação DKIM de domínio recém-autenticado pode falhar nas
+primeiras horas e se corrigir sozinha** — reconfirmar antes da onda 1 em vez de concluir pela
+primeira leitura.
+
+**Cautela mantida:** não endurecer o DMARC para `quarantine` sem reconfirmar o DKIM na
+Microsoft. Se o contador **encaminhar** o e-mail internamente — e a spec §5.5 conta com isso —,
+o encaminhamento quebra o alinhamento de SPF e o DMARC passa a depender só do DKIM.
+
+**Defeito conhecido, correção agendada para a 08.14:** o `Reply-To` sai como
+`sindicato@envios.sindcompassos.org`, e **esse subdomínio não tem MX** — quem responder recebe
+erro de entrega. Toda campanha real com `Reply-To: secretaria@sindcompassos.org`.
+
 Objetivo: `envios.sindcompassos.org` existindo, verificado no ESP, com SPF, DKIM e **DMARC** —
 que hoje não existe — de modo que o disparo em massa não queime o e-mail institucional (D1).
 Conclusão: (1) `nslookup -type=TXT _dmarc.sindcompassos.org` devolve um registro `v=DMARC1`;
@@ -766,6 +775,14 @@ para o contador que abre o primeiro e-mail; tabela com estilo inline (o Outlook 
 o motor do Word); fontes da marca com pilha de fallback real, já que e-mail não carrega
 Google Fonts. Assinatura **setorial** onde a caixa é operada por várias pessoas — nome de uma
 só pessoa passa a mentir quando ela sai.
+**Bug corrigido em 2026-08-25.** O botão "Copiar assinatura" falhava com "Não foi possível
+copiar", e a causa era minha: os **dois** caminhos usavam `navigator.clipboard`, que exige a
+permissão `clipboard-write` — não concedida ao iframe onde o artefato roda. As duas
+tentativas eram rejeitadas e o código caía no erro final. Corrigido com **seleção de DOM +
+`execCommand('copy')`**, que funciona em iframe sob gesto do usuário e preserva o HTML com
+estilos inline (que é o que o editor do Titan precisa); e com um último recuo que **seleciona**
+a assinatura e instrui Ctrl+C. Lição: caminho de recuo que compartilha a mesma dependência do
+caminho principal não é recuo nenhum.
 **Não concluída porque o critério exige a assinatura instalada e conferida em Gmail (web e
 celular) e no Outlook.** A instalação é por caixa, no webmail do Titan, e exige a senha de
 cada uma — o CODE não digita credencial. **Faltam 3 dados** que não serão inventados:
@@ -801,6 +818,30 @@ enviar", o contador cauteloso trava mesmo concordando com o resto.
 CCT/ACT já obriga a empresa a informar o quadro de empregados — **não pôde ser verificada**:
 as 27 convenções (5 CCTs + 22 ACTs) estão cadastradas com `documento_url` vazio em 27 de 27,
 e só 1 tem `data_limite_oposicao` preenchida. Fora do escopo desta etapa, mas vale fechar.
+**Atualizado em 2026-08-25 com as decisões de Maxwell**, que reorganizam a nota: as **CCTs já
+obrigam** contabilidades e empresas a fornecer a relação de funcionários quando solicitadas —
+o argumento sai da interpretação e vira **contratual**; base do art. 11 decidida (**II "a"**
+para os controladores, **II "d"** para o Sindcom); **CLT art. 513 "e"** (impor contribuições)
+entra e fecha o encadeamento do campo sensível — se o STF só valida a cobrança *com* direito
+de oposição assegurado, **registrar a oposição é condição de legalidade da cobrança**; Tema
+935 / ARE 1018459 confirmado; política de guarda definida (Carta de Exclusão, retenção
+mínima, 20 anos por analogia à Lei 13.787/2018); canais do art. 18 nomeados.
+**Três ressalvas técnicas registradas no esboço:** a Lei 13.787/2018 trata de prontuário de
+paciente, então é **analogia** e a nota deve dizê-lo; "CPF anonimizado" guardado junto de
+iniciais, município e histórico provavelmente permite reidentificação — é
+**pseudonimização**, e prometer anonimização é mais difícil de sustentar; e o Brasil **não
+ratificou a Convenção 87 da OIT**, erro comum ao tratar de ato antissindical.
+**Escopo ampliado: três produtos**, não um — Nota Oficial (PDF denso, com o enquadramento de
+ato antissindical), Nota Resumida (1 folha) e a página pública. **Conflito a decidir:** a
+Resumida iria como **anexo** nos e-mails, mas a 08.14 tem "nenhum anexo" como critério de
+qualidade, porque anexo em disparo em massa derruba entregabilidade — recomendação: hospedar
+o PDF e mandar link.
+**⛔ Bloqueio ativo:** `docs/fundamentos` — a literatura jurídica que Maxwell mandou avaliar —
+**existe e está vazio** (verificado: nenhum arquivo no diretório, nenhum PDF/DOC em outro
+caminho, árvore do git limpa). Os três produtos **não serão escritos** até o material chegar.
+Segunda pendência: **transcrever a cláusula de cada CCT** (as 27 estão com `documento_url`
+vazio em 27 de 27), sem o que a nota citará genericamente — a resposta fraca que ela existe
+para evitar.
 **(b) Bloqueia o eixo Requisição** (08.14 e 08.15) até a versão assinada estar publicada.
 Objetivo: ter, público e assinado, o fundamento legal do pedido — porque "sindicalizado ou
 oposição" é **dado pessoal sensível** (LGPD art. 5º, II) e não se apoia nas bases comuns do art. 7º.
