@@ -87,6 +87,88 @@ Hashes diferentes = o que está no ar não é o que você acabou de construir.
 
 ---
 
+
+### 1.5 O CRM respondia em HTTP puro — e a ordem das regras no `.htaccess` decide se o conserto funciona
+
+**(a) Problema.** Medido na ETAPA 08, ao verificar os links do site (Subetapa 08.0):
+
+```
+GET http://crm.sindcompassos.org/          → HTTP/1.1 200 OK   (sem redirecionar)
+GET http://sindcompassos.org/              → HTTP/1.1 200 OK   (sem redirecionar)
+```
+
+Nenhum dos dois forçava HTTPS, e não havia HSTS em lugar nenhum. No site institucional isso
+já é ruim; **no CRM é pior**, e o motivo não é o de sempre. As chamadas ao Supabase saem por
+`https://` cravado no bundle, então a credencial não trafega em claro — o problema é outro:
+**o HTML e o JavaScript eram entregues por canal aberto**, e é esse JavaScript que fala com o
+Supabase. Um atacante na mesma rede troca o script e captura o que quiser, com TLS intacto do
+outro lado. Aplicação com login servida em HTTP é MITM por construção, ainda que a API seja
+TLS.
+
+**(b) Solução.** Regra de redirecionamento no `.htaccess`, **antes de tudo**:
+
+```apache
+RewriteEngine On
+RewriteBase /
+
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+```
+
+**A ordem é o ponto, e é onde isso silenciosamente não funciona.** O `.htaccess` do CRM tem
+o fallback de SPA (`RewriteRule ^ index.html [L]`). Se o redirecionamento vier **depois**, a
+requisição HTTP casa com o fallback, termina em `index.html` com `[L]` e **nunca chega à
+regra de HTTPS** — o app continua sendo entregue em texto claro e o `.htaccess` "tem" a regra.
+Falha que passa em revisão de código e só aparece em medição.
+
+HSTS num bloco separado, com duas escolhas deliberadas:
+
+```apache
+Header always set Strict-Transport-Security "max-age=86400" env=HTTPS
+```
+
+- **`env=HTTPS`** — o cabeçalho só é emitido sob TLS. Em resposta HTTP ele é ignorado por
+  especificação, mas mantê-lo no lugar certo evita leitura errada em auditoria.
+- **`max-age` curto (1 dia) na primeira aplicação** — HSTS é compromisso que o navegador
+  guarda; se o TLS quebrar, não há como voltar atrás dentro da janela já distribuída. Elevar
+  para `31536000` só depois de dias com o redirecionamento estável.
+- **`includeSubDomains` fica de fora** — alcançaria `envios.sindcompassos.org` e qualquer
+  subdomínio futuro, que não têm relação com este servidor.
+
+**(c) Como implantar.** O `.htaccess` do CRM é versionado em `public/.htaccess` e o Vite o
+copia para `dist/` no build — então a correção entra por commit, não por edição no servidor.
+Como só ele mudou, o envio é cirúrgico, sem republicar os 21 arquivos:
+
+```bash
+set -a; . ./.env.deploy; set +a
+curl -sS --ftp-ssl-control -T dist/.htaccess --user "$FTP_USER:$FTP_PASS" \
+  "ftp://$FTP_HOST:21/.htaccess" -w "http=%{http_code} bytes=%{size_upload}\n"
+```
+
+**Verificar comportamento, nunca o arquivo.** As três medições que importam — e a segunda é a
+que pega o erro de ordem descrito acima:
+
+```bash
+curl -s -o /dev/null -w "%{http_code} -> %{redirect_url}\n" http://crm.sindcompassos.org/
+curl -sL -o /dev/null -w "%{http_code} %{url_effective}\n" http://crm.sindcompassos.org/dashboard
+curl -sI https://crm.sindcompassos.org/ | grep -i strict-transport
+```
+
+Esperado: `301` para `https://`, rota profunda terminando em `200` (prova que o fallback de
+SPA sobreviveu), e o HSTS presente **apenas** na resposta HTTPS.
+
+**Duas medições prévias que definem a forma da regra**, e valem para qualquer host novo:
+`curl -sI` procurando `cf-ray`/`via` diz se há proxy no caminho (se houver, `%{HTTPS}` não é
+confiável e o `X-Forwarded-Proto` passa a ser a condição real); e conferir se um asset volta
+com `Cache-Control` prova que o `mod_headers` está ativo, sem o que o bloco de HSTS é
+silenciosamente ignorado.
+
+**Pendente:** o **site institucional** (`sindcompassos.org`, WordPress) fica em **outro
+docroot**, cujo `.htaccess` não está neste repositório — a correção dele é separada, pelo
+painel da Hostgator ou pelo próprio WordPress, e não deve ser confundida com esta.
+
+---
 ## 2. Banco de dados (Postgres/Supabase)
 
 ### 2.1 `least()` ignora NULLs — e cobrou o teto de quem não tinha base
