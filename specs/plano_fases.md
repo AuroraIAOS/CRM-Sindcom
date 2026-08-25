@@ -762,7 +762,17 @@ Escalonamento de LLM: Opus desde a 1ª — é identidade de e-mail, superfície 
 Se esgotar: parar e relatar qual dos três (SPF/DKIM/DMARC) não fecha e por quê. **Nenhum disparo
 acontece com este item vermelho.**
 
-### Subetapa 08.2 — Assinaturas institucionais padronizadas [Manual] [LLM: Sonnet] · Status: 🟡 ENTREGUE, aguardando instalação
+### Subetapa 08.2 — Assinaturas institucionais padronizadas [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
+**Instaladas e conferidas por Maxwell em 2026-08-25.**
+**Duas correções no caminho, e a segunda desmentiu a primeira.** (1) O botão de cópia
+falhava sempre: os dois caminhos usavam `navigator.clipboard`, que exige `clipboard-write`,
+não concedida ao iframe — caminho de recuo que compartilha a dependência do principal não é
+recuo. (2) Corrigido isso, a cópia funcionava mas **o editor do Titan normalizava os estilos
+inline** e a assinatura chegava sem a barra vermelha e sem hierarquia. Ou seja: o problema
+nunca foi o escape de tags que eu supus no início, era a normalização. **A solução real é
+colar HTML cru no editor de código do Titan** — a página passou a exibir o código de cada
+assinatura, indentado e legível, com cópia em texto puro, e o botão de cópia formatada foi
+removido por produzir resultado errado.
 **Entregue em 2026-08-24:** `docs/assinaturas_institucionais.md` (fonte de verdade) + página
 publicada com as 6 assinaturas renderizadas em fidelidade e botões que copiam `text/html` +
 `text/plain` — o que contorna o editor do Titan, que escapa tags quando se cola HTML cru.
@@ -836,12 +846,49 @@ ato antissindical), Nota Resumida (1 folha) e a página pública. **Conflito a d
 Resumida iria como **anexo** nos e-mails, mas a 08.14 tem "nenhum anexo" como critério de
 qualidade, porque anexo em disparo em massa derruba entregabilidade — recomendação: hospedar
 o PDF e mandar link.
-**⛔ Bloqueio ativo:** `docs/fundamentos` — a literatura jurídica que Maxwell mandou avaliar —
-**existe e está vazio** (verificado: nenhum arquivo no diretório, nenhum PDF/DOC em outro
-caminho, árvore do git limpa). Os três produtos **não serão escritos** até o material chegar.
-Segunda pendência: **transcrever a cláusula de cada CCT** (as 27 estão com `documento_url`
-vazio em 27 de 27), sem o que a nota citará genericamente — a resposta fraca que ela existe
-para evitar.
+**Literatura recebida e lida em 2026-08-25** — 12 PDFs em `docs/fundamentos` (fora do git,
+por `.gitignore`): 5 CCTs, Cartilha e Manual de Atos Antissindicais, Convenção 98 da OIT,
+CF/88, CLT, LGPD e Lei 13.787.
+
+**A cláusula foi encontrada, e a premissa de Maxwell se confirmou.** Cuidado de método que
+vale registrar: a primeira cláusula localizada — **"RELAÇÃO DE FUNCIONÁRIOS"** — **não
+serve**, porque é condicionada ao interesse da empresa nas cláusulas de trabalho em feriado
+e seu objeto é FGTS Digital/GFIP/RAIS. Concluir ali teria produzido um relatório errado
+dizendo que a premissa não se sustentava. A cláusula correta é outra, **incondicional**, na
+**Contribuição dos Empregados, Parágrafo Segundo** (Cl. 34ª no Fecomércio Atacadista, 32ª no
+SindSuper): *"Dentro de 15 dias do desconto, as empresas encaminharão à Entidade Profissional
+cópias de comprovação dos recolhimentos dos valores, acompanhadas das relações de empregados
+contribuintes, das quais constem os salários anteriores e os corrigidos."*
+
+**Achado que fortalece o argumento além do previsto:** a CCT permite que o trabalhador se
+oponha **por escrito perante a empresa**, e obriga o sindicato a **devolver** valor
+descontado de quem se opôs. Logo, quando a oposição é manifestada na empresa, **só a empresa
+sabe** — e, se ela não informa, o sindicato cobra de quem se opôs e passa a dever devolução.
+O pedido de dados **não cria dever novo: resolve a assimetria que a própria convenção
+instituiu.** É o clímax dos três documentos.
+
+**Recuo recomendado no enquadramento antissindical** (aceito por Maxwell em 2026-08-25): o
+Manual confirma que o catálogo clássico gira em torno de dispensa, greve, negociação e
+filiação — recusar dados cadastrais **não figura nele**. O argumento principal passa a ser o
+descumprimento da cláusula convencional, com o antissindical em plano subsidiário e **apenas
+na Nota Oficial**. Confirmado também que a **Convenção 87 não foi ratificada pelo Brasil**,
+devendo ser citada como princípio de observância obrigatória (Declaração da OIT de 1998), e
+não como norma interna; a **Convenção 98** é o Decreto 33.196/1953, vigente.
+
+**Três textos entregues** em `docs/juridico/`, em `.md` (fonte versionada) e **`.docx`**
+gerado via automação do Word, para o Dr. revisar com controle de alterações: Nota Oficial
+(10 páginas), Resumida (3) e página pública (4). **Decisão de sequência: nada foi
+diagramado** — os textos vão mudar na revisão dele, e formatar antes seria retrabalho. As
+instruções de diagramação estão escritas em cada arquivo.
+
+**Decisão de Maxwell em 2026-08-25: nenhum anexo nos e-mails**, nem a Nota Resumida — tudo
+por link, alinhando a 08.3 ao critério de entregabilidade da 08.14. Conflito resolvido.
+
+**⚠️ Pendência:** **duas CCTs não puderam ser lidas** — `Sincovaga Alimentício` e `SinPas
+Varejista` são PDFs digitalizados (zero texto extraível), e o ambiente não tem OCR nem
+`pdftoppm` para renderizar página. Não é limitação de esforço, é de ferramenta. Maxwell está
+providenciando versões em texto. Até lá o §5.1 da Nota Oficial cobre **3 das 5 CCTs**, e os
+**22 ACTs** não foram examinados.
 **(b) Bloqueia o eixo Requisição** (08.14 e 08.15) até a versão assinada estar publicada.
 Objetivo: ter, público e assinado, o fundamento legal do pedido — porque "sindicalizado ou
 oposição" é **dado pessoal sensível** (LGPD art. 5º, II) e não se apoia nas bases comuns do art. 7º.
