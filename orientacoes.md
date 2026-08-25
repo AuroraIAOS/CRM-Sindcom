@@ -88,7 +88,7 @@ Hashes diferentes = o que está no ar não é o que você acabou de construir.
 ---
 
 
-### 1.5 O CRM respondia em HTTP puro — e a ordem das regras no `.htaccess` decide se o conserto funciona
+### 1.5 CRM e site respondiam em HTTP puro — e a ORDEM das regras no `.htaccess` decide se o conserto funciona
 
 **(a) Problema.** Medido na ETAPA 08, ao verificar os links do site (Subetapa 08.0):
 
@@ -164,9 +164,74 @@ confiável e o `X-Forwarded-Proto` passa a ser a condição real); e conferir se
 com `Cache-Control` prova que o `mod_headers` está ativo, sem o que o bloco de HSTS é
 silenciosamente ignorado.
 
-**Pendente:** o **site institucional** (`sindcompassos.org`, WordPress) fica em **outro
-docroot**, cujo `.htaccess` não está neste repositório — a correção dele é separada, pelo
-painel da Hostgator ou pelo próprio WordPress, e não deve ser confundida com esta.
+**(d) O site institucional é outro docroot — e a mesma armadilha, pior.** `sindcompassos.org`
+(WordPress) fica em `/home2/davide59/sindcompassos.org`, **fora do alcance da conta FTP do
+deploy**, que é confinada a `/crm.sindcompassos.org` (verificado: listar a raiz do FTP mostra
+só arquivos do CRM). A correção lá se faz pelo **Gerenciador de arquivos do cPanel**, e não
+por FTP.
+
+O `.htaccess` daquele site tem **dois blocos gerenciados por software**:
+
+```
+# BEGIN NFD EPC        ← cache de página (Newfold/Endurance), regerado pelo plugin
+# END NFD EPC
+# BEGIN WordPress      ← regerado pelo WordPress; o próprio arquivo avisa que
+# END WordPress           "alterações entre esses marcadores serão sobrescritas"
+```
+
+**Regra própria vai FORA dos dois marcadores, e o redirecionamento especificamente ACIMA de
+tudo.** O bloco de cache é o primeiro do arquivo e termina em
+`RewriteRule ^(.*)$ /wp-content/endurance-page-cache/$1/_index.html [L]`: uma requisição HTTP
+que caia numa página **já cacheada** para ali e **nunca alcança** uma regra colocada depois.
+O site continuaria em texto claro com a regra presente no arquivo — o mesmo erro do fallback
+de SPA, só que disparado apenas para as URLs que por acaso estão em cache, o que é ainda mais
+difícil de perceber em teste manual.
+
+O bloco que funcionou, como primeiras linhas do arquivo:
+
+```apache
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+</IfModule>
+<IfModule mod_headers.c>
+Header always set Strict-Transport-Security "max-age=86400" env=HTTPS
+</IfModule>
+```
+
+**Antes de editar, guarde o original.** Cópia do estado anterior em
+`docs/htaccess_site_institucional_backup_2026-08-25.txt`, com instruções de restauração.
+
+**Editar o ACE do cPanel por automação:** digitar 50 linhas é frágil; escrever direto no
+editor é confiável, e permite abortar se o arquivo não estiver no estado esperado.
+
+```js
+const ed = window.ace.edit('codewindow');
+const orig = ed.getValue();
+if (orig.split('\n')[0].trim() !== '# BEGIN NFD EPC') return 'ABORTADO: topo inesperado';
+ed.setValue(bloco + '\n' + orig, -1);
+```
+
+A guarda do topo e a conferência de que o resultado ainda **termina** em `# END WordPress`
+são o que impede sobrescrever um arquivo que mudou desde a leitura.
+
+**Verificação — e `num_redirects` é o número que importa:**
+
+```bash
+curl -sL -o /dev/null -w "final=%{http_code} saltos=%{num_redirects} url=%{url_effective}\n" \
+  http://sindcompassos.org/contato/
+```
+
+Esperado `final=200 saltos=1`. **Dois ou mais saltos indicam redirecionamento em cascata**
+(regra duplicada, ou o WordPress redirecionando por cima) e mais de 10 é laço — que é o modo
+clássico de derrubar um site inteiro com esta mudança.
+
+**Vigiar:** o `.htaccess` daquele site aparecia **modificado no mesmo dia**, sem intervenção
+nossa — o plugin de cache reescreve o próprio bloco sozinho. Se um dia o redirecionamento
+sumir, a causa é essa, e a saída passa a ser um plugin de SSL em vez do arquivo. Reconferir
+alguns dias depois de aplicar.
 
 ---
 ## 2. Banco de dados (Postgres/Supabase)
