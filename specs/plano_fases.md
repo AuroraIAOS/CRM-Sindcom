@@ -681,7 +681,16 @@ vigilância interna.
 
 ---
 
-### Subetapa 08.0 — Verificação do site e dos links públicos [Manual] [LLM: Sonnet] · Status: ⬜
+### Subetapa 08.0 — Verificação do site e dos links públicos [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
+**Executada em 2026-08-24.** As 11 páginas do site respondem 200. Os cinco 301
+(`/servicos/`, `/curriculo`, `/vaga`, `/denuncia`, `/termos`) são normalização de barra
+final e um rename, e todos terminam em 200. A página da nota técnica ainda não existe (404),
+como previsto. **Dois achados fora do previsto:** (1) `http://sindcompassos.org` responde
+**200 direto, sem redirecionar para HTTPS**, e não há HSTS — numa campanha cuja copy
+argumenta LGPD, mandar o contador para um site que aceita HTTP puro é um contra-argumento
+de graça; (2) o DKIM institucional **já existia** (`titan1._domainkey` do Titan e
+`default._domainkey` do Exim), o que reduziu o risco previsto na 08.1. A lista precisa ser
+reconferida imediatamente antes da 08.15.
 Objetivo: saber, antes de mandar 9.191 pessoas para o site, que tudo que a copy vai citar está de pé.
 Conclusão: tabela URL → código HTTP de todas as páginas e links que as copies citarão (home, quem
 somos, CCTs, contatos institucionais, formulário de filiação), com **zero** respostas fora de 200 —
@@ -695,7 +704,38 @@ Esforço máximo: 1 passada (não é `/goal`).
 Escalonamento de LLM: Sonnet; não escala — é medição.
 Se esgotar: listar o que está quebrado e parar; corrigir o site não é escopo desta etapa.
 
-### Subetapa 08.1 — Subdomínio de envio, ESP e autenticação de e-mail [Manual] [LLM: Opus] · Status: ⬜
+### Subetapa 08.1 — Subdomínio de envio, ESP e autenticação de e-mail [Manual] [LLM: Opus] · Status: 🟡 EM ABERTO (uma medição pendente)
+**Feito e medido em 2026-08-24.** DMARC organizacional publicado (`p=none`, `rua` para
+`deploycrm@`, `adkim=r`, `aspf=r`) e conferido idêntico em 3 resolvedores. ESP escolhido:
+**Brevo**, conta criada por Maxwell. `envios.sindcompassos.org` **autenticado e com a marca**
+(subdomínio de rastreio `em`), com os **7 registros** publicados na HostGator e conferidos um
+a um por `nslookup` antes da verificação do fornecedor. Remetente
+`sindicato@envios.sindcompassos.org` criado e verificado, com DKIM e DMARC verdes no painel.
+**E-mail de teste real recebido**, com `spf=pass`, `dkim=pass` (`header.i=@envios.sindcompassos.org`,
+seletor `brevo2`) e `dmarc=pass` no Gmail.
+
+**Duas decisões contra a recomendação do fornecedor**, ambas deliberadas: recusada a
+delegação de **NS** e a configuração automática (entregariam a terceiro autoridade de DNS
+sob `sindcompassos.org` — ampliação de superfície por comodidade, logo antes de um portão
+adversarial); e o `_dmarc.envios` foi publicado com o **nosso** `rua` em vez do da Brevo,
+que receberia os relatórios da nossa própria campanha (`orientacoes.md` §3.8). A verificação
+da Brevo passou verde nas duas.
+
+**Pendência que impede o fechamento:** no Outlook o DMARC passa, mas o **DKIM devolve
+`timeout`**. Medido salto a salto: a instabilidade está no **salto 2, que é da Brevo**
+(`b2.envios-…dkim.brevo.com`, oscilando entre 28 e 380 ms); a nossa zona responde em 27–39 ms,
+estável. Não era cache frio — o reenvio falseou essa hipótese. **Não bloqueia envio**, porque
+o SPF alinha graças ao `aspf=r`, mas cria risco real para esta campanha: se o contador
+**encaminhar** o e-mail internamente — e a spec §5.5 conta com isso —, o encaminhamento
+quebra o alinhamento de SPF e o DMARC passa a depender do DKIM que a Microsoft não verifica.
+**Consequência para o plano: não endurecer o DMARC para `quarantine` enquanto o DKIM não
+estiver confiável na Microsoft** — o critério deixa de ser calendário e passa a ser medição.
+Reconfirmar antes da onda 1.
+
+**Defeito encontrado e ainda não corrigido:** o `Reply-To` sai como
+`sindicato@envios.sindcompassos.org`, e **esse subdomínio não tem MX** — quem responder
+recebe erro de entrega. Corrigir na 08.14: toda campanha real com
+`Reply-To: secretaria@sindcompassos.org`.
 Objetivo: `envios.sindcompassos.org` existindo, verificado no ESP, com SPF, DKIM e **DMARC** —
 que hoje não existe — de modo que o disparo em massa não queime o e-mail institucional (D1).
 Conclusão: (1) `nslookup -type=TXT _dmarc.sindcompassos.org` devolve um registro `v=DMARC1`;
@@ -713,7 +753,24 @@ Escalonamento de LLM: Opus desde a 1ª — é identidade de e-mail, superfície 
 Se esgotar: parar e relatar qual dos três (SPF/DKIM/DMARC) não fecha e por quê. **Nenhum disparo
 acontece com este item vermelho.**
 
-### Subetapa 08.2 — Assinaturas institucionais padronizadas [Manual] [LLM: Sonnet] · Status: ⬜
+### Subetapa 08.2 — Assinaturas institucionais padronizadas [Manual] [LLM: Sonnet] · Status: 🟡 ENTREGUE, aguardando instalação
+**Entregue em 2026-08-24:** `docs/assinaturas_institucionais.md` (fonte de verdade) + página
+publicada com as 6 assinaturas renderizadas em fidelidade e botões que copiam `text/html` +
+`text/plain` — o que contorna o editor do Titan, que escapa tags quando se cola HTML cru.
+As 6 caixas e seus papéis, definidos por Maxwell: `contato@` (público), `secretaria@`
+(empresas/estabelecimentos/contabilidades e campanhas em massa), `comercial@` (parceiros),
+`juridico@`, `presidencia@`, `deploycrm@` (dev).
+Qualidade: identidade conforme `docs/design-tokens.md`; **sem imagem**, porque Outlook e
+Hotmail bloqueiam imagem externa por padrão e o logotipo viraria retângulo vazio justamente
+para o contador que abre o primeiro e-mail; tabela com estilo inline (o Outlook renderiza com
+o motor do Word); fontes da marca com pilha de fallback real, já que e-mail não carrega
+Google Fonts. Assinatura **setorial** onde a caixa é operada por várias pessoas — nome de uma
+só pessoa passa a mentir quando ela sai.
+**Não concluída porque o critério exige a assinatura instalada e conferida em Gmail (web e
+celular) e no Outlook.** A instalação é por caixa, no webmail do Titan, e exige a senha de
+cada uma — o CODE não digita credencial. **Faltam 3 dados** que não serão inventados:
+sobrenome do Adenilson, **sua inscrição OAB/MG** (a nota da 08.3 vai ao ar assinada) e
+sobrenome do Davi. Prioridade: `secretaria@` primeiro, por ser o Reply-To de toda a etapa.
 Objetivo: toda caixa institucional respondendo com a mesma assinatura, para que a resposta humana
 à campanha pareça a mesma instituição que mandou o e-mail.
 Conclusão: cada caixa institucional em uso tem assinatura configurada com nome, cargo, telefone e
@@ -727,7 +784,24 @@ Esforço máximo: 1 passada por caixa.
 Escalonamento de LLM: Sonnet; não escala.
 Se esgotar: relatar as caixas que ficaram sem assinatura. Não bloqueia o caminho crítico.
 
-### Subetapa 08.3 — Nota técnica jurídica (LGPD art. 11) [Manual] [LLM: Opus] · Status: ⬜
+### Subetapa 08.3 — Nota técnica jurídica (LGPD art. 11) [Manual] [LLM: Opus] · Status: 🟡 (a) ENTREGUE · (b) com o Adenilson
+**(a) Rascunho entregue em 2026-08-24:** `docs/nota_tecnica_lgpd_rascunho.md`, marcado
+"RASCUNHO — não publicar", com aviso explícito de que não é parecer e de que as citações
+foram escritas de memória e precisam ser conferidas na fonte. Traz os fatos medidos, os seis
+campos separados entre comuns (art. 7º) e o único sensível (art. 5º, II), as hipóteses
+candidatas do art. 11 com o argumento de cada uma, a estrutura da página pública e as
+perguntas abertas — cada decisão marcada **[DECISÃO JURÍDICA]**.
+Dois pontos que o rascunho levanta e que não estavam na spec: (1) **o melhor argumento
+inverte a intuição** — registrar quem se opôs é a *condição* para respeitar a oposição, ou
+seja, o dado sensível é coletado para produzir uma abstenção do sindicato, não uma ação
+contra o trabalhador; (2) **a contabilidade e a empresa também são controladoras** e
+precisam de base própria para *compartilhar* — sem responder "por que **você** pode nos
+enviar", o contador cauteloso trava mesmo concordando com o resto.
+**Lacuna operacional descoberta no caminho:** a pergunta mais forte da nota — se alguma
+CCT/ACT já obriga a empresa a informar o quadro de empregados — **não pôde ser verificada**:
+as 27 convenções (5 CCTs + 22 ACTs) estão cadastradas com `documento_url` vazio em 27 de 27,
+e só 1 tem `data_limite_oposicao` preenchida. Fora do escopo desta etapa, mas vale fechar.
+**(b) Bloqueia o eixo Requisição** (08.14 e 08.15) até a versão assinada estar publicada.
 Objetivo: ter, público e assinado, o fundamento legal do pedido — porque "sindicalizado ou
 oposição" é **dado pessoal sensível** (LGPD art. 5º, II) e não se apoia nas bases comuns do art. 7º.
 Conclusão: **duas metades, e só a segunda fecha a subetapa.** (a) O CODE entrega ao Adenilson um

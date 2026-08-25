@@ -1033,6 +1033,59 @@ o contêiner sem `--ip` quebra a integração. Teste de dentro do outro contêin
 
 ---
 
+
+### 3.8 DMARC de subdomínio SOBREPÕE o do domínio organizacional — e o ESP quer os relatórios para ele
+
+**(a) Problema.** Na ETAPA 08, ao autenticar `envios.sindcompassos.org` na Brevo, ela
+mandou publicar 7 registros. O quarto era:
+
+```
+_dmarc.envios   TXT   v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com
+```
+
+Parece inofensivo, e é o registro que o painel deles instrui a copiar. Mas o DMARC
+resolve **do mais específico para o mais genérico**: existindo `_dmarc.envios...`, é ele
+que vale para o subdomínio, e o `_dmarc` do domínio organizacional **deixa de ser
+consultado ali**. Consequência: os relatórios agregados da nossa própria campanha —
+justamente o subdomínio cujos números mais interessam — iriam **para a Brevo**, e nós
+ficaríamos cegos sobre o que o mundo vê do nosso envio.
+
+Isso contraria o critério de qualidade da própria subetapa, que exige `rua` apontando
+para caixa monitorada para poder decidir *quando* endurecer a política.
+
+**(b) Solução.** Publicar o mesmo nome com o **nosso** `rua`. A verificação da Brevo
+passou verde do mesmo jeito — **ela só checa que existe um DMARC válido no nome
+esperado, não que o conteúdo seja o dela**. Medido na tela: "Os valores Registro DMARC na
+Brevo e na conta do seu provedor de domínio correspondem", com o nosso valor publicado.
+
+```
+_dmarc.envios   TXT   v=DMARC1; p=none; rua=mailto:deploycrm@sindcompassos.org; fo=1; adkim=r; aspf=r
+```
+
+**(c) Como implantar.** Três pontos que valem para qualquer ESP:
+
+1. **`rua` precisa ser caixa do próprio domínio.** Relatório enviado para caixa de outro
+   domínio (um Gmail, por exemplo) exige um registro de autorização
+   `<dominio>._report._dmarc.<destino>` publicado **pelo destino** — que não controlamos.
+   Mesmo domínio dispensa isso.
+2. **`aspf=r` (relaxado) não é detalhe.** O Return-Path do Brevo é
+   `bounces-…@em.envios.sindcompassos.org` — um nível **mais fundo** que o `From:` em
+   `envios.sindcompassos.org`. Com alinhamento **estrito** o SPF não alinharia, e medimos
+   um caso real (Outlook) em que o DKIM deu `timeout` e **o DMARC só passou porque o SPF
+   alinhou pelo relaxado**. Estrito teria derrubado o DMARC inteiro naquele receptor.
+3. **Confira qual DMARC está valendo** antes de concluir qualquer coisa sobre política:
+   ```bash
+   nslookup -type=TXT _dmarc.envios.sindcompassos.org 8.8.8.8   # o específico manda
+   nslookup -type=TXT _dmarc.sindcompassos.org 8.8.8.8          # só vale se o de cima não existir
+   ```
+   E leia o cabeçalho `Authentication-Results` de um e-mail **recebido de verdade**: ele
+   diz `dmarc=pass (p=NONE sp=NONE ...)`, ou seja, qual política foi de fato aplicada.
+   Painel de fornecedor dizendo "configurado" não é medição.
+
+**Regra geral:** todo registro que um fornecedor manda publicar no *nosso* domínio merece
+ser lido antes de colado. O que ele otimiza é a operação dele, não a nossa observabilidade.
+
+---
 ## 4. Frontend e React
 
 ### 4.1 Falta de `key` faz o estado grudar entre entidades
@@ -1155,6 +1208,48 @@ que apareceram na mesma sessão: (1) contar `document.querySelectorAll('tbody tr
 logo após disparar o evento mede **antes** da resposta chegar — espere o debounce + a
 requisição; (2) um `Page.captureScreenshot` que estoura timeout não significa app travado —
 confirme com `get_page_text`, que é mais leve, antes de concluir qualquer coisa.
+
+
+### 4.7 Clique por coordenada em tabela que se desloca abre a linha errada — e pode ser o registro errado
+
+**(a) Problema.** No Zone Editor do cPanel (ETAPA 08), a sequência foi: capturar a tela,
+localizar o botão "Gerenciar" da linha `sindcompassos.org` em (804, 450), clicar. O que
+abriu foi o diálogo **"Adicionar um registro MX para isepem.com.br"** — outro domínio da
+mesma conta cPanel, e um que o `docs/deploy.md` manda explicitamente não tocar.
+
+Entre a captura e o clique a página terminou de renderizar: a altura da viewport mudou de
+684 para 676 px e a tabela inteira desceu ~78 px. A coordenada continuava válida na
+imagem que eu tinha; já não correspondia ao que estava sob o cursor. Nada foi gravado
+porque o diálogo abre vazio, mas **um clique adiante seria escrita em zona de DNS de
+terceiro**.
+
+**(b) Solução.** Resolver o elemento por **referência**, não por posição: `find` devolve um
+`ref` estável, e o clique por `ref` acompanha o elemento mesmo que ele se mova. Depois da
+troca, os 7 registros DNS seguintes foram criados sem um único erro de alvo.
+
+**(c) Como implantar.**
+```
+find("botão Gerenciar na linha do domínio sindcompassos.org")  →  ref_153
+computer(action="left_click", ref="ref_153")        // não: coordinate=[804,450]
+```
+
+Três regras que ficam, e a terceira é a que evita estrago:
+
+1. **Coordenada só para o que não tem elemento** (canvas, mapa, área de arrasto). Para
+   botão, link, campo e linha de tabela, sempre `ref`.
+2. **Captura de tela envelhece.** Em página que ainda está montando — tabela com dezenas
+   de linhas, painel que carrega assíncrono —, a imagem que você está lendo já não é a
+   página que vai receber o clique. Se precisar mesmo de coordenada, recapture
+   imediatamente antes.
+3. **Em painel multi-inquilino, confirme o alvo no texto do diálogo antes de digitar
+   qualquer coisa.** O título dizia o domínio errado em voz alta; ler o título é mais
+   barato que desfazer um registro. E navegar por URL direta da zona
+   (`#/manage?domain=<dominio>`) elimina a etapa de clicar na tabela — foi assim que os
+   registros seguintes foram feitos.
+
+**Vale para além do cPanel:** qualquer console de infraestrutura que hospede vários
+projetos na mesma sessão (Supabase, Cloudflare, provedores de DNS) tem essa mesma classe
+de acidente, e ali o clique errado não abre um diálogo vazio — executa.
 
 ## 5. Ambiente de desenvolvimento (Windows)
 
