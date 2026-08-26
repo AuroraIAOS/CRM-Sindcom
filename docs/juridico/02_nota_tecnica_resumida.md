@@ -38,6 +38,19 @@ Havendo obrigação pactuada, o envio tem base própria no **art. 11, II, "a"** 
 ao dado sensível, e no **art. 7º, II**, quanto aos demais. **O contador que atende não
 compartilha dado indevidamente: cumpre obrigação convencional do seu cliente.**
 
+## Por que precisamos saber quem é sindicalizado
+
+**Para entregar a quem pagou aquilo que o pagamento lhe assegurou.**
+
+A contribuição não custeia apenas a atuação coletiva. Ela dá ao trabalhador que a recolheu
+direitos **individuais** — assistência jurídica em demanda própria, homologação de rescisão,
+orientação em conflito concreto — e acesso à rede de convênios, benefícios e descontos mantida
+com estabelecimentos parceiros.
+
+Direito individual só se entrega a **pessoa determinada**. Sem nome, CPF, contato e empresa, o
+sindicato não consegue localizar quem contribuiu. **Quem perde com a ausência do dado não é o
+sindicato: é o trabalhador que pagou e não é encontrado para usar o que já é dele.**
+
 ## Por que precisamos saber quem se opôs
 
 **Para deixar de cobrar dessa pessoa.**
@@ -55,10 +68,21 @@ devolver o valor.
 
 ## O que fazemos com os dados
 
-Envio por **link individual, com prazo de validade e revogável**, que **permite apenas
-enviar** — nunca consultar dados de terceiros. Arquivo em repositório privado. **Nenhum dado
-entra no cadastro sem revisão humana.** Registro de origem de cada remessa. Sistema submetido
-a **teste de invasão deliberado** antes de entrar em operação.
+Sua empresa recebe um **endereço individual, com prazo de validade e cancelável a qualquer
+momento**. Ele **não abre consulta nenhuma**: dá para enviar a sua relação de empregados, e só
+— não há como visualizar, pesquisar ou extrair dado de outra empresa nem de trabalhador já
+cadastrado.
+
+A planilha **não fica exposta na internet**: vai para repositório fechado, aberto por
+autorização de poucos minutos, apenas a servidores habilitados. E **nada entra no cadastro
+automaticamente** — toda remessa é conferida por um servidor identificado antes de qualquer
+registro; não existe gravação automática a partir de origem externa.
+
+Cada remessa fica guardada **como foi recebida**, com origem, data e hora, sem admitir
+alteração posterior: correção vira remessa nova. Havendo dúvida sobre o que foi enviado, por
+quem e quando, a resposta é verificável — o que **protege sua empresa tanto quanto o
+sindicato**. O sistema é submetido a **tentativas deliberadas de violação** antes de entrar em
+operação.
 
 Os dados servem à representação sindical, ao cálculo da contribuição devida e ao respeito às
 oposições. **Nada além disso.**
@@ -74,8 +98,8 @@ Centro, Passos/MG.
 *A fundamentação completa, com todos os dispositivos legais e a jurisprudência citada, está
 na Nota Técnica na íntegra: **[link]**.*
 
-**[Nome completo]** — Assessoria Jurídica — OAB/MG [número]
-Sindicato dos Empregados no Comércio de Passos e Região · [data]
+**Adenilson Antonio Silva** — Assessoria Jurídica — OAB/MG 96.522
+Sindicato dos Empregados no Comércio de Passos e Região · 26 de agosto de 2026
 
 ---
 ---

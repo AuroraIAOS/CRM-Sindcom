@@ -3,7 +3,7 @@
 ## Base legal para a solicitação de dados cadastrais dos trabalhadores do comércio
 
 **Sindicato dos Empregados no Comércio de Passos e Região — SINDCOM**
-Assessoria Jurídica · Passos, Minas Gerais · [data]
+Assessoria Jurídica · Passos, Minas Gerais · 26 de agosto de 2026
 
 ---
 
@@ -33,10 +33,35 @@ na CLT, art. 513, alíneas "a" e "e". Do lado das empresas e contabilidades, apo
 Coletivas de Trabalho vigentes já as obrigam a encaminhar ao Sindicato as relações de
 empregados e os comprovantes de recolhimento**.
 
-O ponto central desta Nota, frequentemente mal compreendido, é este: **o dado sobre oposição
-não é colhido para agir contra quem se opôs, mas para deixar de cobrá-lo**. Sem essa
-informação o Sindicato não tem como honrar a oposição — e a própria norma coletiva lhe impõe
-devolver os valores descontados de quem se opôs.
+Dois pontos centrais organizam esta Nota, e ambos costumam ser mal compreendidos.
+
+**O primeiro diz respeito aos trabalhadores sindicalizados.** A contribuição recolhida não é
+tributo destinado a custeio genérico: ela confere ao trabalhador que a recolheu um conjunto de
+direitos adicionais, cujo gozo é **individualizado por natureza**. A representação sindical
+opera em dois planos distintos — o plano **coletivo**, que alcança toda a categoria
+independentemente de filiação, e o plano **individual**, no qual o Sindicato presta assistência
+jurídica em demandas próprias do trabalhador, homologa rescisões, orienta em conflitos
+concretos e franqueia o acesso à rede de convênios, benefícios e descontos mantida com
+estabelecimentos parceiros. Esses direitos só podem ser dirigidos a **pessoas determinadas**.
+Sem saber quem são — nome, CPF, contato e empresa em que trabalham —, o Sindicato não consegue
+entregar a quem pagou aquilo que o pagamento lhe assegurou. A ausência da informação não
+prejudica o Sindicato: prejudica o trabalhador que contribuiu e não é localizado para exercer
+o que já lhe pertence.
+
+**O segundo diz respeito aos trabalhadores que manifestaram oposição**, e inverte a intuição
+corrente: **o dado sobre a oposição não é colhido para agir contra quem se opôs, mas para
+deixar de cobrá-lo**. Sem essa informação o Sindicato não tem como honrar a oposição — e a
+própria norma coletiva lhe impõe devolver os valores descontados de quem se opôs (item 6.2
+adiante). O tratamento desse dado sensível existe, portanto, para produzir uma **abstenção**
+do Sindicato.
+
+Convém consignar, para exata compreensão do contexto, que a lacuna de informação hoje
+existente não decorre de resistência deliberada das empresas e contabilidades. Ela resulta,
+sobretudo, da **ausência histórica de um canal estruturado** por meio do qual essas informações
+pudessem ser prestadas, recebidas, guardadas e utilizadas com segurança. O SINDCOM constituiu
+esse canal, com as garantias técnicas descritas no item 8 desta Nota. A presente solicitação é,
+nesse sentido, menos um pedido novo do que a **abertura da via adequada** para o cumprimento de
+obrigação que as Convenções Coletivas já preveem há anos.
 
 Registre-se, por fim, que **o SINDCOM solicita menos do que a norma coletiva lhe faculta
 exigir**, e em formato mais simples: seis campos, em lugar das guias e relatórios completos
@@ -111,8 +136,8 @@ trabalhador. **Afastar o consentimento, neste caso, protege quem trabalha.**
 
 ## 5. O dever das empresas e das contabilidades
 
-Este item responde a pergunta distinta da anterior: não *"por que o Sindicato pode
-solicitar"*, mas **"por que a empresa pode — e deve — enviar"**.
+Se no item 4 esta Nota Técnica explicou *"por que o Sindicato pode solicitar"*, agora ela passa a
+responder **"por que a empresa pode — e deve — enviar"**.
 
 ### 5.1 A obrigação já está pactuada em Convenção Coletiva
 
@@ -128,10 +153,10 @@ Localização:
 | Convenção Coletiva de Trabalho 2026 | Cláusula |
 |---|---|
 | Fecomércio **Atacadista** — Passos e Região | Cláusula Trigésima Quarta, Parágrafo Segundo |
-| Fecomércio **Varejista** — Região | cláusula correspondente |
+| Fecomércio **Varejista** — Região | Cláusula Trigésima Quarta, Parágrafo Segundo |
 | **SindSuper** Varejista — Região | Cláusula Trigésima Segunda, Parágrafo Segundo |
-| **Sincovaga** Alimentício — Região | [a completar] |
-| **SinPas** Varejista — Passos | [a completar] |
+| **Sincovaga** Alimentício — Região | Cláusula Trigésima Primeira, Parágrafo Segundo |
+| **SinPas** Varejista — Passos | Cláusula Vigésima Sétima, Parágrafo Segundo |
 
 Três características tornam essa cláusula o alicerce da solicitação:
 
@@ -143,7 +168,8 @@ Três características tornam essa cláusula o alicerce da solicitação:
    salários — e vai além, ao exigir também os comprovantes de recolhimento.
 
 Há, ainda, obrigação acessória na cláusula **"Relação de Funcionários"** — Cláusula Vigésima
-Nona nas Convenções do Fecomércio e Vigésima Sétima na do SindSuper —, cujo inciso III
+Nona nas Convenções do Fecomércio, Vigésima Sétima na do SindSuper e Vigésima Sexta na do
+Sincovaga —, cujo inciso III
 determina que *"as empresas se obrigam, quando solicitadas, a apresentarem à ENTIDADE
 LABORAL, no prazo de 10 (dez) dias"*, o Relatório do FGTS Digital ou cópias das guias GFIP
 e RAIS. Essa obrigação, contudo, está condicionada ao interesse da empresa em se beneficiar
@@ -201,11 +227,21 @@ A solicitação de dados não cria esse dever de informar: **resolve a assimetri
 que a própria Convenção instituiu**. A recusa em informar quem se opôs produz exatamente o
 dano que a cláusula de oposição pretende evitar.
 
-Registre-se que os instrumentos coletivos divergem quanto ao prazo: a Convenção do
-Fecomércio admite a oposição **sem limitação temporal** no curso da vigência, ao passo que a
-do SindSuper a restringe a **30 (trinta) dias** contados da assinatura do instrumento, com
-entrega direta e pessoal à Entidade Profissional. A verificação do regime aplicável depende,
-pois, da convenção que rege cada estabelecimento.
+Registre-se que os instrumentos coletivos **divergem quanto ao prazo** de manifestação da
+oposição:
+
+| Convenção Coletiva de Trabalho 2026 | Prazo para manifestar oposição |
+|---|---|
+| Fecomércio **Atacadista** e **Varejista** | sem limitação temporal, no curso da vigência |
+| **SindSuper** Varejista — Região | 30 (trinta) dias |
+| **Sincovaga** Alimentício — Região | 30 (trinta) dias |
+| **SinPas** Varejista — Passos | 15 (quinze) dias |
+
+Nos instrumentos com prazo, a contagem se dá a partir da assinatura, exigindo-se entrega
+direta e pessoal à Entidade Profissional. A verificação do regime aplicável depende, pois, da
+convenção que rege cada estabelecimento — o que reforça a necessidade de o Sindicato conhecer
+**a qual instrumento cada trabalhador está vinculado**, informação que decorre do CNPJ do
+estabelecimento empregador, primeiro dos seis campos solicitados.
 
 ### 6.3 Síntese do argumento
 
@@ -270,6 +306,37 @@ de qualquer operação.
 | Remessa imutável, com registro de origem | rastreabilidade de quem enviou, o quê e quando |
 | Controle de acesso em nível de registro no banco de dados | isolamento verificado na base, e não apenas na aplicação |
 | Teste adversarial obrigatório antes de ampliação de superfície | o sistema é atacado deliberadamente antes de entrar em operação |
+
+Traduzido em linguagem corrente, o que o quadro acima descreve é o seguinte percurso.
+
+Cada empresa ou escritório de contabilidade recebe um **endereço eletrônico individual, próprio
+e com prazo de validade**, que pode ser cancelado a qualquer momento pelo Sindicato — por
+solicitação do próprio destinatário, inclusive. Esse endereço **não abre nenhuma consulta**:
+quem o acessa consegue apenas transmitir a sua própria relação de empregados, jamais visualizar,
+pesquisar ou obter dados de outra empresa, de outro escritório ou de qualquer trabalhador já
+cadastrado. Não há, por esse caminho, como extrair informação alguma do Sindicato.
+
+A planilha transmitida **não fica exposta na internet**. Ela é depositada em repositório
+fechado, do qual só pode ser retirada mediante autorização gerada no momento da consulta e com
+validade de poucos minutos, restrita aos servidores do Sindicato expressamente habilitados. Não
+existe endereço público, permanente ou adivinhável que dê acesso ao arquivo.
+
+O ponto mais relevante para quem transmite é este: **nenhuma informação recebida ingressa
+automaticamente no cadastro do Sindicato**. Toda remessa é obrigatoriamente conferida por um
+servidor identificado, que a examina antes de qualquer registro. Não há, no sistema,
+possibilidade técnica de gravação automática a partir de origem externa — a conferência humana
+não é rotina administrativa que se possa suprimir, é condição de funcionamento.
+
+Cada remessa é preservada **exatamente como recebida**, com registro de origem, data e hora, e
+não admite alteração posterior: eventual correção constitui remessa nova, preservando-se o
+histórico anterior. Disso resulta que, havendo divergência sobre o que foi informado, por quem
+e quando, a resposta é verificável no próprio sistema, o que **protege igualmente o Sindicato e
+o remetente**.
+
+Por fim, essas características não são promessas de projeto. O sistema é submetido a
+**tentativas deliberadas de violação** — conduzidas antes de qualquer ampliação de acesso — e
+o controle de quem enxerga o quê é exercido no próprio banco de dados, e não apenas na tela,
+de modo que contorná-lo pela aplicação não produz efeito.
 
 Atendem-se, assim, os princípios do **art. 6º** da LGPD — finalidade, adequação, necessidade,
 segurança e prevenção — e o dever de segurança do **art. 46**.
@@ -340,7 +407,7 @@ sobre compartilhamento e revogação de consentimento, no que couber.
 
 ---
 
-**[Nome completo]**
-Assessoria Jurídica — OAB/MG [número]
+**Adenilson Antonio Silva**
+Assessoria Jurídica — OAB/MG 96.522
 Sindicato dos Empregados no Comércio de Passos e Região
-Passos/MG, [data]
+Passos/MG, 26 de agosto de 2026

@@ -37,9 +37,10 @@ receber resposta precisa. Resposta genérica desmonta o pedido — e, como 89 ca
 
 ## Pontos que dependem da sua decisão
 
-### 1. Nome e inscrição OAB para assinatura
-Os três documentos trazem `[Nome completo]` e `OAB/MG [número]`. **A assinatura é o que dá
-valor às peças** — sem ela são textos no site.
+### 1. Nome e inscrição OAB para assinatura — ✅ RESOLVIDO (26/08/2026)
+Os três documentos já vêm preenchidos com **Adenilson Antonio Silva — OAB/MG 96.522** e
+datados de **26 de agosto de 2026**. Resta apenas a assinatura no documento final: **é ela que
+dá valor às peças** — sem ela são textos no site.
 
 ### 2. Encargo de encarregado de dados (LGPD, art. 41)
 O SINDCOM não possui encarregado designado, e propõe-se atribuir a função ao setor jurídico.
@@ -87,12 +88,24 @@ acórdão do **TRT-20** citada no item sobre conduta antissindical.
 
 ## Duas lacunas de material
 
-**1. Duas Convenções Coletivas não puderam ser examinadas.** As CCTs do **Sincovaga
-Alimentício** e do **SinPas Varejista** estão disponíveis apenas como PDF digitalizado, sem
-texto pesquisável. A Nota Técnica cobre, hoje, **3 das 5 CCTs** — Fecomércio Atacadista,
-Fecomércio Varejista e SindSuper —, todas com a mesma cláusula. Versões em texto estão sendo
-providenciadas; localizada a cláusula correspondente nas outras duas, a tabela do item 5.1 se
-completa.
+**1. Duas Convenções Coletivas não puderam ser examinadas — ✅ RESOLVIDO (26/08/2026).** As
+CCTs do **Sincovaga Alimentício** e do **SinPas Varejista** estavam disponíveis apenas como PDF
+digitalizado, sem texto pesquisável. As referências foram fornecidas por Maxwell e a Nota
+Técnica passa a cobrir **as 5 CCTs**:
+
+| Convenção | Contribuição (§ 2º) | "Relação de Funcionários" | Prazo de oposição |
+|---|---|---|---|
+| Fecomércio Atacadista | Cl. 34ª | Cl. 29ª | sem limitação temporal |
+| Fecomércio Varejista | Cl. 34ª | Cl. 29ª | sem limitação temporal |
+| SindSuper Varejista | Cl. 32ª | Cl. 27ª | 30 dias |
+| Sincovaga Alimentício | Cl. 31ª | Cl. 26ª | 30 dias |
+| SinPas Varejista | Cl. 27ª | não detalha | 15 dias |
+
+**Ponto que merece sua atenção:** os prazos de oposição **divergem entre os instrumentos** —
+de "sem limitação temporal" a 15 dias. O item 6.2 da Nota Oficial passou a trazer o quadro
+completo, mas isso significa que a verificação do regime aplicável depende de saber a qual
+convenção cada estabelecimento está vinculado. Vale confirmar se a redação atual do item 6.2
+lhe parece suficiente diante dessa heterogeneidade.
 
 **2. Os 22 Acordos Coletivos (ACTs) não foram examinados.** A fundamentação trata apenas das
 Convenções. Avaliar se é necessário estendê-la.

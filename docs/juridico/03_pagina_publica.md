@@ -48,6 +48,22 @@ direitos. **Não solicitamos consentimento do trabalhador por meio do empregador
 uma decisão deliberada: consentimento sobre filiação sindical colhido por quem paga o salário
 é frágil e pode expor o trabalhador. Afastar essa via **protege quem trabalha**.
 
+### Por que precisamos saber quem é sindicalizado
+
+**Para entregar a quem contribuiu aquilo que a contribuição lhe assegurou.**
+
+A contribuição não custeia apenas a atuação coletiva do sindicato. Ela garante ao trabalhador
+que a recolheu um conjunto de direitos **individuais** — assistência jurídica em demanda
+própria, homologação de rescisão, orientação em conflito concreto — e o acesso à rede de
+convênios, benefícios e descontos que mantemos com estabelecimentos parceiros.
+
+Direito individual só se entrega a **pessoa determinada**. Sem nome, CPF, telefone e empresa,
+não conseguimos localizar quem contribuiu para avisá-lo do que tem direito, nem atendê-lo
+quando procura o sindicato.
+
+> Quem perde com a ausência desse dado não é o sindicato: é **o trabalhador que pagou e não é
+> encontrado** para usar o que já é dele.
+
 ### Por que precisamos saber quem se opôs
 
 **Para deixar de cobrar dessa pessoa.**
@@ -82,17 +98,30 @@ convenção nos faculta exigir.
 **Finalidade.** Representação sindical, cálculo da contribuição devida e respeito às
 oposições. Nada além.
 
-**Como recebemos.** Por link individual, com prazo de validade e revogável, que **permite
-apenas enviar** — nunca consultar ou listar dados de terceiros. O arquivo fica em repositório
-privado, jamais em endereço público.
+**Como recebemos.** Cada empresa ou escritório de contabilidade recebe um endereço eletrônico
+individual, com prazo de validade e cancelável a qualquer momento. Esse endereço **não abre
+consulta nenhuma**: por ele dá para enviar a própria relação de empregados, e só. Não há como
+visualizar, pesquisar ou extrair dados de outra empresa, de outro escritório ou de qualquer
+trabalhador já cadastrado.
+
+**Onde o arquivo fica.** Em repositório fechado, jamais em endereço público. Para ser aberto,
+exige uma autorização gerada na hora, com validade de poucos minutos, restrita aos servidores
+do sindicato expressamente habilitados. Não existe link permanente nem adivinhável para a
+planilha.
 
 **Antes de virar cadastro.** **Nenhuma informação entra na nossa base sem revisão humana.**
-Não há gravação automática a partir de origem externa.
+Toda remessa é conferida por um servidor identificado antes de qualquer registro. Não se trata
+de rotina administrativa que possa ser dispensada: o sistema simplesmente não tem como gravar
+automaticamente o que vem de fora.
 
-**Rastreabilidade.** Cada envio fica registrado, de forma imutável, com data e origem.
+**Rastreabilidade.** Cada remessa é preservada exatamente como foi recebida, com origem, data e
+hora, e não admite alteração posterior — uma correção entra como remessa nova, preservando o
+histórico. Havendo dúvida sobre o que foi enviado, por quem e quando, a resposta é verificável.
+Isso **protege quem enviou tanto quanto protege o sindicato**.
 
-**Verificação.** O sistema é submetido a teste de invasão deliberado antes de entrar em
-operação — não confiamos apenas em que funcione como esperado.
+**Verificação.** O sistema é submetido a tentativas deliberadas de violação antes de qualquer
+ampliação de acesso, e o controle de quem enxerga o quê é exercido no próprio banco de dados —
+não apenas na tela. Não confiamos apenas em que funcione como esperado.
 
 ## Por quanto tempo guardamos
 
@@ -126,10 +155,10 @@ na Nota Técnica completa: **[link para o PDF]**.*
 
 ---
 
-**[Nome completo]**
-Assessoria Jurídica — OAB/MG [número]
+**Adenilson Antonio Silva**
+Assessoria Jurídica — OAB/MG 96.522
 Sindicato dos Empregados no Comércio de Passos e Região
-[data]
+26 de agosto de 2026
 
 ---
 ---
