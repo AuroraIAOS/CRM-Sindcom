@@ -1321,7 +1321,46 @@ Esforço máximo: 3 tentativas.
 Escalonamento de LLM: Sonnet nas 2 primeiras; Opus na 3ª.
 Se esgotar: parar e relatar. Modelo que corrompe CPF é pior que modelo nenhum.
 
-### Subetapa 08.8 — Formulário direto na página (empresa isolada) [Goal] [LLM: Sonnet] · Status: ⬜
+### Subetapa 08.8 — Formulário direto na página (empresa isolada) [Goal] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
+**Executada em 2026-08-26** (Circuito 3, Sonnet). `EnviarDadosPage` decide o caminho por
+`estabelecimentos.length === 1`: nesse caso troca o bloco de modelo+upload por
+`FormularioDireto` (`src/features/coleta/FormularioDireto.tsx`), que deixa a empresa digitar de 1 a
+N funcionários direto na página, sem baixar nem anexar arquivo nenhum.
+
+**Nenhum segundo caminho de escrita, e nenhuma segunda validação.** As linhas digitadas viram um
+`.xlsx` de verdade no navegador (`gerarPlanilhaDoFormulario`, com `await import("exceljs")` — a
+biblioteca continuou isolada no chunk de 938 kB, medido no build) e passam pela MESMA
+`useEnviarRemessa` — mesma Edge Function, mesma remessa, mesma revisão humana na 08.10. Quem valida
+CPF e mapeia a situação sindical é `validarTrabalhadores`/`interpretarSituacaoSindical`, os mesmos
+do caminho da planilha; o `react-hook-form` + `zod` do formulário só garante que os campos
+obrigatórios (nome, CPF, piso) não ficaram vazios — nunca reimplementa o dígito verificador.
+
+**A Edge Function valida por CONTEÚDO, não por extensão (assinatura de ZIP +
+`[Content_Types].xml`), e não podia ser alterada nesta subetapa.** Por isso o arquivo do formulário
+precisa ser um `.xlsx` genuíno — não um JSON disfarçado — e é exatamente o que
+`gerarPlanilhaDoFormulario` produz, com os mesmos seis cabeçalhos do modelo da 08.7
+(`cnpj_estabelecimento`, `nome`, `cpf`, `telefone`, `piso`, `status`), sem a coluna informativa
+`razao_social` (aqui é uma linha por FUNCIONÁRIO, não por estabelecimento).
+
+**Pendência transparente: não existe token DEMO de empresa isolada em produção.** Os três tokens
+DEMO gravados na 08.5/08.6 são todos de CONTABILIDADE (`estabelecimento_id is null`, conferido por
+query direta) — é a 08.13 que vai gerar os primeiros tokens reais de empresa isolada. Criar um
+novo token/campanha em produção só para testar este caminho seria escrita em `envios_campanha` fora
+do escopo do Circuito 3. A evidência desta subetapa é por isso **automatizada e sem rede**: gera o
+`.xlsx`, prova que ele passaria na validação por conteúdo da Edge Function (réplica fiel da checagem
+de bytes, sem tocar nela), lê de volta e valida com o pipeline real. **O ciclo ponta a ponta contra
+a Edge Function fica para quando a 08.13 gerar tokens de empresa isolada de verdade** (ou para
+Maxwell testar manualmente então) — mesmo espírito de honestidade da pendência de pixel da 08.7.
+
+**Suíte: 213 testes, 3 falhas — as mesmas de sempre (`cartas`, §7.1b), zero regressão.** 5 testes
+novos em `tests/rls/coleta.spec.ts` cobrem: o arquivo gerado passando na validação por conteúdo real
+da Edge Function; os seis cabeçalhos idênticos ao caminho da planilha; o ciclo completo com 2
+funcionários fictícios (sindicalizado → Prata, oposição → Bronze, ambos vinculados ao CNPJ único da
+carteira); CPF inválido rejeitado pela mesma regra de DV; e o CPF com zero à esquerda sobrevivendo
+ao ciclo gera→salva→lê. `typecheck` e `build` limpos (bundle principal 1.232 kB, `exceljs` isolado).
+
+**Deploy feito e verificado** — `bash scripts/deploy.sh`, 0 falhas, 0 divergências de tamanho.
+
 Objetivo: atender os **8.241 grupos de 1 estabelecimento — 53% da base** — que têm 2 ou 3
 funcionários e nunca vão baixar planilha alguma. Ignorar esse caso perderia mais da metade do alcance.
 Conclusão: na mesma página do token, sem download, a empresa preenche de 1 a N trabalhadores e o

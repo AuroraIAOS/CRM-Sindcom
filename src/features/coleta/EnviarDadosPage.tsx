@@ -12,6 +12,7 @@ import {
 } from "@/features/importacao/validarTrabalhadores";
 import { lerPlanilhaXlsx, PlanilhaInvalida } from "./lerPlanilha";
 import { gerarModeloColeta } from "./gerarModelo";
+import { FormularioDireto } from "./FormularioDireto";
 import { useContextoToken, useEnviarRemessa, type EstabelecimentoDoToken } from "./api";
 
 /**
@@ -33,6 +34,13 @@ import { useContextoToken, useEnviarRemessa, type EstabelecimentoDoToken } from 
  *    ler `trabalhadores`, e a tela passaria a responder "este CPF já está na
  *    nossa base" para qualquer visitante com um link. A checagem de duplicata é
  *    da Denise, na 08.10, onde ela é feita por quem tem direito de fazê-la.
+ *
+ * 4. **Empresa isolada (carteira de 1) nunca vê planilha (Subetapa 08.8).**
+ *    Os 8.241 grupos de UM estabelecimento — 53% da base — nunca vão baixar
+ *    modelo nenhum. Quando `estabelecimentos.length === 1`, a tela troca o
+ *    fluxo de arquivo por `FormularioDireto`, que gera um `.xlsx` de verdade
+ *    NO NAVEGADOR e passa pela MESMA `useEnviarRemessa` — nenhum segundo
+ *    caminho de escrita.
  */
 export function EnviarDadosPage() {
   const { token = "" } = useParams();
@@ -47,6 +55,7 @@ export function EnviarDadosPage() {
   const [erroModelo, setErroModelo] = useState<string | null>(null);
 
   const estabelecimentos: EstabelecimentoDoToken[] = contexto.data?.estabelecimentos ?? [];
+  const empresaIsolada = estabelecimentos.length === 1 ? estabelecimentos[0] : null;
 
   /**
    * O contexto de validação, montado SÓ com o que o token autoriza.
@@ -166,7 +175,7 @@ export function EnviarDadosPage() {
   if (enviar.isSuccess) {
     return (
       <Moldura>
-        <Cabecalho titulo="Planilha recebida" />
+        <Cabecalho titulo={empresaIsolada ? "Cadastro recebido" : "Planilha recebida"} />
         <p className="text-estado-sucesso">{enviar.data.mensagem}</p>
         <Button
           variant="outline"
@@ -176,13 +185,26 @@ export function EnviarDadosPage() {
             setPreview(null);
           }}
         >
-          Enviar outra planilha
+          {empresaIsolada ? "Cadastrar mais funcionários" : "Enviar outra planilha"}
         </Button>
       </Moldura>
     );
   }
 
-  // ------------------------------------------------------------- formulário
+  // ------------------------------------------------------------- empresa isolada (08.8)
+  if (empresaIsolada) {
+    return (
+      <Moldura larga>
+        <Cabecalho
+          titulo="Cadastro de funcionários"
+          subtitulo={empresaIsolada.nome_fantasia || empresaIsolada.razao_social}
+        />
+        <FormularioDireto estabelecimento={empresaIsolada} token={token} enviar={enviar} />
+      </Moldura>
+    );
+  }
+
+  // ------------------------------------------------------------- formulário (planilha)
   const cobertos = estabelecimentos.filter((e) => e.ja_coberto).length;
 
   return (

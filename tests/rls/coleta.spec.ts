@@ -4,6 +4,7 @@ import { execSync } from "node:child_process";
 import { loginComo, ehProducao } from "./helpers";
 import { lerPlanilhaXlsx, PlanilhaInvalida } from "../../src/features/coleta/lerPlanilha";
 import { gerarModeloColeta } from "../../src/features/coleta/gerarModelo";
+import { gerarPlanilhaDoFormulario } from "../../src/features/coleta/gerarPlanilhaFormulario";
 import type { EstabelecimentoDoToken } from "../../src/features/coleta/api";
 import { contarPorStatus, type ParseResultado } from "../../src/features/importacao/parsers";
 import {
@@ -387,4 +388,110 @@ describe.skipIf(!ehProducao())("08.6 · o link recusado não oferece envio (Edge
       expect(corpo.erro).toMatch(/secretaria/i);
     });
   }
+});
+
+describe("08.8 · formulário direto (empresa isolada)", () => {
+  /**
+   * NÃO EXISTE, EM PRODUÇÃO, TOKEN DEMO DE EMPRESA ISOLADA (carteira de 1).
+   * Os três tokens DEMO já gravados (08.6) são todos de CONTABILIDADE
+   * (`estabelecimento_id is null`, `contabilidade_id` preenchido) — conferido
+   * por query direta em `envios_campanha`. Criar um novo token/campanha em
+   * produção só para este teste seria escrever em `envios_campanha` fora do
+   * escopo do Circuito 3 (a 08.13 é quem gera tokens reais de empresa
+   * isolada). Por isso esta suíte prova o PIPELINE e o FORMATO do arquivo —
+   * não um envio real de ponta a ponta contra a Edge Function. Isso fica
+   * pendente para quando a 08.13 gerar os primeiros tokens de empresa
+   * isolada de verdade (ou para Maxwell testar manualmente então).
+   */
+  const CNPJ_EMPRESA_ISOLADA = "99999901000353";
+
+  /** Réplica FIEL do `validarPlanilha` da Edge Function (não altera o arquivo
+   *  dela — só prova, sem rede, que o `.xlsx` gerado passaria por ele: mesma
+   *  assinatura de ZIP + a mesma entrada OOXML obrigatória. */
+  function passariaNaEdgeFunction(bytes: Uint8Array): boolean {
+    const ehZip = bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04;
+    const marca = new TextEncoder().encode("[Content_Types].xml");
+    const contem = (alvo: Uint8Array, agulha: Uint8Array) => {
+      for (let i = 0; i <= alvo.length - agulha.length; i += 1) {
+        let bate = true;
+        for (let j = 0; j < agulha.length; j += 1) if (alvo[i + j] !== agulha[j]) { bate = false; break; }
+        if (bate) return true;
+      }
+      return false;
+    };
+    return ehZip && contem(bytes, marca);
+  }
+
+  it("o .xlsx gerado do formulário passaria na validação POR CONTEÚDO da Edge Function", async () => {
+    const buffer = await gerarPlanilhaDoFormulario(CNPJ_EMPRESA_ISOLADA, [
+      { nome: "DEMO — Funcionário Um", cpf: "00123456797", telefone: "35988887777", piso: "1600,00", status: "sindicalizado" },
+    ]);
+    expect(passariaNaEdgeFunction(new Uint8Array(buffer))).toBe(true);
+  });
+
+  it("mesmo formato do caminho da planilha: os seis cabeçalhos idênticos", async () => {
+    const buffer = await gerarPlanilhaDoFormulario(CNPJ_EMPRESA_ISOLADA, [
+      { nome: "DEMO — Fulana", cpf: "00123456797", telefone: "", piso: "1600,00", status: "sindicalizado" },
+    ]);
+    const { writeFileSync } = await import("node:fs");
+    const caminho = `${pastaTemp}/08-8-formulario.xlsx`;
+    writeFileSync(caminho, Buffer.from(buffer as unknown as Uint8Array));
+    const parse = await lerPlanilhaXlsx(comoArquivo(caminho, "formulario.xlsx"));
+    // O mesmo cabeçalho que o modelo da 08.7 e o arquivo manual da 08.5 usam.
+    expect(parse.cabecalhos).toEqual(["cnpj_estabelecimento", "nome", "cpf", "telefone", "piso", "status"]);
+  });
+
+  it("ciclo completo com 2 funcionários: mesma validação, mesmo mapeamento de status do caminho da planilha", async () => {
+    const buffer = await gerarPlanilhaDoFormulario(CNPJ_EMPRESA_ISOLADA, [
+      { nome: "DEMO — Sindicalizada Isolada", cpf: "00123456797", telefone: "35988887777", piso: "1600,00", status: "sindicalizado" },
+      { nome: "DEMO — Opositor Isolado", cpf: "11144477735", telefone: "", piso: "1750,50", status: "oposicao" },
+    ]);
+    const { writeFileSync } = await import("node:fs");
+    const caminho = `${pastaTemp}/08-8-dois-funcionarios.xlsx`;
+    writeFileSync(caminho, Buffer.from(buffer as unknown as Uint8Array));
+
+    const parse = await lerPlanilhaXlsx(comoArquivo(caminho, "dois.xlsx"));
+    const preview = validarTrabalhadores(parse, contextoDaPagina([CNPJ_EMPRESA_ISOLADA]), "ignorar");
+    expect(preview.length).toBe(2);
+    expect(preview.filter((l) => l.status === "rejeitada")).toEqual([]);
+
+    const sindicalizada = preview[0].dados;
+    const opositor = preview[1].dados;
+    if (sindicalizada?.tipo !== "novo" || opositor?.tipo !== "novo") {
+      throw new Error("as duas linhas deveriam ser cadastros novos");
+    }
+    // Mesmo tradutor de situação sindical do caminho da planilha
+    // (interpretarSituacaoSindical) — "oposicao" sem cedilha, o valor do
+    // <select> do formulário, já é um apelido reconhecido.
+    expect(sindicalizada.valores.recolhe_contribuicao_sindical).toBe(true);
+    expect(opositor.valores.recolhe_contribuicao_sindical).toBe(false);
+    expect(sindicalizada.valores.vinculo?.estabelecimento_id).toBe(CNPJ_EMPRESA_ISOLADA);
+    expect(opositor.valores.vinculo?.estabelecimento_id).toBe(CNPJ_EMPRESA_ISOLADA);
+  });
+
+  it("CPF inválido é rejeitado pela MESMA regra de dígito verificador — não há segunda validação", async () => {
+    const buffer = await gerarPlanilhaDoFormulario(CNPJ_EMPRESA_ISOLADA, [
+      { nome: "DEMO — CPF Ruim", cpf: "11111111111", telefone: "", piso: "1600,00", status: "sindicalizado" },
+    ]);
+    const { writeFileSync } = await import("node:fs");
+    const caminho = `${pastaTemp}/08-8-cpf-invalido.xlsx`;
+    writeFileSync(caminho, Buffer.from(buffer as unknown as Uint8Array));
+
+    const parse = await lerPlanilhaXlsx(comoArquivo(caminho, "cpf-ruim.xlsx"));
+    const preview = validarTrabalhadores(parse, contextoDaPagina([CNPJ_EMPRESA_ISOLADA]), "ignorar");
+    expect(preview[0].status).toBe("rejeitada");
+    expect(preview[0].mensagens.join(" | ")).toMatch(/dígito verificador inválido/i);
+  });
+
+  it("CPF com zero à esquerda sobrevive ao ciclo completo (formulário → .xlsx → leitura)", async () => {
+    const buffer = await gerarPlanilhaDoFormulario(CNPJ_EMPRESA_ISOLADA, [
+      { nome: "DEMO — Zero Formulário", cpf: "00123456797", telefone: "", piso: "1600,00", status: "sindicalizado" },
+    ]);
+    const { writeFileSync } = await import("node:fs");
+    const caminho = `${pastaTemp}/08-8-zero-esquerda.xlsx`;
+    writeFileSync(caminho, Buffer.from(buffer as unknown as Uint8Array));
+
+    const parse = await lerPlanilhaXlsx(comoArquivo(caminho, "zero.xlsx"));
+    expect(parse.linhas[0].cpf).toBe("00123456797");
+  });
 });
