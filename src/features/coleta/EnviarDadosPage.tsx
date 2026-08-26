@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Download } from "lucide-react";
 import { PreviewTable } from "@/features/importacao/PreviewTable";
 import { contarPorStatus, temAvisoZeroComido, type LinhaPreview } from "@/features/importacao/parsers";
 import {
@@ -115,10 +116,9 @@ export function EnviarDadosPage() {
   if (contexto.isError) {
     return (
       <Moldura>
-        <h1 className="text-xl font-semibold text-estado-erro">Link inválido</h1>
-        <p className="text-texto-2">
-          {(contexto.error as Error).message ||
-            "Não foi possível validar este link."}
+        <Cabecalho titulo="Link inválido" />
+        <p className="text-estado-erro">
+          {(contexto.error as Error).message || "Não foi possível validar este link."}
         </p>
         <p className="text-sm text-texto-2">
           Se você recebeu este link por e-mail do Sindcom e ele parou de funcionar, responda àquele
@@ -131,8 +131,8 @@ export function EnviarDadosPage() {
   if (enviar.isSuccess) {
     return (
       <Moldura>
-        <h1 className="text-xl font-semibold text-estado-sucesso">Planilha recebida</h1>
-        <p>{enviar.data.mensagem}</p>
+        <Cabecalho titulo="Planilha recebida" />
+        <p className="text-estado-sucesso">{enviar.data.mensagem}</p>
         <Button
           variant="outline"
           onClick={() => {
@@ -152,15 +152,7 @@ export function EnviarDadosPage() {
 
   return (
     <Moldura larga>
-      <header className="flex flex-col gap-1">
-        <p className="text-sm uppercase tracking-wide text-texto-2">
-          Sindicato dos Empregados no Comércio de Passos e Região
-        </p>
-        <h1 className="text-2xl font-semibold text-texto-1">Envio do quadro de empregados</h1>
-        <p className="text-texto-2">
-          {contexto.data?.nome}
-        </p>
-      </header>
+      <Cabecalho titulo="Envio do quadro de empregados" subtitulo={contexto.data?.nome} />
 
       {estabelecimentos.length > 0 && (
         <section className="flex flex-col gap-2 rounded-lg border bg-fundo-2/40 p-4">
@@ -196,7 +188,41 @@ export function EnviarDadosPage() {
         </section>
       )}
 
+      {/* O modelo vem ANTES do campo de anexo de propósito: quem chega aqui sem
+          planilha pronta precisa encontrar o arquivo antes de encontrar o
+          upload. É também a defesa do zero à esquerda — o modelo já traz as
+          colunas de CPF e CNPJ formatadas como texto (orientacoes.md §2.10), o
+          que uma planilha montada do zero pelo contador dificilmente teria. */}
+      <section className="flex flex-col gap-3 rounded-lg border border-realce/30 bg-realce/5 p-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="font-medium text-texto-1">1. Baixe o modelo</h2>
+          <p className="text-sm text-texto-2">
+            Use a planilha modelo para preencher. Ela já vem com as colunas certas e protege o zero
+            à esquerda do CPF, que o Excel costuma apagar. A aba <strong>Instruções</strong> explica
+            cada campo.
+          </p>
+        </div>
+        {/* Caminho LITERAL, como o logotipo e o resto dos assets de `public/`.
+            Não é preciosismo: um atributo de link montado a partir de variável é
+            barrado pelo guard de `tests/adversarial/04_renderizacao.spec.ts`,
+            que existe para que desligar o escape do React custe uma decisão
+            explícita. Aqui o valor seria constante de build, mas a heurística
+            não tem como saber — e afrouxar o guard para acomodar o caso benigno
+            é como ele deixa de pegar o maligno. O arquivo é gerado por
+            `scripts/gerar_modelo_coleta.mjs`; a 08.7 substitui este estático
+            pelo modelo PRÉ-PREENCHIDO gerado no navegador. */}
+        <a
+          href="/modelos/quadro-de-empregados.xlsx"
+          download="quadro-de-empregados.xlsx"
+          className="inline-flex w-fit items-center gap-2 rounded-md bg-realce px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+        >
+          <Download className="h-4 w-4" />
+          Baixar modelo (.xlsx)
+        </a>
+      </section>
+
       <section className="flex flex-col gap-3">
+        <h2 className="font-medium text-texto-1">2. Envie a planilha preenchida</h2>
         <label className="flex flex-col gap-1 text-sm">
           <span className="font-medium text-texto-1">Planilha preenchida (.xlsx)</span>
           <input
@@ -305,6 +331,34 @@ function Moldura({ children, larga = false }: { children: React.ReactNode; larga
       >
         {children}
       </div>
+      <p className="mx-auto mt-4 max-w-4xl text-center text-xs text-texto-2">
+        Sindicato dos Empregados no Comércio de Passos e Região ·{" "}
+        <a className="underline" href="https://sindcompassos.org">
+          sindcompassos.org
+        </a>
+      </p>
     </div>
+  );
+}
+
+/**
+ * O logotipo é o mesmo `logo_horizontal_colorido.png` do AppShell, do login e
+ * da guia de encaminhamento (docs/design-tokens.md §5) — não é enfeite: esta é
+ * a primeira página do sindicato que o contador vê, chegando por um link de
+ * e-mail que pede dado pessoal de terceiros. Sem marca, o pedido parece phishing.
+ */
+function Cabecalho({ titulo, subtitulo }: { titulo: string; subtitulo?: string }) {
+  return (
+    <header className="flex flex-col items-center gap-3 border-b pb-5 text-center">
+      <img
+        src="/assets/brand/logo_horizontal_colorido.png"
+        alt="Sindicato dos Empregados no Comércio de Passos e Região"
+        className="max-w-[220px]"
+      />
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-semibold text-texto-1">{titulo}</h1>
+        {subtitulo && <p className="text-texto-2">{subtitulo}</p>}
+      </div>
+    </header>
   );
 }

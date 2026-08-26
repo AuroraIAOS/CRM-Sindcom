@@ -1109,6 +1109,49 @@ remessa a cada execução** — uma por rodada de `npm run test` encheria a fila
 tem **DV inválido**. O teste pegou. Trocado por `00123456797`, que é válido e mantém os dois zeros
 à esquerda — que era o ponto do dado.
 
+**Ajuste pedido por Maxwell após conferir a tela (2026-08-26):** modelo `.xlsx` para download e
+logotipo institucional na página.
+- **Logotipo** — `logo_horizontal_colorido.png`, o mesmo do AppShell, do login e da guia
+  (design-tokens §5), no cabeçalho das três telas (formulário, link inválido, envio recebido), mais
+  rodapé com o link do site. Não é enfeite: esta é a primeira página do sindicato que o contador vê,
+  chegando por um e-mail que pede dado pessoal de terceiros — sem marca, o pedido parece phishing.
+- **Modelo** — `public/modelos/quadro-de-empregados.xlsx`, gerado por
+  `scripts/gerar_modelo_coleta.mjs`, num bloco "1. Baixe o modelo" que vem **antes** do campo de
+  anexo.
+
+**O modelo que Maxwell rascunhou tinha dois defeitos, e ambos eram silenciosos.** O arquivo em
+`dados/exemplos_importacao/quadro.xlsx` trazia os cabeçalhos
+`cnpj_estabelecimento | nome | cpf | telefone | piso | status`. Medido contra o validador:
+1. **`piso` e `status` não casavam com campo nenhum.** `telefone` casava (o apelido já existia);
+   os outros dois não. Consequência de `status` não casar: `campo()` devolve `""`, e string vazia é
+   o caso "padrão legal" — que aplica **contribui** SEM AVISO. Ou seja, **todo trabalhador marcado
+   como oposição entraria Prata**, em silêncio. É o espelho exato do defeito da §2.23, entrando
+   pela porta do cabeçalho em vez de pela do valor.
+2. **Nenhuma coluna formatada como texto.** CPF com zero à esquerda seria comido pelo Excel do
+   próprio contador, antes de o arquivo sair da máquina dele (§2.10) — e é essa formatação que
+   justifica a D6 ter escolhido `.xlsx` em vez de CSV.
+
+**Resolvido mantendo os rótulos que Maxwell escolheu** — contador fala "piso" e "status", não
+`salario_informado` e `recolhe_contribuicao`. Os apelidos entraram no `CAMPOS` de
+`validarTrabalhadores.ts` (`piso`, `piso salarial`, `salario`; `situacao`, `situação`,
+`situacao sindical`, `status`), e o modelo passou a ser gerado por script — arquivo binário
+commitado à mão não tem como ser revisado, ninguém vê num diff que o `numFmt` caiu. O modelo tem
+aba **Dados** (só o cabeçalho, **sem linha de exemplo**: exemplo ali seria lido como pessoa de
+verdade) e aba **Instruções**, que o leitor nunca abre.
+
+**Três testes novos em `tests/rls/coleta.spec.ts` (13/13)** cobrem exatamente isso: a aba lida é a
+primeira e vem sem linhas; os rótulos do contador mapeiam nos campos certos, com
+`sindicalizado → true` e `oposição → false` medidos; e as colunas de CPF/CNPJ nascem com
+`numFmt: '@'`. Verificado em produção: o `.xlsx` é servido com o MIME correto, 8.819 bytes,
+**byte a byte idêntico ao local** — não é o `index.html` do fallback de SPA disfarçado.
+
+**Regressão minha, pega pela suíte adversarial:** o link do modelo nasceu como
+`href={CONSTANTE}`, e o guard de `04_renderizacao.spec.ts` barrou — ele existe para que desligar o
+escape do React custe uma decisão explícita. Trocado por caminho literal, que é a convenção do
+próprio projeto para assets de `public/` (o logotipo já é assim). O guard ficou intacto. Curiosidade
+que vale registrar: na primeira correção o teste continuou vermelho porque **o meu comentário
+explicando o guard continha o padrão que o guard procura** — é grep sobre o código-fonte.
+
 **⚠️ O que falta para dar por CONCLUÍDA:** a conferência **visual** do ciclo. O projeto não tem
 jsdom nem testing-library (testa renderização por análise estática), e a extensão do Chrome não
 está conectada nesta sessão — então o pipeline está provado, mas o pixel não. Maxwell: abra os

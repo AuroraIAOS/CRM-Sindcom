@@ -68,13 +68,24 @@ const CAMPOS: Record<string, string[]> = {
   telefone_whatsapp: ["telefone whatsapp", "telefone_whatsapp", "telefone"],
   email: ["email", "e-mail"],
   municipio: ["municipio"],
-  recolhe_contribuicao: ["recolhe contribuicao", "recolhe_contribuicao"],
+  // "situacao" e "status" são os rótulos do MODELO entregue ao contador — ele
+  // não fala "recolhe_contribuicao". Sem estes apelidos, a coluna não casaria,
+  // `campo()` devolveria "" e todo mundo cairia no padrão legal (contribui):
+  // quem se OPÔS entraria Prata, em silêncio. É a mesma classe de acidente da
+  // §2.23, pela porta do cabeçalho em vez da pelo valor.
+  recolhe_contribuicao: [
+    "recolhe contribuicao", "recolhe_contribuicao",
+    "situacao", "situação", "situacao sindical", "situacao_sindical", "status",
+  ],
   recolhe_mensalidade: ["recolhe mensalidade", "recolhe_mensalidade"],
   forma_pagamento: ["forma pagamento", "forma_pagamento"],
-  cnpj_estabelecimento: ["cnpj estabelecimento", "cnpj_estabelecimento"],
+  cnpj_estabelecimento: ["cnpj estabelecimento", "cnpj_estabelecimento", "cnpj"],
   funcao: ["funcao"],
   data_admissao: ["data admissao", "data_admissao"],
-  salario_informado: ["salario informado", "salario_informado"],
+  // "piso" é como a CCT e o contador chamam o salário-base.
+  salario_informado: [
+    "salario informado", "salario_informado", "piso", "piso salarial", "piso_salarial", "salario",
+  ],
 };
 
 function paraNumero(v: string): number | null {

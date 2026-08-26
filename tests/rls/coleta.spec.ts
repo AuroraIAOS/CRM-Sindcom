@@ -132,6 +132,80 @@ describe("08.6 · a página lê o .xlsx com o mesmo validador do resto do CRM", 
   });
 });
 
+describe("08.6 · o modelo que o contador baixa casa com o validador", () => {
+  const MODELO = "public/modelos/quadro-de-empregados.xlsx";
+
+  it("a aba lida é a primeira e vem SEM linha de exemplo", async () => {
+    // Uma linha de exemplo em "Dados" seria lida como pessoa de verdade: o
+    // contador que esquecesse de apagá-la cadastraria um fantasma no sindicato.
+    // Os exemplos vivem na aba "Instruções", que o leitor nunca abre.
+    const parse = await lerPlanilhaXlsx(comoArquivo(MODELO, "modelo.xlsx"));
+    expect(parse.linhas.length).toBe(0);
+    expect(parse.cabecalhos).toEqual([
+      "cnpj_estabelecimento",
+      "nome",
+      "cpf",
+      "telefone",
+      "piso",
+      "status",
+    ]);
+  });
+
+  it("os rótulos do contador ('telefone', 'piso', 'status') mapeiam nos campos certos", async () => {
+    // ESTE é o teste que impede o acidente silencioso. Se "status" não casasse
+    // com `recolhe_contribuicao`, `campo()` devolveria "" e TODO MUNDO cairia no
+    // padrão legal (contribui) — quem se opôs entraria Prata, sem aviso nenhum,
+    // porque célula vazia é caso previsto e não gera mensagem.
+    const ExcelJS = (await import("exceljs")).default;
+    const livro = new ExcelJS.Workbook();
+    await livro.xlsx.readFile(MODELO);
+    const aba = livro.worksheets[0];
+    aba.addRow([CNPJ_DEMO_1, "DEMO — Sindicalizada", "00123456797", "35988887777", "1600,00", "sindicalizado"]);
+    aba.addRow([CNPJ_DEMO_1, "DEMO — Opositor", "11144477735", "35988886666", "1750,50", "oposição"]);
+    const preenchido = `${pastaTemp}/08-6-modelo-preenchido.xlsx`;
+    await livro.xlsx.writeFile(preenchido);
+
+    const parse = await lerPlanilhaXlsx(comoArquivo(preenchido, "preenchido.xlsx"));
+    const preview = validarTrabalhadores(parse, contextoDaPagina([CNPJ_DEMO_1]), "ignorar");
+    expect(preview.length).toBe(2);
+    expect(preview[0].status).not.toBe("rejeitada");
+    expect(preview[1].status).not.toBe("rejeitada");
+
+    const sindicalizada = preview[0].dados;
+    const opositor = preview[1].dados;
+    if (sindicalizada?.tipo !== "novo" || opositor?.tipo !== "novo") {
+      throw new Error("as duas linhas do modelo deveriam ser cadastros novos");
+    }
+
+    // status → recolhe_contribuicao (o campo que decide Prata × Bronze)
+    expect(sindicalizada.valores.recolhe_contribuicao_sindical).toBe(true);
+    expect(opositor.valores.recolhe_contribuicao_sindical).toBe(false);
+    // telefone → telefone_whatsapp
+    expect(sindicalizada.valores.telefone_whatsapp).toBe("35988887777");
+    // piso → salario_informado, dentro do vínculo
+    expect(sindicalizada.valores.vinculo?.salario_informado).toBe(1600);
+    expect(opositor.valores.vinculo?.salario_informado).toBe(1750.5);
+    // cnpj_estabelecimento → vínculo com o estabelecimento da carteira
+    expect(sindicalizada.valores.vinculo?.estabelecimento_id).toBe(CNPJ_DEMO_1);
+  });
+
+  it("as colunas de CPF e CNPJ nascem formatadas como TEXTO", async () => {
+    // A defesa do zero à esquerda (§2.10), e ela só é possível por causa da D6:
+    // em CSV não existe formatação de célula. O formato está na COLUNA, que é o
+    // que o Excel aplica às linhas que o contador ainda vai digitar.
+    const ExcelJS = (await import("exceljs")).default;
+    const livro = new ExcelJS.Workbook();
+    await livro.xlsx.readFile(MODELO);
+    const aba = livro.worksheets[0];
+    const formatoDe = (nome: string) => {
+      const indice = ["cnpj_estabelecimento", "nome", "cpf", "telefone", "piso", "status"].indexOf(nome);
+      return aba.getColumn(indice + 1).numFmt;
+    };
+    expect(formatoDe("cpf")).toBe("@");
+    expect(formatoDe("cnpj_estabelecimento")).toBe("@");
+  });
+});
+
 describe("08.6 · a página não abre caminho para o banco", () => {
   it("nenhum arquivo de features/coleta importa supabase-js", () => {
     // A regra é do desenho, não do gosto: quem abre `/enviar-dados/:token` não

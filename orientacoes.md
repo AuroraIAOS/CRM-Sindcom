@@ -1010,6 +1010,46 @@ precisa de nome próprio, de lugar único e de um caminho explícito para "não 
 silencioso num campo que decide dinheiro é a mesma família do `least()` da §2.1: o valor de
 fallback aplicado justamente a quem menos se sabe.
 
+### 2.23b Cabeçalho que não casa é PIOR que valor errado — ele nem gera aviso
+
+**(a) Problema.** Corrigido o vocabulário da §2.23, o modelo `.xlsx` entregue ao contador trazia os
+rótulos amigáveis `piso` e `status` (em vez de `salario_informado` e `recolhe_contribuicao`).
+Nenhum dos dois estava na lista de apelidos de `CAMPOS`. O que acontece então:
+
+```
+construirMapaColunas(...)  →  mapa["recolhe_contribuicao"] = undefined
+campo(bruta, mapa, "recolhe_contribuicao")  →  ""            (coluna não existe)
+interpretarSituacaoSindical("", true)  →  { valor: true, reconhecido: true, vazio: true }
+```
+
+Célula vazia é o caso **previsto** — "padrão legal, contribui" — e por isso **não gera aviso
+nenhum**. Resultado: com o cabeçalho errado, **todo trabalhador marcado como oposição entra Prata,
+em silêncio**, e a defesa construída na §2.23 não dispara, porque ela protege o VALOR não
+reconhecido, não a COLUNA ausente.
+
+O mesmo arquivo trazia `piso` sem casar com `salario_informado`: salário nulo para todo mundo, e o
+motor de cobrança pulando a base inteira.
+
+**(b) Solução.** Duas, e as duas juntas:
+1. os rótulos amigáveis entram como **apelidos** em `CAMPOS` — quem escreve o modelo pensa no
+   contador, não no nome da coluna do banco;
+2. o modelo **é gerado por script**, não commitado à mão. Binário no repo não passa por revisão:
+   ninguém vê num diff que um cabeçalho mudou ou que o `numFmt` caiu.
+
+**(c) Como implantar.** O teste que fecha o buraco não é sobre o parser — é sobre o ARQUIVO que o
+usuário baixa, lido pelo validador de verdade:
+
+```ts
+const parse = await lerPlanilhaXlsx(modeloBaixado);
+const preview = validarTrabalhadores(parse, ctx, "ignorar");
+expect(preview[0].dados.valores.recolhe_contribuicao_sindical).toBe(true);   // "sindicalizado"
+expect(preview[1].dados.valores.recolhe_contribuicao_sindical).toBe(false);  // "oposição"
+```
+
+**Regra transferível:** todo template distribuído a usuário externo precisa de um teste que o leia
+**pelo caminho de produção**. Conferir o cabeçalho a olho não pega o caso em que a coluna some do
+mapa — porque some sem erro, sem aviso e com um default plausível no lugar.
+
 ### 2.18 `raise exception` desfaz o `insert` que você acabou de fazer — inclusive o do rate limit
 
 **(a) Problema.** `fn_registrar_checkin` (endpoint público, sem login) aceitava tentativas de PIN
