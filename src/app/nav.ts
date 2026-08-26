@@ -14,6 +14,7 @@ import {
   Scale,
   Upload,
   FileSpreadsheet,
+  BarChart3,
   Bell,
   Settings,
   type LucideIcon,
@@ -55,6 +56,10 @@ export const NAV: NavItem[] = [
   // ETAPA 08: a fila de revisão da coleta externa. Secretaria entra porque é
   // a Denise quem revisa — Admin também, mas a tela é do dia a dia dela.
   { path: "/remessas", label: "Remessas recebidas", roles: ["admin", "secretaria"], icon: FileSpreadsheet, grupo: "administracao" },
+  // ETAPA 08 (08.11): quais contabilidades ainda não mandaram, e o que falta
+  // em cada uma. Presidente entra como leitura (mesmo recorte de quem lê
+  // `envios_campanha` hoje); só Admin revoga token, controlado na própria tela.
+  { path: "/cobertura", label: "Cobertura da coleta", roles: ["admin", "presidente", "secretaria"], icon: BarChart3, grupo: "administracao" },
   { path: "/notificacoes", label: "Notificações", roles: ["admin", "presidente", "secretaria", "juridico", "parceiro"], icon: Bell, grupo: "administracao" },
   { path: "/configuracoes", label: "Configurações", roles: ["admin"], icon: Settings, grupo: "administracao" },
 

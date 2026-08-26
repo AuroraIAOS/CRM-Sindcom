@@ -33,6 +33,7 @@ import { ConfiguracoesPage } from "@/features/configuracoes/ConfiguracoesPage";
 import { ListaAtendimentosPage } from "@/features/juridico/ListaAtendimentosPage";
 import { ListaCartasPage } from "@/features/cartas/ListaCartasPage";
 import { ListaRemessasPage } from "@/features/remessas/ListaRemessasPage";
+import { CoberturaContabilidadesPage } from "@/features/cobertura/CoberturaContabilidadesPage";
 import type { PapelUsuario } from "@/lib/supabase";
 
 /**
@@ -82,6 +83,7 @@ const PAGINAS: Partial<Record<string, ReactNode>> = {
   "/juridico": <ListaAtendimentosPage />,
   "/cartas": <ListaCartasPage />,
   "/remessas": <ListaRemessasPage />,
+  "/cobertura": <CoberturaContabilidadesPage />,
 };
 const PAGINAS_DETALHE: Partial<Record<string, ReactNode>> = {
   "/trabalhadores/:id": <FichaTrabalhadorPage />,

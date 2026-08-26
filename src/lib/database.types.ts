@@ -457,6 +457,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "contabilidade_estabelecimentos_contabilidade_id_fkey"
+            columns: ["contabilidade_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_contabilidades"
+            referencedColumns: ["contabilidade_id"]
+          },
+          {
             foreignKeyName: "contabilidade_estabelecimentos_estabelecimento_id_fkey"
             columns: ["estabelecimento_id"]
             isOneToOne: false
@@ -669,6 +676,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "contabilidades"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_contabilidade_id_fkey"
+            columns: ["contabilidade_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_contabilidades"
+            referencedColumns: ["contabilidade_id"]
           },
           {
             foreignKeyName: "envios_campanha_estabelecimento_id_fkey"
@@ -2271,6 +2285,16 @@ export type Database = {
           reclassificada_em: string | null
           trabalhador: string | null
           trabalhador_id: string | null
+        }
+        Relationships: []
+      }
+      v_cobertura_contabilidades: {
+        Row: {
+          contabilidade_id: string | null
+          email: string | null
+          estabelecimentos_cobertos: number | null
+          nome: string | null
+          total_estabelecimentos: number | null
         }
         Relationships: []
       }

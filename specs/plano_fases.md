@@ -1511,7 +1511,58 @@ Esforço máximo: 3 tentativas.
 Escalonamento de LLM: Opus desde a 1ª — escreve na base cadastral.
 Se esgotar: parar e relatar.
 
-### Subetapa 08.11 — Acompanhamento por cobertura e revogação de token [Goal] [LLM: Sonnet] · Status: ⬜
+### Subetapa 08.11 — Acompanhamento por cobertura e revogação de token [Goal] [LLM: Sonnet] · Status: ✅ CONCLUÍDA (com um item pendente de revisão)
+**Executada em 2026-08-26** (Circuito 3, Sonnet). Tela `/cobertura` (Admin, Presidente e
+Secretaria), em `src/features/cobertura/` (`api.ts`, `CoberturaContabilidadesPage.tsx`): lista as
+951 contabilidades ordenadas da pior para a melhor cobertura, com drill-down nominal dos
+estabelecimentos pendentes por linha, exportação CSV (`lib/csv.ts`) e botão "Revogar token"
+(Admin apenas, com confirmação).
+
+**Cobertura por VIEW no banco, não por join no navegador.** `v_cobertura_contabilidades`
+(`sql/22_cobertura_08_11.sql`, aplicada) agrega `contabilidades` × `contabilidade_estabelecimentos`
+× `vinculos_empregaticios` — 951 linhas de saída, uma por contabilidade, contra as 7.440 linhas de
+`contabilidade_estabelecimentos` que um join client-side teria que paginar (orientacoes.md §2.4).
+`security_invoker = on`: nenhuma exposição nova, é a mesma RLS de origem que já valia para essas
+três tabelas.
+
+**O token nunca é lido nesta feature — nem pelo Admin.** "Revogar" só faz duas escritas
+sequenciais (UPDATE marcando `token_revogado_em` na linha ativa + INSERT de uma linha nova, que
+recebe token novo por `DEFAULT` do banco): o valor do token não passa em nenhuma resposta que este
+código leia. Prova em `tests/rls/cobertura.spec.ts`: `git grep` confirmando que a palavra `token`
+não aparece em `src/features/cobertura/`.
+
+**⚠️ Item aplicado com escopo reduzido — decisão registrada para revisão de Maxwell.**
+`sql/20_comunicacao_externa.sql` (linhas 384-403) já apontava que Presidente e Secretaria leem
+`envios_campanha` inteira, com o `token` em claro (RLS restringe LINHAS, nunca COLUNAS), e sugeria
+resolver com uma view `SECURITY DEFINER` no padrão de `v_fila_parceiro`. **Medido e reavaliado**:
+esse padrão desliga RLS para refazer um filtro de LINHA à mão — necessário em `v_fila_parceiro`
+(esconder a fila de outro parceiro, que a RLS crua apagaria por completo), desnecessário aqui (a
+RLS já decide certo QUEM vê a linha; falta só apagar o CONTEÚDO de uma coluna). Escrevi a
+alternativa mais simples e mais segura — `security_invoker = on` com
+`case when fn_eh('admin') then token else null end` — comentada em `sql/22_cobertura_08_11.sql`
+(Parte 2) e registrada em `orientacoes.md` §2.24, mas **não apliquei**: é decisão de segurança
+(muda o que um papel autenticado consegue ler via a API do Supabase), e a regra da ETAPA 08 para o
+Circuito 3 é escrever o SQL e pedir revisão antes de aplicar. A tela entregue **não depende** dela
+— funciona por completo sem essa view, porque nunca precisou ler o token para nada.
+
+**Suíte: 222 testes, 3 falhas — as mesmas de sempre (`cartas`, §7.1b), zero regressão.** 9 testes
+novos em `tests/rls/cobertura.spec.ts`: a view bate com contagem independente por SQL cru (não
+número fixo — total de contabilidades e soma de estabelecimentos, comparados contra `count()` cru
+das tabelas de origem); nenhuma linha tem `cobertos > total`; uma contabilidade DEMO com
+trabalhador real aparece com cobertura > 0; admin/presidente/secretaria/jurídico leem a view (mesmo
+recorte das tabelas de origem) e parceiro vê zero linhas sem erro (§2.6b); anon é barrado no GRANT;
+nenhum arquivo da feature toca a palavra `token`; e a tentativa de revogação por Secretaria/Jurídico/
+Parceiro devolve zero linhas afetadas sem erro (§2.6d). `typecheck` e `build` limpos (bundle
+principal 1.240 kB — cresceu só o esperado da tela nova; `exceljs` seguiu isolado).
+
+**Deploy feito e verificado** — `bash scripts/deploy.sh`, 0 falhas, 0 divergências de tamanho.
+`database.types.ts` regenerado (só a view nova no diff).
+
+**Pendência explícita para Maxwell:** revisar e, se aprovado, aplicar
+`sql/22_cobertura_08_11.sql` Parte 2 (comentada) — fecha em definitivo a brecha registrada em
+`sql/20_comunicacao_externa.sql` de Presidente/Secretaria conseguirem ler `token` em claro via API
+direta (não pela tela, que nunca o expõe). Item para o relatório da 08.12.
+
 Objetivo: responder "quais contabilidades ainda não mandaram, e o que exatamente falta em cada
 uma" como tela, não como cruzamento manual repetido a cada rodada de cobrança (D4).
 Conclusão: a tela lista as contabilidades ordenadas por cobertura, mostrando

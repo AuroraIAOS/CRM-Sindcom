@@ -1246,6 +1246,43 @@ E medir com **objeto dentro do bucket**, papel por papel, com o controle negativ
 **Regra transferível:** teste de negativa contra recurso VAZIO é teste que passa sozinho. Popule
 primeiro, ataque depois.
 
+### 2.24 Mascarar uma COLUNA não precisa desligar RLS da LINHA
+
+**(a) Problema.** Na Subetapa 08.11, `sql/20_comunicacao_externa.sql` já registrava a "troca
+consciente" de que Presidente e Secretaria leem `envios_campanha` inteira, com a coluna `token` em
+claro — RLS restringe LINHAS, nunca COLUNAS. O comentário no código sugeria resolver copiando o
+padrão de `v_fila_parceiro`: view `security_invoker = off` (SECURITY DEFINER) com um filtro interno
+substituindo a RLS desligada. Mas `v_fila_parceiro` resolve um problema DIFERENTE do meu: ela
+precisa mostrar ao parceiro linhas que a RLS crua esconderia por completo (a fila de OUTRO
+parceiro), então bypassar RLS e refazer o filtro à mão é necessário ali. No caso do token, a RLS de
+`envios_campanha` já decide corretamente QUEM vê a LINHA (admin/presidente/secretaria) — falta só
+apagar o CONTEÚDO de uma coluna para quem não é Admin. Copiar o padrão SECURITY DEFINER ali seria
+desligar uma proteção que não precisa ser desligada.
+
+**(b) Solução.** Uma `case when fn_eh('admin') then coluna else null end`, dentro de uma view
+`security_invoker = on` comum. A RLS das tabelas de origem continua valendo por completo (view
+comum não pode enxergar mais linha que o dono da sessão enxergaria direto na tabela); só o VALOR de
+uma coluna específica é substituído por `null` conforme o papel de quem consulta. Princípio do menor
+privilégio: não desligue um mecanismo (RLS) para resolver um problema que uma expressão dentro do
+`select` já resolve.
+
+**(c) Como implantar.**
+```sql
+create or replace view v_exemplo_mascarada
+with (security_invoker = on) as   -- NÃO off — não há linha a reexpor aqui
+select
+  e.id, e.email,
+  case when fn_eh('admin') then e.token else null end as token,  -- só o CONTEÚDO muda
+  e.token_expira_em
+from envios_campanha e;           -- RLS de origem decide sozinha quem vê a LINHA
+```
+**Regra de decisão, para a próxima vez:** SECURITY DEFINER (`off` + filtro interno, padrão
+`v_fila_parceiro`) é para quando a RLS crua esconderia uma LINHA que o papel deveria ver. `CASE`
+dentro de `security_invoker = on` é para quando a RLS crua já está certa e só uma COLUNA precisa
+sumir para um papel. As duas mexem em exposição de dado; só a primeira desliga RLS — e desligar RLS
+sem precisar é a mesma classe de erro que criar view sem `security_invoker` (§2.15), só que ao
+contrário: lá faltou proteção que devia existir, aqui sobraria bypass que não precisa existir.
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo
