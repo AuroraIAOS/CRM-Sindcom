@@ -1080,6 +1080,85 @@ function subDoToken(accessToken: string): string | null {
 
 Medido: de 6 arquivos caindo por rate limit para **159/160 verdes** em execução única.
 
+### 2.16b `REVOKE` de privilégio que não é seu é NO-OP SILENCIOSO
+
+**(a) Problema.** Na Subetapa 08.5, ao ligar o Storage pela primeira vez neste projeto, mediu-se
+que `anon` e `authenticated` têm **TRUNCATE, REFERENCES e TRIGGER** em `storage.objects`,
+`storage.buckets` e `storage.buckets_analytics` — a mesma herança de fábrica da §2.16, agora fora
+do schema `public`, que o `19_hardening_adversarial.sql` nunca varreu.
+
+A revogação foi escrita, a migração **aplicou com sucesso**, e o grant **continuou lá**:
+
+```
+revoke truncate on storage.objects from anon;   →  sqlstate 00000, sem erro
+select ... information_schema.role_table_grants  →  anon:TRUNCATE ainda presente
+```
+
+O `postgres` deste projeto **não é superuser** (`rolsuper = false`) e **não é membro de
+`supabase_storage_admin`**, dono daquelas tabelas. O Postgres, nesse caso, não levanta exceção:
+`REVOKE` só retira o que o executor tem grant option para retirar, e retirar nada é um comando
+válido. É a mesma família do §2.6d — **a negativa não recusa, ela não faz nada**.
+
+**(b) Solução.** Nunca dar um `REVOKE`/`GRANT` por concluído porque a migração "passou". Conferir
+no catálogo **depois**, e tratar o que sobrou como item aberto e não como item fechado.
+
+**(c) Como implantar.**
+```sql
+-- Antes: quem sou eu, e posso mexer no dono desta tabela?
+select current_user,
+       (select rolsuper from pg_roles where rolname = current_user) as sou_superuser,
+       pg_has_role(current_user, 'supabase_storage_admin', 'MEMBER') as sou_membro;
+
+-- Depois de QUALQUER revoke: conferir que sumiu de fato.
+select grantee, table_schema, table_name, privilege_type
+  from information_schema.role_table_grants
+ where grantee in ('anon','authenticated')
+   and privilege_type in ('TRUNCATE','REFERENCES','TRIGGER');
+```
+**No caso concreto o item ficou ACEITO COM MOTIVO, não resolvido**: o schema `storage` não é
+exposto pelo PostgREST (medido: `Accept-Profile: storage` → PGRST106 "Only the following schemas
+are exposed: public, graphql_public"), `anon`/`authenticated` têm `rolcanlogin = false`, e não há
+verbo TRUNCATE em REST. Registrado assim no relatório da 08.12 — a diferença entre "fechado" e
+"inalcançável, e sabemos por quê" é a diferença entre segurança e sorte.
+
+### 2.22 Storage: três armadilhas que aparecem juntas no primeiro bucket privado
+
+**(a) Problema.** O Storage nunca tinha sido usado neste CRM (zero buckets até 2026-08-26). Ao
+criar o primeiro bucket privado, três medições deram resultado enganoso em sequência:
+
+1. **`anon` listando o bucket devolveu `200 []` — e isso não provava nada**, porque o bucket
+   estava vazio. Um bucket vazio devolve `[]` para todo mundo, inclusive para quem teria
+   permissão. Só com um objeto DENTRO é que o `[]` do `anon` vira prova.
+2. **`anon` tentando upload recebeu `415 invalid_mime_type`** — o `allowed_mime_types` do bucket
+   dispara **antes** da autorização. Dar o teste por passado ali seria concluir "a RLS barrou"
+   quando quem barrou foi o filtro de tipo. Com o content-type correto, a resposta real apareceu:
+   `403 "new row violates row-level security policy"`.
+3. **Bucket privado sem policy nenhuma nega o `authenticated` também** — e o sintoma não parece
+   permissão. Medido com login de Admin: `list` devolve `[]` e `createSignedUrl` devolve
+   **"Object not found"**. O arquivo existe; a policy é que não. Construir a tela de revisão em
+   cima disso teria produzido "arquivo não encontrado" para a Denise, com o arquivo lá.
+
+**(b) Solução.** `storage.objects` é RLS de tabela como qualquer outra, mas com API própria:
+`service_role` (a Edge Function) ignora, e todo o resto precisa de policy explícita. Uma policy de
+`select` restrita ao bucket e aos papéis internos resolve o item 3 sem abrir nada para `anon`.
+
+**(c) Como implantar.**
+```sql
+create policy pol_remessas_leitura_interna on storage.objects for select
+  to authenticated
+  using (bucket_id = 'remessas' and public.fn_eh('admin','presidente','secretaria'));
+```
+E medir com **objeto dentro do bucket**, papel por papel, com o controle negativo junto:
+
+| ator | list | createSignedUrl | baixar |
+|---|---|---|---|
+| Admin / Secretaria | 1 | OK | HTTP 200, 3640 bytes |
+| Jurídico / Parceiro | 0 | NEGADO | — |
+| `anon` | 0 | NEGADO | — |
+
+**Regra transferível:** teste de negativa contra recurso VAZIO é teste que passa sozinho. Popule
+primeiro, ataque depois.
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo

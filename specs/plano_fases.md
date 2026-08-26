@@ -968,7 +968,69 @@ Escalonamento de LLM: Opus desde a 1ª.
 Se esgotar: parar com o SQL **não aplicado** e relatar. Tabela nova aberta é pior que tabela nova
 inexistente.
 
-### Subetapa 08.5 — Bucket privado + Edge Function de recepção da remessa [Manual] [LLM: Opus] · Status: ⬜
+### Subetapa 08.5 — Bucket privado + Edge Function de recepção da remessa [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+**No ar em produção em 2026-08-26.** `sql/21_remessas_recepcao.sql` (bucket privado `remessas`,
+policy de leitura interna e `tentativas_remessa`) aplicado em produção e no bench; Edge Function
+`receber-remessa` publicada com `verify_jwt = false`.
+
+**As seis medições do critério, todas por requisição real contra produção, com token DEMO:**
+
+| # | O que | Resultado medido |
+|---|---|---|
+| 1 | POST token válido + `.xlsx` | `ok:true` · objeto de 3.640 B no bucket privado · `remessas_dados` com `status='recebida'`, `ip_origem` e `user_agent` (`curl/8.21.0`) preenchidos |
+| 2 | Token inexistente / expirado / revogado | **HTTP 200 + `{ok:false, erro:...}`** nos três, com mensagem distinta. Zero exceções |
+| 3 | 7 tentativas no mesmo token | 1–5 passam · **6ª e 7ª freadas** · e `tentativas_remessa` tem **5 linhas** — o contador subiu de verdade, que é exatamente onde a 1ª correção do check-in falhou em silêncio |
+| 4 | Bucket por `anon` | URL pública → 400 · objeto direto → `NoSuchKey` · **listar → `[]` com objeto DENTRO** · assinar → negado · escrever → 403 RLS |
+| 5 | `.csv` renomeado `.xlsx` | Recusado **por conteúdo**: falta assinatura ZIP e `[Content_Types].xml` |
+| 6 | Base cadastral | `trabalhadores = 3`, `vinculos = 0` — **inalterados**. A função não tem uma linha de código que escreva neles |
+
+Extras medidos: arquivo de 22 MB recusado (teto de 5 MB no servidor **e** no bucket); `DELETE`
+devolve 405; preflight CORS responde 204 com a origem de `crm.sindcompassos.org`.
+
+**Dois achados que só apareceram porque se mediu comportamento, e não configuração:**
+
+1. **Bucket privado sem policy nenhuma nega o `authenticated` também** — e o sintoma é
+   `"Object not found"`, não "permissão negada". Medido com login de Admin **antes** de existir
+   policy: `list = []`, `createSignedUrl` = "Object not found". A 08.10 exige abrir a planilha por
+   URL assinada; sem esta medição, ela teria sido construída contra um bucket ilegível.
+   Corrigido com uma policy de `select` restrita ao bucket e a Admin/Presidente/Secretaria. O
+   controle negativo confirma o recorte: Jurídico, Parceiro e `anon` continuam em zero.
+2. **O `REVOKE` do TRUNCATE de fábrica em `storage.*` não funcionou, e não deu erro.** O
+   `postgres` deste projeto não é superuser nem membro de `supabase_storage_admin`, e `REVOKE` do
+   que não é seu é **no-op silencioso**. Item **ACEITO COM MOTIVO** para a 08.12, não resolvido:
+   o schema `storage` não é exposto pelo PostgREST (medido) e não há verbo TRUNCATE em REST.
+   Registrado em `orientacoes.md` §2.16b e §2.22.
+
+**Três decisões de projeto, declaradas:**
+- **Duas ações no mesmo endpoint**, e o freio vale para as duas: `GET ?token=` devolve o nome da
+  contabilidade e a carteira dela; `POST` recebe a planilha. Se o freio valesse só no upload,
+  adivinhar token pela consulta sairia de graça — e é a consulta que revela a carteira. Devolver a
+  carteira é exigência da spec §7 (modelo pré-preenchido, que elimina o CNPJ digitado errado) e do
+  §5.5 (o contador repassa o link para a equipe dividir os clientes); nada de trabalhador sai dali,
+  CNPJ e razão social são dado público da RFB.
+- **Só falha de TOKEN alimenta o freio.** Planilha no formato errado é registrada mas não conta: o
+  freio existe para encarecer adivinhação de token, e um contador tentando três vezes com o `.csv`
+  do sistema contábil dele não pode se trancar para fora do próprio link. Limite **por token**
+  também significa, honestamente, que ele **não** freia uma varredura por tokens *distintos* — a
+  defesa ali é o espaço do UUIDv4, e frear por IP trancaria um escritório inteiro atrás de um NAT.
+- **Só `.xlsx`, estreitando a D6** (que diz `.xls`/`.xlsx`). O `.xls` legado é OLE2 e o `exceljs`
+  — biblioteca decidida para o projeto — não o lê: aceitar criaria remessa que a 08.10 não abriria,
+  com o contador achando que já enviou. Quem mandar `.xls` recebe instrução de salvar como `.xlsx`.
+
+**Infraestrutura de teste criada:** `scripts/gerar_xlsx_demo.mjs` escreve um `.xlsx` OOXML real
+sem dependência nova (ZIP "stored" na mão + CRC32) — o `exceljs` só entra na 08.7, e provar a
+checagem de conteúdo com arquivo falso provaria o teste, não a função.
+
+**Mundo DEMO gravado em produção** (fica, por regra do `CLAUDE.md`): empresa `99999901`
+"DEMO — Comercio Modelo de Passos Ltda", dois estabelecimentos, "DEMO — Contabilidade Modelo",
+"DEMO — Campanha de coleta 2026" e **três tokens** — válido, revogado e expirado. Nada disso toca
+empresa real: a alternativa seria fabricar vínculo entre um escritório de verdade e clientes de
+verdade, que é asserção falsa gravada no banco.
+
+**Pendência declarada:** a Edge Function está publicada **só em produção**. O bench tem o SQL
+(bucket, policy e `tentativas_remessa`), mas a função precisa ser publicada lá pela 08.12, que é
+quem vai atacá-la em ambiente descartável.
+
 Objetivo: o endpoint que recebe a planilha do contador — **público, sem login, recebendo dado
 pessoal**: mesma classe de risco do check-in por QR da Subetapa 02.2.
 Conclusão: seis comportamentos medidos por requisição real, não por leitura de código:
