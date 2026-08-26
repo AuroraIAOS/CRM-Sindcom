@@ -568,6 +568,29 @@ pessoal ou endpoint público** — a ETAPA 07 mediu o custo de errar aí (5 falh
 estava com a suíte verde e o advisor limpo). **A ordem real de execução está em "Circuito de
 execução" abaixo, não na numeração das subetapas.**
 
+### ✅ CIRCUITO 2 CONCLUÍDO — 2026-08-26
+
+**08.4 → 08.9 → 08.5 → 08.6 → 08.10**, as cinco em produção. O caminho completo do dado existe:
+tabela fechada → contabilidade semeada → recepção → página do contador → cadastro pela Denise.
+
+**A métrica da etapa saiu de zero.** Estabelecimentos com ao menos um trabalhador vinculado:
+**0 → 2**. `trabalhadores` 3 → 6, `vinculos_empregaticios` 0 → 3. `contabilidades` 0 → **951**
+(950 semeadas + 1 DEMO) e `contabilidade_estabelecimentos` 0 → **7.440**.
+
+**Suíte: 202 testes, 3 falhas.** Eram 5 na abertura do circuito; **duas desapareceram sozinhas**
+quando a 08.10 criou os primeiros vínculos — as de `dashboard`, exatamente como o handoff previu.
+As 3 remanescentes são de `cartas`, que fixa contagens do cenário DEMO Kabum (§7.1b).
+
+**Quatro achados reais, todos corrigidos e registrados em `orientacoes.md`:**
+§2.16b (`REVOKE` que não é seu é no-op silencioso) · §2.17b (função de trigger nasce chamável como
+RPC) · §2.22 (três armadilhas do primeiro bucket privado) · §2.23 e §2.23b (o vocabulário
+"sindicalizado" virava Bronze; e cabeçalho ausente é pior que valor errado, porque nem gera aviso).
+
+**Resta do Circuito 1:** a **08.3(b)** — os textos jurídicos revisados e assinados. É o que bloqueia
+o eixo Requisição (08.14/08.15). Circuitos 3 e 4 seguem intocados.
+
+**O merge continua sendo atribuição exclusiva de Maxwell.** A branch é `feature/comunicacao-externa`.
+
 ### Estado medido em 2026-08-24 (reconferido nesta sessão, contra produção)
 
 | | |
@@ -1058,7 +1081,7 @@ Escalonamento de LLM: Opus desde a 1ª — endpoint público com dado pessoal.
 Se esgotar: parar com a função **não publicada** e emitir relatório curto (problema + causas +
 2-3 alternativas).
 
-### Subetapa 08.6 — Página pública `/enviar-dados/:token` (planilha) [Goal] [LLM: Opus] · Status: 🟡 NO AR, aguardando conferência visual de Maxwell
+### Subetapa 08.6 — Página pública `/enviar-dados/:token` (planilha) [Goal] [LLM: Opus] · Status: ✅ CONCLUÍDA
 **Publicada em `crm.sindcompassos.org` em 2026-08-26.** Rota pública em `src/app/router.tsx`, fora
 do `AppShell` e fora do `RoleGate`, no mesmo padrão de `/guia/:token`. Código em
 `src/features/coleta/` (`api.ts`, `lerPlanilha.ts`, `EnviarDadosPage.tsx`).
@@ -1171,11 +1194,11 @@ próprio projeto para assets de `public/` (o logotipo já é assim). O guard fic
 que vale registrar: na primeira correção o teste continuou vermelho porque **o meu comentário
 explicando o guard continha o padrão que o guard procura** — é grep sobre o código-fonte.
 
-**⚠️ O que falta para dar por CONCLUÍDA:** a conferência **visual** do ciclo. O projeto não tem
-jsdom nem testing-library (testa renderização por análise estática), e a extensão do Chrome não
-está conectada nesta sessão — então o pipeline está provado, mas o pixel não. Maxwell: abra os
-três links acima, anexe uma planilha e confirme. Suíte completa: **189 testes, as mesmas 5 falhas
-pré-existentes**; `typecheck` e `build` limpos; deploy com 0 falhas e 0 divergências de tamanho.
+**Conferida no navegador por Maxwell e aprovada em 2026-08-26 — subetapa CONCLUÍDA.** O pipeline
+já estava provado por `tests/rls/coleta.spec.ts`; faltava o pixel, e o projeto não tem jsdom nem
+testing-library (testa renderização por análise estática). A conferência visual foi de Maxwell, no
+link real. Suíte na entrega: **202 testes, 3 falhas** — as herdadas de `cartas`; `typecheck` e
+`build` limpos; deploy com 0 falhas e 0 divergências de tamanho.
 
 Objetivo: a tela que o contador abre pelo link do e-mail, valida a planilha **no navegador dele** e
 envia — sem login (D3).
