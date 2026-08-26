@@ -963,6 +963,53 @@ continuou verde — o INSERT do Admin ainda normalizava o e-mail e o UPDATE aind
 **Toda migração que cria função de trigger deve terminar com esse `revoke`** e rodar
 `get_advisors` — foi o advisor, não a leitura do código, que achou isto.
 
+### 2.23 Vocabulário do usuário ≠ vocabulário do parser: "sindicalizado" virava Bronze em silêncio
+
+**(a) Problema.** O modelo de coleta v1 pede ao contador a palavra **sindicalizado** ou
+**oposição** (spec §7). O parser genérico do projeto era este:
+
+```ts
+export function paraBooleano(v, padrao) {
+  const s = (v ?? "").trim().toLowerCase();
+  if (!s) return padrao;
+  return ["sim", "1", "true", "verdadeiro"].includes(s);   // <- tudo o mais vira FALSE
+}
+```
+
+`"sindicalizado"` não está na lista. Logo `recolhe_contribuicao_sindical = false`, e a pessoa entra
+**Bronze**. Medido numa remessa real: o CPF marcado como sindicalizado foi gravado com `false` e
+`nivel = 'bronze'`. Em escala, isso classificaria como Bronze **a base coletada inteira** —
+inclusive quem se sindicalizou —, zerando a base de cálculo da contribuição e o P1 da etapa.
+
+O que torna a falha traiçoeira é que **não há erro em lugar nenhum**: a coluna existe, o valor é
+booleano válido, a linha importa. Só o significado está invertido. E, por causa da regra inviolável
+de nível, a correção depois **não pode vir por planilha** — exige UPDATE deliberado, pessoa a pessoa.
+
+**(b) Solução.** Um tradutor ÚNICO para essa coluna, que reconheça os dois vocabulários — o do
+contador e o do CSV interno — e que **avise quando não reconhecer**, em vez de cair no padrão em
+silêncio.
+
+**(c) Como implantar.** Em `src/features/importacao/parsers.ts`:
+
+```ts
+const SITUACAO_CONTRIBUI     = ["sim","1","true","verdadeiro","sindicalizado","sindicalizada",...];
+const SITUACAO_NAO_CONTRIBUI = ["nao","não","0","false","falso","oposicao","oposição",...];
+
+export function interpretarSituacaoSindical(v, padrao) {
+  const s = (v ?? "").trim().toLowerCase();
+  if (!s) return { valor: padrao, reconhecido: true, vazio: true };   // padrão legal
+  if (SITUACAO_CONTRIBUI.includes(s))     return { valor: true,  reconhecido: true, vazio: false };
+  if (SITUACAO_NAO_CONTRIBUI.includes(s)) return { valor: false, reconhecido: true, vazio: false };
+  return { valor: padrao, reconhecido: false, vazio: false };          // <- vira AVISO na linha
+}
+```
+
+**Regra transferível, e é a lição maior:** sempre que uma tela pede uma PALAVRA ao usuário e o
+código guarda um BOOLEANO, o tradutor entre os dois é código de negócio — não utilitário. Ele
+precisa de nome próprio, de lugar único e de um caminho explícito para "não reconheci". `padrao`
+silencioso num campo que decide dinheiro é a mesma família do `least()` da §2.1: o valor de
+fallback aplicado justamente a quem menos se sabe.
+
 ### 2.18 `raise exception` desfaz o `insert` que você acabou de fazer — inclusive o do rate limit
 
 **(a) Problema.** `fn_registrar_checkin` (endpoint público, sem login) aceitava tentativas de PIN

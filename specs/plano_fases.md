@@ -1226,7 +1226,63 @@ Esforço máximo: 2 tentativas.
 Escalonamento de LLM: Opus desde a 1ª — escrita em massa em produção.
 Se esgotar: parar sem gravar e relatar.
 
-### Subetapa 08.10 — Revisão e importação da remessa pela Denise [Manual] [LLM: Opus] · Status: ⬜
+### Subetapa 08.10 — Revisão e importação da remessa pela Denise [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+**No ar em 2026-08-26.** Tela `/remessas` (Admin e Secretaria), em
+`src/features/remessas/`. A gravação é a `importarTrabalhadores` **já existente**, agora extraída
+do hook para função pura — a tela e a suíte chamam a MESMA função, e o hook virou invólucro.
+
+**A MÉTRICA DA ETAPA SAIU DE ZERO.** Estabelecimentos com ao menos um trabalhador vinculado:
+**0 → 2**. `trabalhadores` 3 → 6, `vinculos_empregaticios` 0 → 3, com 5 Prata e 1 Bronze. É a
+primeira vez que o CRM tem pessoa ligada a empresa.
+
+**Consequência medida e prevista:** duas das cinco falhas herdadas da suíte **desapareceram
+sozinhas** — as de `dashboard`, que falhavam por não haver trabalhador aprovado nem vínculo. O
+handoff previa exatamente isso como sinal de progresso. Restam **3 falhas, todas em `cartas`**,
+que fixam contagens do cenário DEMO Kabum (§7.1b). Suíte: **197 testes, 3 falhas**.
+
+**Evidência — `tests/rls/remessas.spec.ts`, 8/8:**
+- a planilha só sai do bucket por **URL assinada**, e o recorte é medido papel a papel: Admin e
+  Secretaria assinam e baixam 3.640 bytes; Jurídico, Parceiro e `anon` são negados;
+- **reimportar o mesmo arquivo não cria ninguém** — contagem de `trabalhadores` e de `vinculos`
+  idêntica na 2ª passada. É esta propriedade que torna o token reutilizável seguro por construção;
+- os três CPFs DEMO estão na base com o vínculo apontando para o estabelecimento certo, e o
+  mapeamento do modelo v1 confere: sindicalizado → Prata, oposição → Bronze;
+- **a regra inviolável, atacada de propósito**: uma planilha com os mesmos CPFs e **todas as três
+  flags invertidas**, importada com a política mais permissiva (`atualizar_contato`), não mexeu em
+  nenhuma delas;
+- Jurídico e Parceiro não concluem remessa — e o UPDATE barrado devolve **zero linhas sem erro**,
+  conferido como manda a §2.6d;
+- alterar a **evidência** da remessa (`arquivo_path`) é recusado pelo trigger de imutabilidade.
+
+**⚠️ DEFEITO REAL ENCONTRADO E CORRIGIDO — o mais grave da etapa até aqui.**
+`paraBooleano` só reconhecia `sim/1/true/verdadeiro`. A palavra que o modelo de coleta pede ao
+contador é **"sindicalizado"** — que não está na lista e, portanto, virava `false`. Medido numa
+remessa real: o CPF marcado como sindicalizado entrou com `recolhe_contribuicao_sindical = false`
+e `nivel = 'bronze'`. **Em escala, isso classificaria a base coletada inteira como Bronze**,
+inclusive quem se sindicalizou — zerando a base de cálculo da contribuição e o P1 da etapa. Não
+havia erro em lugar nenhum: coluna válida, booleano válido, linha importada. Só o significado
+invertido.
+Corrigido com `interpretarSituacaoSindical` em `parsers.ts` — **o "único lugar" que o plano da
+08.7 exige**, a ser compartilhado com 08.7 e 08.8 —, que reconhece os dois vocabulários e, quando
+**não** reconhece, aplica o padrão **com aviso visível na linha** em vez de decidir em silêncio.
+Registrado em `orientacoes.md` §2.23. As três pessoas DEMO já gravadas foram corrigidas por
+**UPDATE deliberado** — porque a importação, corretamente, não consegue fazê-lo.
+
+**Dois efeitos colaterais do meu próprio teste, corrigidos:** (1) o teste hostil usava um nome
+fixo e renomeou as três pessoas DEMO em produção para "tentativa de reclassificação" — `nome` é
+dado de contato e é legitimamente atualizável; nomes restaurados e o teste passou a reenviar o
+nome que já está gravado; (2) a suíte pegava a remessa mais ANTIGA, que é a da 08.5 e contém o
+arquivo anterior à correção do CPF — passou a pegar a mais recente, que é como a tela lista.
+
+**Dívida que os tipos velhos escondiam, exposta ao regenerar `database.types.ts`:**
+`solicitacoes_servico.numero_guia` perdeu o `DEFAULT` de coluna na ETAPA 07 (§2.17) e passou a ser
+preenchido por trigger — o gerador não enxerga trigger, só `column_default`, e passou a exigir a
+coluna no Insert. Resolvido com um cast estreito e documentado no único ponto que insere.
+
+**D7 registrado na tela:** quem vem marcado como oposição entra Bronze **sem carta registrada** —
+a declaração é do contador, não há documento. A tela avisa isso em destaque, e `/cartas` ganha o
+grupo que ela não previa. Decisão consciente de Maxwell, não defeito.
+
 Objetivo: o único ponto em que dado vindo de fora vira cadastro — **e ele é humano**.
 Conclusão: com uma remessa `recebida`, a tela interna abre a planilha por **URL assinada**, mostra
 o preview e exige confirmação; ao confirmar, `trabalhadores` e `vinculos_empregaticios` recebem as

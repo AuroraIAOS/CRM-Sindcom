@@ -6,6 +6,7 @@ import {
   normalizarCabecalho,
   normalizarIdentificador,
   paraBooleano,
+  interpretarSituacaoSindical,
   vazioParaNull,
   type LinhaPreview,
   type ParseResultado,
@@ -99,7 +100,18 @@ export function validarTrabalhadores(
     if (!nome) mensagens.push("Nome é obrigatório");
     if (zeroComido) mensagens.push("CPF com 10 dígitos — zero à esquerda restaurado");
 
-    const recolhe_contribuicao_sindical = paraBooleano(campo(bruta, mapa, "recolhe_contribuicao"), true);
+    // Vocabulário do modelo de coleta ("sindicalizado"/"oposição") e o do CSV
+    // interno ("sim"/"não") passam pelo MESMO tradutor — ver `parsers.ts`. O
+    // padrão legal (contribui) só vale para célula vazia; valor presente e não
+    // reconhecido vira aviso na linha em vez de virar Bronze em silêncio.
+    const situacao = interpretarSituacaoSindical(campo(bruta, mapa, "recolhe_contribuicao"), true);
+    const recolhe_contribuicao_sindical = situacao.valor;
+    if (!situacao.reconhecido) {
+      mensagens.push(
+        `Situação sindical "${campo(bruta, mapa, "recolhe_contribuicao")}" não reconhecida — ` +
+          `use "sindicalizado" ou "oposição". Aplicado o padrão (contribui); confira antes de importar.`,
+      );
+    }
     const recolhe_mensalidade_convenio = paraBooleano(campo(bruta, mapa, "recolhe_mensalidade"), false);
     if (recolhe_mensalidade_convenio && !recolhe_contribuicao_sindical) {
       mensagens.push("Mensalidade do convênio exige contribuição sindical (regra de negócio)");

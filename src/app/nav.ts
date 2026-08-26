@@ -13,6 +13,7 @@ import {
   FileText,
   Scale,
   Upload,
+  FileSpreadsheet,
   Bell,
   Settings,
   type LucideIcon,
@@ -51,6 +52,9 @@ export const NAV: NavItem[] = [
   { path: "/aprovacoes", label: "Aprovações", roles: ["admin", "secretaria"], icon: ClipboardCheck, grupo: "administracao" },
   { path: "/fila-admin", label: "Fila do Admin", roles: ["admin", "presidente", "secretaria", "juridico", "parceiro"], icon: Inbox, grupo: "administracao" },
   { path: "/importacao", label: "Importação", roles: ["admin"], icon: Upload, grupo: "administracao" },
+  // ETAPA 08: a fila de revisão da coleta externa. Secretaria entra porque é
+  // a Denise quem revisa — Admin também, mas a tela é do dia a dia dela.
+  { path: "/remessas", label: "Remessas recebidas", roles: ["admin", "secretaria"], icon: FileSpreadsheet, grupo: "administracao" },
   { path: "/notificacoes", label: "Notificações", roles: ["admin", "presidente", "secretaria", "juridico", "parceiro"], icon: Bell, grupo: "administracao" },
   { path: "/configuracoes", label: "Configurações", roles: ["admin"], icon: Settings, grupo: "administracao" },
 
