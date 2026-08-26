@@ -568,10 +568,21 @@ pessoal ou endpoint público** — a ETAPA 07 mediu o custo de errar aí (5 falh
 estava com a suíte verde e o advisor limpo). **A ordem real de execução está em "Circuito de
 execução" abaixo, não na numeração das subetapas.**
 
-### ✅ CIRCUITOS 1 E 2 CONCLUÍDOS — 2026-08-26
+### ✅ CIRCUITOS 1, 2 E 3 CONCLUÍDOS — 2026-08-26
 
-**Metade da ETAPA 08 está fechada.** Restam o Circuito 3 (Sonnet: 08.7 → 08.8 → 08.11 → 08.13,
-todo frontend) e o Circuito 4 (Opus: 08.12 → 08.14 → 08.15, portão adversarial e disparo).
+**Três quartos da ETAPA 08 estão fechados.** Resta só o Circuito 4 (Opus: 08.12 → 08.14 →
+08.3(b) → 08.15, portão adversarial e disparo).
+
+**Circuito 3 — Superfície do contador (Sonnet), 08.7 → 08.8 → 08.11 → 08.13, todas em produção.**
+Modelo `.xlsx` pré-preenchido gerado no navegador (08.7); formulário direto para os 8.241 grupos de
+1 estabelecimento (08.8); tela `/cobertura` com drill-down nominal e revogação de token (08.11) —
+com a view de mascaramento do token ESCRITA mas **não aplicada**, pendente de revisão de Maxwell
+(`sql/22_cobertura_08_11.sql` Parte 2, orientacoes.md §2.24); e, **com confirmação explícita de
+Maxwell antes da escrita**, os 9.186 tokens reais das 4 campanhas (08.13) — 5 a menos que os 9.191
+"medidos", por 5 e-mails isolados malformados na RFB, descartados e reportados em vez de semeados
+em silêncio. Nenhum e-mail disparado — isso é a 08.15, sob ordem de Maxwell. Suíte ao fim do
+circuito: **222 testes, as mesmas 3 falhas de sempre** (`cartas`, §7.1b) — zero regressão em três
+subetapas.
 
 **Circuito 1 — Preparo externo.** DMARC organizacional publicado e `dmarc=pass` medido em Gmail e
 Outlook; `envios.sindcompassos.org` autenticado na Brevo; 11 páginas do site conferidas por
@@ -598,7 +609,7 @@ RPC) · §2.22 (três armadilhas do primeiro bucket privado) · §2.23 e §2.23b
 "sindicalizado" virava Bronze; e cabeçalho ausente é pior que valor errado, porque nem gera aviso).
 
 **Resta do Circuito 1:** a **08.3(b)** — os textos jurídicos revisados e assinados. É o que bloqueia
-o eixo Requisição (08.14/08.15). Circuitos 3 e 4 seguem intocados.
+o eixo Requisição (08.14/08.15), e foi absorvida pelo Circuito 4 na tabela de execução abaixo.
 
 **O merge continua sendo atribuição exclusiva de Maxwell.** A branch é `feature/comunicacao-externa`.
 
@@ -667,8 +678,8 @@ LLM no meio. Numeração é endereço; circuito é itinerário.
 | Circuito | Subetapas, nesta ordem | LLM | O que fecha o circuito |
 |---|---|---|---|
 | **1 — Preparo externo** ✅ | **08.1** → 08.0 → 08.2 → 08.3 | **Opus** | **CONCLUÍDO em 2026-08-26.** DMARC publicado e `dmarc=pass` medido nos dois receptores; links conferidos; assinaturas instaladas; três textos jurídicos em forma final, revisados por Maxwell e pelo Dr. Adenilson |
-| **2 — Núcleo seguro** | **08.4** → **08.9** → **08.5** → **08.6** → **08.10** | **Opus** | O caminho completo do dado: tabela fechada → contabilidade semeada → recepção → página do contador → cadastro pela Denise |
-| **3 — Superfície do contador** | 08.7 → 08.8 → 08.11 → 08.13 | **Sonnet** | Modelo `.xlsx`, formulário, tela de cobertura e as 4 listas por caixa |
+| **2 — Núcleo seguro** ✅ | **08.4** → **08.9** → **08.5** → **08.6** → **08.10** | **Opus** | **CONCLUÍDO em 2026-08-26.** O caminho completo do dado: tabela fechada → contabilidade semeada → recepção → página do contador → cadastro pela Denise |
+| **3 — Superfície do contador** ✅ | 08.7 → 08.8 → 08.11 → 08.13 | **Sonnet** | **CONCLUÍDO em 2026-08-26.** Modelo `.xlsx`, formulário, tela de cobertura (token mascarado pendente de revisão) e os 9.186 tokens reais das 4 listas por caixa |
 | **4 — Portão e disparo** | **08.12** → 08.14 → 08.3(b) → **08.15** | **Opus** | Relatório adversarial verde, copies aprovadas, nota assinada no ar, onda 1 disparada |
 
 **Por que assim:**
@@ -1602,7 +1613,46 @@ Escalonamento de LLM: Opus do início ao fim.
 Se esgotar / se houver achado aberto: **nenhum disparo acontece.** O CODE entrega o relatório e
 **para**; ordenar o merge e o disparo é atribuição exclusiva do Maxwell.
 
-### Subetapa 08.13 — Listas segmentadas por caixa e campanhas registradas [Manual] [LLM: Sonnet] · Status: ⬜
+### Subetapa 08.13 — Listas segmentadas por caixa e campanhas registradas [Manual] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
+**Executada em 2026-08-26** (Circuito 3, Sonnet), **com confirmação explícita de Maxwell antes da
+escrita em massa** — 9.186 tokens reais e funcionais em produção é ação difícil de reverter, e a
+regra de segurança do projeto pede confirmação para esse tipo de ação mesmo quando o plano já
+autoriza o passo. `scripts/gerar_campanha_08_13.mjs` (padrão de `semear_contabilidades_08_9.mjs`:
+anon key + login de Admin, `--dry` para conferir antes de gravar, guarda contra rodar duas vezes).
+
+**Números batem exatamente com a medição prévia, e o `--dry` provou isso ANTES de gravar qualquer
+coisa:** A=89 (3.758 estabs) · B=248 (2.189) · C=613 (1.491) — os três batendo 1:1 com uma query
+independente por SQL cru rodada antes de escrever o script. **D saiu diferente do número
+"medido": 8.236, não 8.241.** A diferença são 5 caixas isoladas com e-mail literalmente malformado
+na RFB (ponto final sobrando, espaço antes do `.br`, TLD truncado como `.co,` ou `.com.b`) — o
+"8.241" da medição anterior era uma contagem crua por tamanho de grupo, sem o filtro de formato que
+a 08.9 já aplicava para grupos de 2+. Aplicado o MESMO filtro aqui por consistência: as 5 foram
+**descartadas e reportadas** (nunca semeadas em silêncio — um token que não chega some da conta sem
+sinal), com o estabelecimento de cada uma nomeado no console para acompanhamento manual da Denise.
+**Total real: 9.186, não 9.191.**
+
+**4 campanhas criadas** (`Coleta 2026 · Contabilidades grandes/médias/pequenas` e
+`Coleta 2026 · Empresas isoladas`), sem `eixo` nem `assunto` — a 08.14 (Circuito 4, ainda não
+executada) é quem define a copy; `modelo_coleta_id` aponta para o único modelo ativo
+(`Cadastro sindical 2026`). **9.186 `envios_campanha` inseridos, um por caixa**, conferidos por
+`count(*)` por campanha batendo com o esperado (89/248/613/8.236) e por uma query independente pós-
+escrita: `9.186` e-mails únicos em `9.186` linhas — **zero duplicata**, dentro e entre as 4
+campanhas.
+
+**Os 4 CSVs saíram em `dados/campanha_08_13/`** (pasta inteira `.gitignore`d — são 9.186 e-mails
+reais, PII, não entram no repositório). Três colunas só: `nome` (o `contabilidades.nome` para
+A/B/C — hoje ainda o e-mail, até a Denise renomear; nome fantasia ou razão social para D),
+`email`, `link` (com o token). **Nenhum CPF, nenhum dado de trabalhador.** Reaproveita a mesma
+neutralização de fórmula de `lib/csv.ts` (§2.19), reimplementada no script porque ele roda em Node
+puro fora do bundle TypeScript — `Papa.unparse` com o mesmo delimitador, aspas e `\r\n`.
+
+**Suíte: 222 testes, 3 falhas pré-existentes (`cartas`, §7.1b) — zero regressão.** Esta subetapa não
+alterou nenhum arquivo em `src/`; `typecheck` e `build` seguem limpos, e o bundle publicado não
+muda (nenhum deploy necessário). **Achado no caminho, registrado em `orientacoes.md` §4.9:** um
+teste novo de `cobertura.spec.ts` (da 08.11) que faz `git grep` por "token" pegou os PRÓPRIOS
+comentários explicando por que a feature nunca lê o token — terceira vez que esse padrão aparece na
+etapa; corrigido estreitando o grep para casar só `.select(...token...)`, não a palavra em prosa.
+
 Objetivo: os 4 CSVs que vão para o ESP e os `envios_campanha` correspondentes, com um token por
 destinatário.
 Conclusão: 4 arquivos exportados — **89 / 248 / 613 / 8.241 linhas, somando 9.191** — montados

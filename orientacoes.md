@@ -1711,6 +1711,37 @@ Três regras que ficam, e a terceira é a que evita estrago:
 projetos na mesma sessão (Supabase, Cloudflare, provedores de DNS) tem essa mesma classe
 de acidente, e ali o clique errado não abre um diálogo vazio — executa.
 
+### 4.9 Guard por `git grep` de padrão textual pega o comentário que EXPLICA o guard
+
+**(a) Problema.** Repetiu-se **três vezes** na ETAPA 08, em três formas: (1) na 08.6, o link do
+modelo virou `href={CONSTANTE}` e o guard de `04_renderizacao.spec.ts` (que procura
+`(href|src)=\{[a-zA-Z_]`) barrou — certo, era um caso real — mas na primeira correção continuou
+vermelho porque **o comentário explicando o guard continha o próprio padrão que ele procura**; (2)
+na 08.7, o comentário do botão de download dizia literalmente `` `href={variável}` `` para explicar
+por que o download usa DOM em vez de JSX — mesmo efeito; (3) na 08.11, um teste novo
+(`tests/rls/cobertura.spec.ts`) fazia `git grep -E "\btoken\b"` para provar que a feature nunca lê a
+credencial do link, e pegou os PRÓPRIOS comentários do código explicando por que ela nunca deve
+aparecer ali — que, claro, escrevem a palavra "token" várias vezes.
+
+**(b) Solução.** Um guard por `git grep` sobre texto-fonte não distingue código de comentário — ele
+não tem ideia do que está explicando o quê. Duas saídas, conforme o caso: (1) reescrever o
+COMENTÁRIO para não conter o padrão textual exato (parafrasear em vez de citar o código, como neste
+próprio arquivo faz agora); (2) estreitar o PADRÃO do guard para casar só com a FORMA DE USO real —
+`\.select\([^)]*\btermo\b` em vez de `\btermo\b` sozinho — que não aparece em prosa comum.
+
+**(c) Como implantar.** Prefira (2) sempre que o risco real é uma chamada de código específica (um
+`.select(...)`, um `href={...}` em JSX), não a palavra em si:
+```bash
+# ruim: casa qualquer menção à palavra, inclusive em comentário explicando o guard
+git grep -n -E "\btoken\b" -- src/features/x/
+
+# melhor: casa só o USO — dentro de um .select(...)
+git grep -n -E "\.select\([^)]*\btoken\b" -- src/features/x/
+```
+**Regra geral:** ao escrever qualquer guard novo baseado em `git grep`, rode-o uma vez ANTES de
+declarar pronto e leia os achados — se um deles for o comentário que você acabou de escrever
+explicando o guard, é o padrão que precisa mudar, não o comentário.
+
 ## 5. Ambiente de desenvolvimento (Windows)
 
 ### 5.1 Backticks e crases quebram scripts no shell

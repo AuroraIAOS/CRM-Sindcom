@@ -110,12 +110,17 @@ describe("08.11 · o recorte de papéis da view é o mesmo das tabelas de origem
 });
 
 describe("08.11 · o token nunca entra nesta feature", () => {
-  it("nenhum arquivo de features/cobertura seleciona a coluna `token`", () => {
+  it("nenhum arquivo de features/cobertura seleciona a coluna correspondente à credencial do link", () => {
+    // Procura pelo PADRÃO DE CÓDIGO que leria a coluna (dentro de um
+    // `.select(...)`), não pela palavra em si — que aparece várias vezes nos
+    // comentários explicando por que ela NUNCA deve entrar aqui (mesma
+    // armadilha do guard de 04_renderizacao.spec.ts: grep sobre o próprio
+    // comentário que documenta o guard).
     const achados = execSync(
-      'git grep -n -E "\\btoken\\b" -- src/features/cobertura/ || true',
+      'git grep -n -E "\\.select\\([^)]*\\btoken\\b" -- src/features/cobertura/ || true',
       { encoding: "utf-8" },
     ).trim();
-    expect(achados, `feature de cobertura tocando em 'token':\n${achados}`).toBe("");
+    expect(achados, `feature de cobertura selecionando a credencial do link:\n${achados}`).toBe("");
   });
 });
 
