@@ -1,15 +1,17 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
+import { Download, Loader2 } from "lucide-react";
 import { PreviewTable } from "@/features/importacao/PreviewTable";
 import { contarPorStatus, temAvisoZeroComido, type LinhaPreview } from "@/features/importacao/parsers";
 import {
+  descartarLinhasSemPessoa,
   validarTrabalhadores,
   type ContextoTrabalhadores,
   type TrabalhadorPreviewDados,
 } from "@/features/importacao/validarTrabalhadores";
 import { lerPlanilhaXlsx, PlanilhaInvalida } from "./lerPlanilha";
+import { gerarModeloColeta } from "./gerarModelo";
 import { useContextoToken, useEnviarRemessa, type EstabelecimentoDoToken } from "./api";
 
 /**
@@ -41,6 +43,8 @@ export function EnviarDadosPage() {
   const [preview, setPreview] = useState<LinhaPreview<TrabalhadorPreviewDados>[] | null>(null);
   const [erroLeitura, setErroLeitura] = useState<string | null>(null);
   const [lendo, setLendo] = useState(false);
+  const [gerandoModelo, setGerandoModelo] = useState(false);
+  const [erroModelo, setErroModelo] = useState<string | null>(null);
 
   const estabelecimentos: EstabelecimentoDoToken[] = contexto.data?.estabelecimentos ?? [];
 
@@ -71,7 +75,7 @@ export function EnviarDadosPage() {
 
     setLendo(true);
     try {
-      const parse = await lerPlanilhaXlsx(file);
+      const parse = descartarLinhasSemPessoa(await lerPlanilhaXlsx(file));
       setPreview(validarTrabalhadores(parse, contextoValidacao, "ignorar"));
     } catch (e) {
       setErroLeitura(
@@ -81,6 +85,37 @@ export function EnviarDadosPage() {
       );
     } finally {
       setLendo(false);
+    }
+  }
+
+  /**
+   * Gera o `.xlsx` NO NAVEGADOR (Subetapa 08.7) e dispara o download por um
+   * elemento de link criado via DOM, com o destino atribuído depois de
+   * criado — nunca um atributo de link montado dinamicamente dentro do JSX,
+   * que o guard de renderização adversarial recusaria mesmo aqui, onde o
+   * valor é um Blob local e não dado do banco.
+   */
+  async function baixarModelo() {
+    if (!contexto.data) return;
+    setErroModelo(null);
+    setGerandoModelo(true);
+    try {
+      const buffer = await gerarModeloColeta(contexto.data.nome, estabelecimentos);
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "quadro-de-empregados.xlsx";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setErroModelo("Não foi possível gerar o modelo agora. Tente de novo em instantes.");
+    } finally {
+      setGerandoModelo(false);
     }
   }
 
@@ -192,33 +227,27 @@ export function EnviarDadosPage() {
           planilha pronta precisa encontrar o arquivo antes de encontrar o
           upload. É também a defesa do zero à esquerda — o modelo já traz as
           colunas de CPF e CNPJ formatadas como texto (orientacoes.md §2.10), o
-          que uma planilha montada do zero pelo contador dificilmente teria. */}
+          que uma planilha montada do zero pelo contador dificilmente teria.
+          Gerado NO NAVEGADOR (Subetapa 08.7), pré-preenchido com a carteira
+          deste token — nada de arquivo estático em `public/` a manter. */}
       <section className="flex flex-col gap-3 rounded-lg border border-realce/30 bg-realce/5 p-4">
         <div className="flex flex-col gap-1">
           <h2 className="font-medium text-texto-1">1. Baixe o modelo</h2>
           <p className="text-sm text-texto-2">
-            Use a planilha modelo para preencher. Ela já vem com as colunas certas e protege o zero
+            A planilha já vem com o CNPJ e o nome de cada empresa da sua carteira, e protege o zero
             à esquerda do CPF, que o Excel costuma apagar. A aba <strong>Instruções</strong> explica
             cada campo.
           </p>
         </div>
-        {/* Caminho LITERAL, como o logotipo e o resto dos assets de `public/`.
-            Não é preciosismo: um atributo de link montado a partir de variável é
-            barrado pelo guard de `tests/adversarial/04_renderizacao.spec.ts`,
-            que existe para que desligar o escape do React custe uma decisão
-            explícita. Aqui o valor seria constante de build, mas a heurística
-            não tem como saber — e afrouxar o guard para acomodar o caso benigno
-            é como ele deixa de pegar o maligno. O arquivo é gerado por
-            `scripts/gerar_modelo_coleta.mjs`; a 08.7 substitui este estático
-            pelo modelo PRÉ-PREENCHIDO gerado no navegador. */}
-        <a
-          href="/modelos/quadro-de-empregados.xlsx"
-          download="quadro-de-empregados.xlsx"
-          className="inline-flex w-fit items-center gap-2 rounded-md bg-realce px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+        <Button
+          onClick={() => void baixarModelo()}
+          disabled={gerandoModelo || !contexto.data}
+          className="w-fit gap-2 bg-realce text-white hover:opacity-90"
         >
-          <Download className="h-4 w-4" />
-          Baixar modelo (.xlsx)
-        </a>
+          {gerandoModelo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+          {gerandoModelo ? "Gerando modelo…" : "Baixar modelo (.xlsx)"}
+        </Button>
+        {erroModelo && <p className="text-sm text-estado-erro">{erroModelo}</p>}
       </section>
 
       <section className="flex flex-col gap-3">

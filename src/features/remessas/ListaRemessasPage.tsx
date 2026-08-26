@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { PreviewTable } from "@/features/importacao/PreviewTable";
 import { contarPorStatus, dedupPorChave, temAvisoZeroComido } from "@/features/importacao/parsers";
 import {
+  descartarLinhasSemPessoa,
   validarTrabalhadores,
   type TrabalhadorPreviewDados,
 } from "@/features/importacao/validarTrabalhadores";
@@ -162,7 +163,9 @@ function RevisaoDaRemessa({ remessa, aoFechar }: { remessa: Remessa; aoFechar: (
   // mesma planilha inofensivo.
   const preview = useMemo(() => {
     if (!arquivo.data || !contexto.data) return null;
-    return validarTrabalhadores(arquivo.data, contexto.data, "ignorar");
+    // Descarta linhas do modelo pré-preenchido (08.7) que o contador não
+    // chegou a usar — só o CNPJ da empresa está lá, sem cpf nem nome.
+    return validarTrabalhadores(descartarLinhasSemPessoa(arquivo.data), contexto.data, "ignorar");
   }, [arquivo.data, contexto.data]);
 
   const contagem = preview ? contarPorStatus(preview) : null;

@@ -110,15 +110,24 @@ describe("08.10 · a planilha só sai do bucket por URL assinada", () => {
     }
   });
 
-  it("o arquivo baixado abre como planilha e traz as colunas do modelo v1", async () => {
+  it("o arquivo baixado abre como planilha e traz as colunas de identidade do modelo", async () => {
+    // `remessas[0]` é a mais RECENTE da campanha DEMO — e o rótulo da coluna
+    // de situação sindical muda entre versões do modelo (o arquivo manual
+    // original da 08.5 usava `recolhe_contribuicao`; a partir da 08.6 o
+    // contador vê `status`). Fixar um rótulo específico aqui é a MESMA
+    // classe de problema do §7.1b (teste que fixa contagem do dado de
+    // demonstração), só que em cabeçalho: quebrou sozinho quando remessas
+    // reais via `/enviar-dados/:token` passaram a existir. O que a suíte
+    // precisa provar é que a leitura reconhece a planilha, não qual versão
+    // exata do modelo gerou a mais recente.
     const { data } = await clientes.admin.storage
       .from("remessas")
       .createSignedUrl(remessas[0].arquivo_path, 60);
     const blob = await (await fetch(data!.signedUrl)).blob();
     const parse = await lerPlanilhaXlsx(new File([blob], "remessa.xlsx"));
-    expect(parse.cabecalhos).toEqual(
-      expect.arrayContaining(["cnpj_estabelecimento", "nome", "cpf", "recolhe_contribuicao"]),
-    );
+    expect(parse.cabecalhos).toEqual(expect.arrayContaining(["cnpj_estabelecimento", "nome", "cpf"]));
+    const APELIDOS_SITUACAO_SINDICAL = ["recolhe_contribuicao", "situacao", "situação", "status"];
+    expect(parse.cabecalhos.some((h) => APELIDOS_SITUACAO_SINDICAL.includes(h))).toBe(true);
     expect(parse.linhas.length).toBeGreaterThan(0);
   });
 });

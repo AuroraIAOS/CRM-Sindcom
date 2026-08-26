@@ -3,8 +3,11 @@ import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { loginComo, ehProducao } from "./helpers";
 import { lerPlanilhaXlsx, PlanilhaInvalida } from "../../src/features/coleta/lerPlanilha";
-import { contarPorStatus } from "../../src/features/importacao/parsers";
+import { gerarModeloColeta } from "../../src/features/coleta/gerarModelo";
+import type { EstabelecimentoDoToken } from "../../src/features/coleta/api";
+import { contarPorStatus, type ParseResultado } from "../../src/features/importacao/parsers";
 import {
+  descartarLinhasSemPessoa,
   validarTrabalhadores,
   type ContextoTrabalhadores,
 } from "../../src/features/importacao/validarTrabalhadores";
@@ -132,17 +135,29 @@ describe("08.6 · a página lê o .xlsx com o mesmo validador do resto do CRM", 
   });
 });
 
-describe("08.6 · o modelo que o contador baixa casa com o validador", () => {
-  const MODELO = "public/modelos/quadro-de-empregados.xlsx";
+describe("08.7 · modelo pré-preenchido gerado no navegador", () => {
+  const CARTEIRA: EstabelecimentoDoToken[] = [
+    { cnpj: CNPJ_DEMO_1, razao_social: "DEMO — Comercio Um Ltda", nome_fantasia: null, ja_coberto: false },
+    { cnpj: CNPJ_DEMO_2, razao_social: "DEMO — Comercio Dois Ltda", nome_fantasia: "Loja Dois", ja_coberto: true },
+  ];
 
-  it("a aba lida é a primeira e vem SEM linha de exemplo", async () => {
-    // Uma linha de exemplo em "Dados" seria lida como pessoa de verdade: o
-    // contador que esquecesse de apagá-la cadastraria um fantasma no sindicato.
-    // Os exemplos vivem na aba "Instruções", que o leitor nunca abre.
-    const parse = await lerPlanilhaXlsx(comoArquivo(MODELO, "modelo.xlsx"));
-    expect(parse.linhas.length).toBe(0);
+  /** Gera o modelo, grava num arquivo temporário e devolve como `File` — o
+   *  mesmo formato que `<input type="file">` entregaria de volta. */
+  async function gerarEComoArquivo(nome: string, carteira: EstabelecimentoDoToken[]): Promise<File> {
+    const buffer = await gerarModeloColeta(nome, carteira);
+    const caminho = `${pastaTemp}/08-7-${Date.now()}-${Math.random().toString(36).slice(2)}.xlsx`;
+    const { writeFileSync } = await import("node:fs");
+    // `writeBuffer()` do exceljs devolve o `Buffer` do PACOTE, não o global do
+    // Node — mesmo runtime, tipos diferentes. `Buffer.from` normaliza.
+    writeFileSync(caminho, Buffer.from(buffer as unknown as Uint8Array));
+    return comoArquivo(caminho, "modelo.xlsx");
+  }
+
+  it("cabeçalhos: os seis campos de sempre + 'razao_social', informativa", async () => {
+    const parse = await lerPlanilhaXlsx(await gerarEComoArquivo("DEMO — Contador", CARTEIRA));
     expect(parse.cabecalhos).toEqual([
       "cnpj_estabelecimento",
+      "razao_social",
       "nome",
       "cpf",
       "telefone",
@@ -151,22 +166,50 @@ describe("08.6 · o modelo que o contador baixa casa com o validador", () => {
     ]);
   });
 
+  it("uma linha por estabelecimento da carteira, com CNPJ e razão social preenchidos", async () => {
+    const parse = await lerPlanilhaXlsx(await gerarEComoArquivo("DEMO — Contador", CARTEIRA));
+    expect(parse.linhas.length).toBe(CARTEIRA.length);
+    expect(parse.linhas[0].cnpj_estabelecimento).toBe(CNPJ_DEMO_1);
+    expect(parse.linhas[0].razao_social).toBe("DEMO — Comercio Um Ltda");
+    expect(parse.linhas[0].nome).toBe("");
+    expect(parse.linhas[0].cpf).toBe("");
+    // nome_fantasia, quando existe, tem prioridade sobre a razão social.
+    expect(parse.linhas[1].razao_social).toContain("Loja Dois");
+  });
+
+  it("estabelecimento já coberto vem MARCADO, sem sumir da lista", async () => {
+    const parse = await lerPlanilhaXlsx(await gerarEComoArquivo("DEMO — Contador", CARTEIRA));
+    expect(parse.linhas[0].razao_social).not.toMatch(/já enviado/i);
+    expect(parse.linhas[1].razao_social).toMatch(/já enviado/i);
+  });
+
+  it("linha só com CNPJ pré-preenchido (contador não mexeu) é descartada do preview", async () => {
+    // É exatamente o estado em que o modelo sai do gerador: ninguém preencheu
+    // nome/cpf ainda. Sem o filtro, as duas apareceriam como REJEITADAS por
+    // "CPF é obrigatório" — ruído que não é erro nenhum.
+    const parse = descartarLinhasSemPessoa(await lerPlanilhaXlsx(await gerarEComoArquivo("DEMO — Contador", CARTEIRA)));
+    expect(parse.linhas.length).toBe(0);
+  });
+
   it("os rótulos do contador ('telefone', 'piso', 'status') mapeiam nos campos certos", async () => {
     // ESTE é o teste que impede o acidente silencioso. Se "status" não casasse
     // com `recolhe_contribuicao`, `campo()` devolveria "" e TODO MUNDO cairia no
     // padrão legal (contribui) — quem se opôs entraria Prata, sem aviso nenhum,
     // porque célula vazia é caso previsto e não gera mensagem.
     const ExcelJS = (await import("exceljs")).default;
+    const arquivoModelo = await gerarEComoArquivo("DEMO — Contador", CARTEIRA);
     const livro = new ExcelJS.Workbook();
-    await livro.xlsx.readFile(MODELO);
+    await livro.xlsx.load(await arquivoModelo.arrayBuffer());
     const aba = livro.worksheets[0];
-    aba.addRow([CNPJ_DEMO_1, "DEMO — Sindicalizada", "00123456797", "35988887777", "1600,00", "sindicalizado"]);
-    aba.addRow([CNPJ_DEMO_1, "DEMO — Opositor", "11144477735", "35988886666", "1750,50", "oposição"]);
-    const preenchido = `${pastaTemp}/08-6-modelo-preenchido.xlsx`;
+    aba.addRow([CNPJ_DEMO_1, "", "DEMO — Sindicalizada", "00123456797", "35988887777", "1600,00", "sindicalizado"]);
+    aba.addRow([CNPJ_DEMO_1, "", "DEMO — Opositor", "11144477735", "35988886666", "1750,50", "oposição"]);
+    const preenchido = `${pastaTemp}/08-7-modelo-preenchido.xlsx`;
     await livro.xlsx.writeFile(preenchido);
 
-    const parse = await lerPlanilhaXlsx(comoArquivo(preenchido, "preenchido.xlsx"));
+    const parse = descartarLinhasSemPessoa(await lerPlanilhaXlsx(comoArquivo(preenchido, "preenchido.xlsx")));
     const preview = validarTrabalhadores(parse, contextoDaPagina([CNPJ_DEMO_1]), "ignorar");
+    // As duas linhas pré-preenchidas (sem pessoa) foram descartadas; sobram as
+    // duas que acabaram de ser adicionadas.
     expect(preview.length).toBe(2);
     expect(preview[0].status).not.toBe("rejeitada");
     expect(preview[1].status).not.toBe("rejeitada");
@@ -174,7 +217,7 @@ describe("08.6 · o modelo que o contador baixa casa com o validador", () => {
     const sindicalizada = preview[0].dados;
     const opositor = preview[1].dados;
     if (sindicalizada?.tipo !== "novo" || opositor?.tipo !== "novo") {
-      throw new Error("as duas linhas do modelo deveriam ser cadastros novos");
+      throw new Error("as duas linhas deveriam ser cadastros novos");
     }
 
     // status → recolhe_contribuicao (o campo que decide Prata × Bronze)
@@ -189,68 +232,94 @@ describe("08.6 · o modelo que o contador baixa casa com o validador", () => {
     expect(sindicalizada.valores.vinculo?.estabelecimento_id).toBe(CNPJ_DEMO_1);
   });
 
-  it('o modelo declara o piso como obrigatório, e a célula "B9" diz "sim"', async () => {
-    // Maxwell pediu a correção desta célula em 2026-08-26. Ela não é cosmética:
-    // a guia de recolhimento é emitida POR EMPRESA, então um piso em branco
-    // impede fechar o boleto da empresa inteira, não só o daquele empregado.
+  it('o modelo declara o piso como obrigatório na aba Instruções', async () => {
+    // Maxwell pediu esta regra em 2026-08-26 (herdada da 08.6, aqui só
+    // reconfirmada com a coluna extra `razao_social` no meio): a guia de
+    // recolhimento é emitida POR EMPRESA, então um piso em branco impede
+    // fechar o boleto da empresa inteira, não só o daquele empregado. Busca
+    // pelo TEXTO da linha, não pelo número — a posição muda se a lista de
+    // colunas mudar de novo, e o teste não deveria saber disso de cor.
     const ExcelJS = (await import("exceljs")).default;
+    const arquivoModelo = await gerarEComoArquivo("DEMO — Contador", CARTEIRA);
     const livro = new ExcelJS.Workbook();
-    await livro.xlsx.readFile(MODELO);
+    await livro.xlsx.load(await arquivoModelo.arrayBuffer());
     const instrucoes = livro.getWorksheet("Instruções")!;
-    expect(instrucoes.getRow(9).getCell(1).value).toBe("piso");
-    expect(instrucoes.getRow(9).getCell(2).value).toBe("sim");
-    // Só o telefone segue opcional entre os seis.
-    const opcionais: string[] = [];
-    for (let linha = 5; linha <= 10; linha += 1) {
-      if (instrucoes.getRow(linha).getCell(2).value === "não") {
-        opcionais.push(String(instrucoes.getRow(linha).getCell(1).value));
+
+    const obrigatoriedadePor = new Map<string, string>();
+    instrucoes.eachRow((linha) => {
+      const chave = String(linha.getCell(1).value ?? "");
+      const valor = linha.getCell(2).value;
+      if (["cnpj_estabelecimento", "razao_social", "nome", "cpf", "telefone", "piso", "status"].includes(chave)) {
+        obrigatoriedadePor.set(chave, String(valor));
       }
-    }
-    expect(opcionais).toEqual(["telefone"]);
-  });
+    });
 
-  it("piso em branco vira AVISO na linha — não rejeição, para não perder o vínculo", async () => {
-    // A escolha é deliberada: rejeitar a linha descartaria a PESSOA e o
-    // VÍNCULO, que é a métrica da ETAPA 08. Cadastrar com a lacuna visível é
-    // melhor que não cadastrar — e sem aviso nenhum seria pior que as duas.
-    const ExcelJS = (await import("exceljs")).default;
-    const livro = new ExcelJS.Workbook();
-    await livro.xlsx.readFile(MODELO);
-    const aba = livro.worksheets[0];
-    aba.addRow([CNPJ_DEMO_1, "DEMO — Sem piso", "00123456797", "", "", "sindicalizado"]);
-    aba.addRow([CNPJ_DEMO_1, "DEMO — Piso zerado", "11144477735", "", "0", "sindicalizado"]);
-    const caminho = `${pastaTemp}/08-6-sem-piso.xlsx`;
-    await livro.xlsx.writeFile(caminho);
-
-    const parse = await lerPlanilhaXlsx(comoArquivo(caminho, "sem-piso.xlsx"));
-    const preview = validarTrabalhadores(parse, contextoDaPagina([CNPJ_DEMO_1]), "ignorar");
-
-    expect(preview[0].status).toBe("aviso");
-    expect(preview[0].mensagens.join(" | ")).toMatch(/Piso salarial não informado/i);
-    expect(preview[1].mensagens.join(" | ")).toMatch(/não é um valor válido/i);
-    // Nenhuma das duas é descartada, e as duas seguem gerando vínculo.
-    expect(preview.filter((l) => l.status === "rejeitada")).toEqual([]);
-    for (const linha of preview) {
-      if (linha.dados?.tipo !== "novo") throw new Error("deveriam ser cadastros novos");
-      expect(linha.dados.valores.vinculo?.estabelecimento_id).toBe(CNPJ_DEMO_1);
-      expect(linha.dados.valores.vinculo?.salario_informado).toBeNull();
-    }
+    expect(obrigatoriedadePor.get("piso")).toBe("sim");
+    // Só telefone e a coluna informativa (razao_social) seguem opcionais.
+    const opcionais = [...obrigatoriedadePor.entries()].filter(([, v]) => v === "não").map(([k]) => k);
+    expect(opcionais.sort()).toEqual(["razao_social", "telefone"]);
   });
 
   it("as colunas de CPF e CNPJ nascem formatadas como TEXTO", async () => {
-    // A defesa do zero à esquerda (§2.10), e ela só é possível por causa da D6:
-    // em CSV não existe formatação de célula. O formato está na COLUNA, que é o
-    // que o Excel aplica às linhas que o contador ainda vai digitar.
+    // A defesa do zero à esquerda (§2.10) está na COLUNA, que é o que o Excel
+    // aplica às linhas que o contador ainda vai digitar.
     const ExcelJS = (await import("exceljs")).default;
+    const arquivoModelo = await gerarEComoArquivo("DEMO — Contador", CARTEIRA);
     const livro = new ExcelJS.Workbook();
-    await livro.xlsx.readFile(MODELO);
+    await livro.xlsx.load(await arquivoModelo.arrayBuffer());
     const aba = livro.worksheets[0];
-    const formatoDe = (nome: string) => {
-      const indice = ["cnpj_estabelecimento", "nome", "cpf", "telefone", "piso", "status"].indexOf(nome);
-      return aba.getColumn(indice + 1).numFmt;
-    };
+    const cabecalhos = (aba.getRow(1).values as unknown[]).slice(1).map(String);
+    const formatoDe = (nome: string) => aba.getColumn(cabecalhos.indexOf(nome) + 1).numFmt;
     expect(formatoDe("cpf")).toBe("@");
     expect(formatoDe("cnpj_estabelecimento")).toBe("@");
+  });
+
+  it("CPF com zero à esquerda sobrevive ao ciclo completo (gera → salva → lê)", async () => {
+    // A evidência que a subetapa pede: gerar o modelo, preencher um CPF que
+    // começa com zero, salvar e reler — o zero não pode sumir no caminho.
+    const ExcelJS = (await import("exceljs")).default;
+    const arquivoModelo = await gerarEComoArquivo("DEMO — Contador", CARTEIRA);
+    const livro = new ExcelJS.Workbook();
+    await livro.xlsx.load(await arquivoModelo.arrayBuffer());
+    const aba = livro.worksheets[0];
+    aba.addRow([CNPJ_DEMO_1, "", "DEMO — Zero na frente", "00123456797", "", "1600,00", "sindicalizado"]);
+    const caminho = `${pastaTemp}/08-7-zero-esquerda.xlsx`;
+    await livro.xlsx.writeFile(caminho);
+
+    const parse = descartarLinhasSemPessoa(await lerPlanilhaXlsx(comoArquivo(caminho, "zero.xlsx")));
+    const linha = parse.linhas.find((l) => l.nome === "DEMO — Zero na frente");
+    expect(linha?.cpf).toBe("00123456797");
+  });
+});
+
+describe("08.7 · descartarLinhasSemPessoa", () => {
+  const CABECALHOS = ["cnpj_estabelecimento", "nome", "cpf"];
+
+  function resultado(linhas: Record<string, string>[]): ParseResultado {
+    return { cabecalhos: CABECALHOS, linhas };
+  }
+
+  it("descarta linha com nome E cpf vazios, mesmo com outra coluna preenchida", () => {
+    const parse = resultado([{ cnpj_estabelecimento: "12345678000190", nome: "", cpf: "" }]);
+    expect(descartarLinhasSemPessoa(parse).linhas).toEqual([]);
+  });
+
+  it("mantém linha com nome OU cpf preenchidos", () => {
+    const comNome = resultado([{ cnpj_estabelecimento: "", nome: "Fulano", cpf: "" }]);
+    const comCpf = resultado([{ cnpj_estabelecimento: "", nome: "", cpf: "11144477735" }]);
+    expect(descartarLinhasSemPessoa(comNome).linhas.length).toBe(1);
+    expect(descartarLinhasSemPessoa(comCpf).linhas.length).toBe(1);
+  });
+
+  it("não mexe nos cabeçalhos nem na ordem das linhas mantidas", () => {
+    const linhas = [
+      { cnpj_estabelecimento: "1", nome: "A", cpf: "" },
+      { cnpj_estabelecimento: "2", nome: "", cpf: "" },
+      { cnpj_estabelecimento: "3", nome: "B", cpf: "" },
+    ];
+    const parse = descartarLinhasSemPessoa(resultado(linhas));
+    expect(parse.cabecalhos).toEqual(CABECALHOS);
+    expect(parse.linhas.map((l) => l.nome)).toEqual(["A", "B"]);
   });
 });
 

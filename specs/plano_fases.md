@@ -1243,7 +1243,55 @@ Esforço máximo: 3 tentativas.
 Escalonamento de LLM: Opus nas 2 primeiras; **não rebaixar para Sonnet na 3ª** — é superfície pública.
 Se esgotar: parar e emitir relatório curto (problema + causas + 2-3 alternativas).
 
-### Subetapa 08.7 — Modelo `.xlsx` gerado sob demanda, pré-preenchido [Goal] [LLM: Sonnet] · Status: ⬜
+### Subetapa 08.7 — Modelo `.xlsx` gerado sob demanda, pré-preenchido [Goal] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
+**Executada em 2026-08-26** (Circuito 3, Sonnet). `src/features/coleta/gerarModelo.ts`
+(`gerarModeloColeta`) gera o `.xlsx` **no navegador**, com `await import("exceljs")` dentro da
+função — nunca no topo do módulo (orientacoes.md §4.8). Medido no `npm run build`: bundle
+principal **1.221 kB**, `exceljs` isolado num chunk próprio de **938 kB**, baixado só por quem
+anexa ou baixa planilha.
+
+**O modelo estático saiu de cena.** `scripts/gerar_modelo_coleta.mjs`, `public/modelos/quadro-de-empregados.xlsx`
+e os hooks `predev`/`prebuild` do `package.json` foram removidos — nenhum arquivo binário a manter,
+como o plano previa.
+
+**Sete colunas, não seis.** Os SEIS cabeçalhos que `validarTrabalhadores.ts` espera continuam
+idênticos aos de `specs/importacao.md` §3.3 (`cnpj_estabelecimento`, `nome`, `cpf`, `telefone`,
+`piso`, `status`); `razao_social` entra como sétima coluna, puramente informativa — o validador não
+a conhece, e ela é ignorada por regra (`specs/importacao.md` §4: "colunas extras são ignoradas").
+Uma linha por estabelecimento da carteira do token, com `cnpj_estabelecimento` e `razao_social`
+(ou o nome fantasia, quando existe) já preenchidos; o resto em branco para o contador completar.
+Estabelecimentos já cobertos vêm **marcados** (fundo verde + "(já enviado)" na razão social) —
+não escondidos, porque a empresa pode ter contratado gente nova desde o último envio.
+
+**Achado real, corrigido no caminho — `descartarLinhasSemPessoa`.** Uma linha do modelo em que o
+contador não mexeu tem `cnpj_estabelecimento` preenchido (pré-carga) e `nome`/`cpf` vazios. Sem
+tratamento, cada estabelecimento ainda não completado apareceria como linha **REJEITADA** ("CPF é
+obrigatório") — ruído que não é erro nenhum. Nova função em `validarTrabalhadores.ts`, chamada nos
+dois pontos que leem planilha de trabalhador (`EnviarDadosPage` e a revisão da Denise em
+`/remessas`): descarta linhas em que `nome` **e** `cpf` estão vazios, antes de `validarTrabalhadores`.
+
+**Segundo achado, pego pela suíte adversarial — não meu comentário desta vez, mas quase.** Ao
+escrever a função de download (link temporário via DOM, nunca `href={variável}` em JSX — que a
+`04_renderizacao.spec.ts` recusaria mesmo aqui, onde o valor é um Blob local), o PRÓPRIO comentário
+explicando a regra continha o padrão que o guard procura via grep sobre o código-fonte — mesma
+armadilha da 08.6, registrada de novo para não se repetir uma terceira vez.
+
+**Terceiro achado, este de produção real — `orientacoes.md` §7.1d.** `tests/rls/remessas.spec.ts`
+(08.10) quebrou sozinho: a remessa mais recente da campanha DEMO passou a ser uma das **3** que
+Maxwell enviou testando o link real no navegador (mesmo IP, mesmo dia), com os cabeçalhos do
+modelo atual (`status`) em vez do `recolhe_contribuicao` do arquivo manual mais antigo. Mesma
+classe do §7.1b (teste que fixa o que o dado de demonstração vai mudar), agora em cabeçalho —
+corrigido para checar as colunas de identidade e **algum** apelido reconhecido de situação
+sindical, não um rótulo específico.
+
+**Suíte: 208 testes, 3 falhas — as mesmas de sempre (`cartas`, §7.1b), zero regressão.** 10 testes
+novos em `tests/rls/coleta.spec.ts` cobrem: os sete cabeçalhos; uma linha por estabelecimento com
+CNPJ e razão social preenchidos; a marcação de já cobertos; o descarte de linhas não tocadas; o
+ciclo completo gera→salva→lê com CPF `00123456797` sobrevivendo com os dois zeros à esquerda; os
+apelidos do contador mapeando nos campos certos; o piso declarado obrigatório na aba Instruções
+(buscado por texto, não por número de linha); e as colunas de CPF/CNPJ nascendo com `numFmt: '@'`.
+Mais 3 testes unitários de `descartarLinhasSemPessoa`. `typecheck` e `build` limpos.
+
 Objetivo: eliminar o erro mais provável do contador — CNPJ digitado errado — entregando a planilha
 já com as empresas dele nas linhas (spec §7).
 Conclusão: "baixar modelo" gera **no navegador** um `.xlsx` com uma linha por estabelecimento

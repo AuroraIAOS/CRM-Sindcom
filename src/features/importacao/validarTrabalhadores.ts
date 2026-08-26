@@ -61,6 +61,26 @@ export type ContextoTrabalhadores = {
 
 export type PoliticaDuplicataTrabalhador = "ignorar" | "atualizar_contato";
 
+/**
+ * Descarta linhas em que `nome` E `cpf` estão vazios — o caso do modelo
+ * pré-preenchido da Subetapa 08.7, onde `cnpj_estabelecimento` já vem
+ * preenchido em TODA linha (uma por estabelecimento da carteira do
+ * contador) e ele só edita as que têm gente para cadastrar. Sem isto, cada
+ * estabelecimento que ele ainda não completou apareceria como linha
+ * REJEITADA ("CPF é obrigatório"), inflando o contador de erro por um
+ * motivo que não é erro — é linha do modelo que ele não usou ainda.
+ *
+ * Roda ANTES de `validarTrabalhadores`, nos dois pontos que leem planilha de
+ * trabalhador (`EnviarDadosPage` e a revisão da Denise em `/remessas`) — é o
+ * "único lugar" que decide o que conta como linha vazia, no mesmo espírito
+ * do `interpretarSituacaoSindical`.
+ */
+export function descartarLinhasSemPessoa(parse: ParseResultado): ParseResultado {
+  const mapa = construirMapaColunas(parse.cabecalhos, { cpf: CAMPOS.cpf, nome: CAMPOS.nome });
+  const linhas = parse.linhas.filter((l) => campo(l, mapa, "cpf") !== "" || campo(l, mapa, "nome") !== "");
+  return { cabecalhos: parse.cabecalhos, linhas };
+}
+
 const CAMPOS: Record<string, string[]> = {
   cpf: ["cpf"],
   nome: ["nome"],

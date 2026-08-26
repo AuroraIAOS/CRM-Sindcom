@@ -10,9 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:rls": "vitest run tests/rls",
-    "test:watch": "vitest",
-    "prebuild": "node scripts/gerar_modelo_coleta.mjs",
-    "predev": "node scripts/gerar_modelo_coleta.mjs"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",

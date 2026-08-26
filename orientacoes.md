@@ -1986,6 +1986,39 @@ prosseguir para o próximo passo (rodar o workflow, assumir o resultado etc.).
 Mesma família do §7.2 ("passou" ≠ "funcionou"), aplicada ao próprio ato de
 gerar o dado de teste, não só de ler o resultado.
 
+### 7.1d §7.1b vale para CABEÇALHO de arquivo real, não só para contagem
+
+**(a) Problema.** Na Subetapa 08.7, `tests/rls/remessas.spec.ts` (08.10)
+começou a falhar sozinho, sem eu ter tocado no arquivo: o teste baixava a
+remessa **mais recente** da campanha DEMO e exigia literalmente a coluna
+`recolhe_contribuicao` no cabeçalho. Consultando `remessas_dados` direto no
+banco, apareceram **3 remessas** na campanha DEMO, todas do mesmo IP, com
+`recebida_em` no mesmo dia — evidência de que Maxwell testou o link
+`/enviar-dados/:token` real no navegador (evidência pedida pela própria
+08.6/08.7) mais de uma vez. A mais recente trazia os cabeçalhos do MODELO
+atual (`status`, o rótulo que o contador vê), não o `recolhe_contribuicao` do
+arquivo manual mais antigo usado para montar a 08.5. Nenhuma linha de código
+de produção mudou; o teste é que fixava qual VERSÃO do modelo a remessa mais
+recente deveria ter.
+
+**(b) Solução.** É o mesmo princípio do §7.1b (não fixar contagem que dado de
+demonstração vai mudar), generalizado: também não fixar o RÓTULO exato de uma
+coluna cujo apelido é deliberadamente flexível (`validarTrabalhadores.ts`
+reconhece vários). Assertar que a planilha tem as colunas de IDENTIDADE
+(`cnpj_estabelecimento`, `nome`, `cpf`) e que **algum** apelido reconhecido de
+situação sindical está presente — não qual exatamente.
+
+**(c) Como implantar.**
+```ts
+expect(parse.cabecalhos).toEqual(expect.arrayContaining(["cnpj_estabelecimento", "nome", "cpf"]));
+const APELIDOS_SITUACAO_SINDICAL = ["recolhe_contribuicao", "situacao", "situação", "status"];
+expect(parse.cabecalhos.some((h) => APELIDOS_SITUACAO_SINDICAL.includes(h))).toBe(true);
+```
+**Regra geral:** qualquer teste que leia "o registro mais recente" de uma
+tabela que recebe dado de demonstração ativo (aqui, `remessas_dados` via um
+link público real e testável) está sujeito ao mesmo risco de um `count()`
+fixo — o conteúdo do registro muda, não só a quantidade.
+
 ### 7.5 Fallback silencioso de rota transforma "tela não construída" em "tela vazia"
 
 **(a) Problema.** As abas "Cartas de oposição" e "Jurídico" apareciam no menu,
