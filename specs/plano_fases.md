@@ -1292,6 +1292,14 @@ apelidos do contador mapeando nos campos certos; o piso declarado obrigatório n
 (buscado por texto, não por número de linha); e as colunas de CPF/CNPJ nascendo com `numFmt: '@'`.
 Mais 3 testes unitários de `descartarLinhasSemPessoa`. `typecheck` e `build` limpos.
 
+**Deploy feito e verificado** — `bash scripts/deploy.sh`, 22 arquivos, 0 falhas, 0 divergências de
+tamanho; bundle publicado (`index-itPy4R_t.js`) idêntico ao de `dist/`. **Conferência visual
+pendente de Maxwell**, como na 08.6: a extensão do Chrome não conectou nesta sessão, então não foi
+possível abrir o link real e baixar o modelo pelo navegador de fato. A evidência automatizada
+(ciclo gera→salva→lê via `exceljs`, o mesmo motor que o Excel usaria, com o CPF sobrevivendo)
+cobre o pipeline; falta o pixel. Tokens DEMO para conferir:
+`https://crm.sindcompassos.org/enviar-dados/73e4234e-46a0-42ef-8af9-aa3a14ab9325`.
+
 Objetivo: eliminar o erro mais provável do contador — CNPJ digitado errado — entregando a planilha
 já com as empresas dele nas linhas (spec §7).
 Conclusão: "baixar modelo" gera **no navegador** um `.xlsx` com uma linha por estabelecimento
