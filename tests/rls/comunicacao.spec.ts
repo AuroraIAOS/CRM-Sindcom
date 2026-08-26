@@ -122,42 +122,47 @@ describe("08.4 · anon não alcança nenhuma das seis tabelas novas", () => {
   });
 });
 
+/**
+ * Conta pelo cabeçalho, sem trazer linha. Duas razões, e a primeira é uma
+ * armadilha registrada: depois da semeadura da 08.9 estas tabelas têm 950 e
+ * 7.438 linhas, e `select('id')` voltaria TRUNCADO em 1000 sem avisar (§2.4) —
+ * o teste continuaria verde comparando dois conjuntos truncados, que é
+ * exatamente o tipo de "passou" que não prova nada. A segunda é custo: são 4
+ * papéis × 5 tabelas por execução.
+ */
+async function contar(c: SupabaseClient, tabela: string): Promise<number> {
+  const { count, error } = await c.from(tabela).select("id", { count: "exact", head: true });
+  expect(error, `contagem de ${tabela}`).toBeNull();
+  return count ?? 0;
+}
+
 describe("08.4 · recorte de leitura por papel", () => {
   it("contabilidades e vínculos: Presidente, Secretaria e Jurídico leem como o Admin; Parceiro não", async () => {
     for (const tabela of ["contabilidades", "contabilidade_estabelecimentos"] as const) {
-      const { data: comoAdmin, error: erroAdmin } = await clientes.admin.from(tabela).select("id");
-      expect(erroAdmin).toBeNull();
-      const total = (comoAdmin ?? []).length;
+      const total = await contar(clientes.admin, tabela);
+      expect(total, `${tabela} deveria ter linhas (semeadura 08.9)`).toBeGreaterThan(0);
 
       for (const papel of ["presidente", "secretaria", "juridico"] as const) {
-        const { data, error } = await clientes[papel].from(tabela).select("id");
-        expect(error, `${papel} em ${tabela}`).toBeNull();
-        expect((data ?? []).length, `${papel} deveria ver o mesmo que o Admin em ${tabela}`).toBe(total);
+        expect(
+          await contar(clientes[papel], tabela),
+          `${papel} deveria ver o mesmo que o Admin em ${tabela}`,
+        ).toBe(total);
       }
 
       // Parceiro é `authenticated` e TEM o grant — quem o barra é a policy, e
       // policy que não casa devolve conjunto vazio SEM erro (§2.6b).
-      const { data: comoParceiro, error: erroParceiro } = await clientes.parceiro.from(tabela).select("id");
-      expect(erroParceiro).toBeNull();
-      expect(comoParceiro ?? []).toEqual([]);
+      expect(await contar(clientes.parceiro, tabela), `parceiro em ${tabela}`).toBe(0);
     }
   });
 
   it("campanhas, envios e remessas: só Admin, Presidente e Secretaria; Jurídico e Parceiro veem vazio", async () => {
     for (const tabela of ["campanhas", "envios_campanha", "remessas_dados"] as const) {
-      const { data: comoAdmin, error: erroAdmin } = await clientes.admin.from(tabela).select("id");
-      expect(erroAdmin).toBeNull();
-      const total = (comoAdmin ?? []).length;
-
+      const total = await contar(clientes.admin, tabela);
       for (const papel of ["presidente", "secretaria"] as const) {
-        const { data, error } = await clientes[papel].from(tabela).select("id");
-        expect(error, `${papel} em ${tabela}`).toBeNull();
-        expect((data ?? []).length, `${papel} em ${tabela}`).toBe(total);
+        expect(await contar(clientes[papel], tabela), `${papel} em ${tabela}`).toBe(total);
       }
       for (const papel of ["juridico", "parceiro"] as const) {
-        const { data, error } = await clientes[papel].from(tabela).select("id");
-        expect(error, `${papel} em ${tabela}`).toBeNull();
-        expect(data ?? [], `${papel} não deveria ver ${tabela}`).toEqual([]);
+        expect(await contar(clientes[papel], tabela), `${papel} não deveria ver ${tabela}`).toBe(0);
       }
     }
   });

@@ -456,6 +456,42 @@ credencial que já funciona em produção**, confira contra onde ela realmente
 está sendo usada (aqui, outro nó do próprio n8n) — arquivo de exemplo/local
 pode ter ficado com valor de rascunho.
 
+### 2.7b `git add -A` commitou 38 MB de PDF que o plano dizia estarem ignorados
+
+**(a) Problema.** `specs/plano_fases.md` afirmava, sobre os 12 PDFs de literatura jurídica em
+`docs/fundamentos`: *"fora do git, por `.gitignore`"*. **Não estavam.** O `.gitignore` nunca teve a
+entrada, e eles apareciam como `?? docs/fundamentos/` no `git status` — que é justamente o estado
+que `git add -A` varre. Um commit de rotina levou **38 MB de binário** para dentro da história do
+repositório, e binário na história não sai com um `git rm` depois: fica lá para sempre, baixado por
+todo mundo que clonar.
+
+É a §2.7 outra vez — **documentação divergindo da realidade** —, só que aqui a fonte de verdade não
+é o banco, é o `.gitignore`.
+
+**(b) Solução.** Pegar **antes do push**, porque aí ainda é um `--amend`. O sinal está na saída do
+próprio `git add`: conferir a lista de arquivos que entraram, não só o `git commit` ter dado certo.
+
+**(c) Como implantar.** Antes de qualquer `git add -A` numa sessão que tenha gerado ou recebido
+arquivo grande:
+
+```bash
+git status --short              # `??` é o que -A vai varrer
+git check-ignore -v docs/fundamentos/algum.pdf   # silêncio = NÃO está ignorado
+```
+
+E, se já entrou e ainda **não** houve push:
+
+```bash
+printf '\ndocs/fundamentos/\n' >> .gitignore
+git rm -r --cached docs/fundamentos    # tira do índice, mantém no disco
+git add .gitignore && git commit --amend --no-edit
+git show --stat HEAD                   # conferir a lista final
+```
+
+**Regra transferível:** quando um documento do projeto afirma que algo *está* configurado
+(gitignore, cron, policy, DNS), isso é **hipótese**, não fato — o comando que verifica custa
+segundos e a correção depois do push custa reescrita de história.
+
 ---
 
 ### 2.6e Tráfego automatizado pesado pode fazer o Cloudflare do Supabase "sumir" — sem 429, sem 503, timeout puro

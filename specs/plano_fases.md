@@ -1052,7 +1052,44 @@ Esforço máximo: 3 tentativas.
 Escalonamento de LLM: Sonnet nas 2 primeiras; Opus na 3ª.
 Se esgotar: parar e emitir relatório curto.
 
-### Subetapa 08.9 — Semeadura de `contabilidades` e dos vínculos [Manual] [LLM: Opus] · Status: ⬜
+### Subetapa 08.9 — Semeadura de `contabilidades` e dos vínculos [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+**Executada em produção em 2026-08-26**, por `scripts/semear_contabilidades_08_9.mjs`, logado como
+Admin com a anon key — passando pelas mesmas policies que a Denise enfrentaria, sem `service_role`
+(padrão da carga da 06.4).
+
+**Os números bateram exatamente com o previsto, sem recalibragem:**
+`contabilidades = 950` · `contabilidade_estabelecimentos = 7.438` · `origem='agrupamento_email'` e
+`confirmado=false` em **100%** · as 8.241 caixas de 1 estabelecimento **não** viraram contabilidade.
+**2ª execução: delta zero** (`+0` / `+0`), com os dois casos grandes reconferidos —
+`juridico@contss.com.br` 129/129 e `rm2091adm@gmail.com` 114/114.
+
+**Conferência independente por SQL** (não pelo mesmo código que gravou): 950 e-mails distintos em
+950 linhas — zero duplicata; zero vínculo com origem diferente; zero já confirmado; zero caixa
+isolada promovida a contabilidade; zero grupo de 2+ deixado de fora; e **zero vínculo incoerente**
+(todo vínculo casa com o `email` do próprio estabelecimento).
+
+**Decisão que o plano deixava em aberto: o que vai em `contabilidades.nome`.** A coluna é NOT NULL
+e a RFB **não traz razão social do escritório** — só a das empresas-cliente. Usar a razão social de
+um cliente como nome do contador seria inventar informação. Então `nome = email`, e cada linha
+carrega em `observacoes` que o nome é **provisório**, derivado do agrupamento, e que o escritório
+ainda não confirmou razão social nem carteira. A Denise renomeia conforme fala com cada um.
+
+**Guarda que hoje não exclui ninguém, e existe para o ciclo mensal da RFB:** caixa com 2+
+estabelecimentos mas e-mail malformado é **descartada e reportada**, nunca semeada em silêncio —
+um link enviado a um endereço inválido nunca chega e sumiria da conta de cobertura sem sinal.
+Medido hoje: **0 descartadas**, e os 8 maiores grupos são visivelmente escritórios reais
+(`contss`, `contpacheco`, `csj.cnt.br`, `contabilidadepessoni`, `pedrosocontabilidade`,
+`mondocontabil`, `contabilidadeitamarati`).
+
+**A semeadura nunca apaga.** O script não tem `DELETE`. Contabilidade que o agrupamento atual não
+sustenta mais (escritório que caiu para 1 cliente, perdeu todos, ou teve o e-mail alterado na RFB)
+entra em **relatório** ao fim da execução, para a Denise decidir uma a uma. Hoje: 0 órfãs.
+
+**Suíte após a escrita em massa: 179 testes, as mesmas 5 falhas pré-existentes.** Nenhuma
+regressão. Ajuste feito no caminho: dois casos de `comunicacao.spec.ts` comparavam papéis por
+`select('id')`, que com 7.438 linhas voltaria **truncado em 1000 sem avisar** (§2.4) — passariam
+comparando dois conjuntos truncados. Trocados por contagem exata via `head: true`.
+
 Objetivo: transformar o agrupamento por e-mail — que hoje é implícito e se perde quando a empresa
 troca de escritório — em entidade persistida e editável (spec §5.2).
 Conclusão: `contabilidades` com **950 linhas** (as caixas com 2+ estabelecimentos: 89 + 248 + 613)
