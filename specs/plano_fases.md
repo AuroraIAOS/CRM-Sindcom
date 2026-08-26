@@ -1117,7 +1117,12 @@ logotipo institucional na página.
   chegando por um e-mail que pede dado pessoal de terceiros — sem marca, o pedido parece phishing.
 - **Modelo** — `public/modelos/quadro-de-empregados.xlsx`, gerado por
   `scripts/gerar_modelo_coleta.mjs`, num bloco "1. Baixe o modelo" que vem **antes** do campo de
-  anexo.
+  anexo. **O binário NÃO é versionado**: o `*.xlsx` do `.gitignore` continua valendo como está, e
+  o arquivo é regenerado pelos hooks `predev` e `prebuild` do `package.json`. A decisão veio de uma
+  medição — as datas dos metadados foram fixadas, mas o `exceljs` carimba a hora atual em cada
+  entrada do ZIP e isso não é configurável, então o arquivo **nunca** sai byte-idêntico entre
+  execuções. Versioná-lo sujaria todo `git status` futuro. Conferido simulando clone limpo: apagado
+  o arquivo, `npm run build` o recria e o `dist/` sai completo.
 
 **O modelo que Maxwell rascunhou tinha dois defeitos, e ambos eram silenciosos.** O arquivo em
 `dados/exemplos_importacao/quadro.xlsx` trazia os cabeçalhos

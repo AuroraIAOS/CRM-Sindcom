@@ -95,7 +95,18 @@ const COLUNAS = [
 
 const livro = new ExcelJS.Workbook();
 livro.creator = "Sindicato dos Empregados no Comércio de Passos e Região";
-livro.created = new Date(2026, 0, 1); // fixo: saída determinística entre execuções
+
+// Datas fixas nos metadados do documento. Não deixam o arquivo byte-idêntico
+// entre execuções — o `exceljs` também carimba a hora atual em cada entrada do
+// ZIP, e isso não é configurável —, mas evitam expor a data de build para quem
+// abrir o arquivo. Foi ao MEDIR isto que a decisão de não versionar o binário
+// se firmou: um `.xlsx` que muda a cada build sujaria todo `git status` futuro.
+// Por isso o modelo NÃO entra no git (o `*.xlsx` do .gitignore continua valendo
+// como está) e é regenerado nos hooks `predev` e `prebuild` do package.json.
+const CARIMBO = new Date(Date.UTC(2026, 0, 1));
+livro.created = CARIMBO;
+livro.modified = CARIMBO;
+livro.lastModifiedBy = livro.creator;
 
 // ---------------------------------------------------------------------------
 // Aba 1 — "Dados". É a que o sistema lê (sempre a PRIMEIRA aba do arquivo).
