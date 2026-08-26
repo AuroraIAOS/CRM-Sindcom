@@ -568,7 +568,18 @@ pessoal ou endpoint público** — a ETAPA 07 mediu o custo de errar aí (5 falh
 estava com a suíte verde e o advisor limpo). **A ordem real de execução está em "Circuito de
 execução" abaixo, não na numeração das subetapas.**
 
-### ✅ CIRCUITO 2 CONCLUÍDO — 2026-08-26
+### ✅ CIRCUITOS 1 E 2 CONCLUÍDOS — 2026-08-26
+
+**Metade da ETAPA 08 está fechada.** Restam o Circuito 3 (Sonnet: 08.7 → 08.8 → 08.11 → 08.13,
+todo frontend) e o Circuito 4 (Opus: 08.12 → 08.14 → 08.15, portão adversarial e disparo).
+
+**Circuito 1 — Preparo externo.** DMARC organizacional publicado e `dmarc=pass` medido em Gmail e
+Outlook; `envios.sindcompassos.org` autenticado na Brevo; 11 páginas do site conferidas por
+requisição real; 6 assinaturas institucionais instaladas; e os **três textos jurídicos em forma
+final**, com as correções de Maxwell e do Dr. Adenilson, assinados por **OAB/MG 96.522**. A
+conversão para `.docx`/`.pdf` ficou com Maxwell, fora do repositório.
+
+
 
 **08.4 → 08.9 → 08.5 → 08.6 → 08.10**, as cinco em produção. O caminho completo do dado existe:
 tabela fechada → contabilidade semeada → recepção → página do contador → cadastro pela Denise.
@@ -655,7 +666,7 @@ LLM no meio. Numeração é endereço; circuito é itinerário.
 
 | Circuito | Subetapas, nesta ordem | LLM | O que fecha o circuito |
 |---|---|---|---|
-| **1 — Preparo externo** | **08.1** → 08.0 → 08.2 → 08.3(a) rascunho | **Opus** | DMARC publicado e `dmarc=pass` medido; links conferidos; rascunho na mão do Adenilson |
+| **1 — Preparo externo** ✅ | **08.1** → 08.0 → 08.2 → 08.3 | **Opus** | **CONCLUÍDO em 2026-08-26.** DMARC publicado e `dmarc=pass` medido nos dois receptores; links conferidos; assinaturas instaladas; três textos jurídicos em forma final, revisados por Maxwell e pelo Dr. Adenilson |
 | **2 — Núcleo seguro** | **08.4** → **08.9** → **08.5** → **08.6** → **08.10** | **Opus** | O caminho completo do dado: tabela fechada → contabilidade semeada → recepção → página do contador → cadastro pela Denise |
 | **3 — Superfície do contador** | 08.7 → 08.8 → 08.11 → 08.13 | **Sonnet** | Modelo `.xlsx`, formulário, tela de cobertura e as 4 listas por caixa |
 | **4 — Portão e disparo** | **08.12** → 08.14 → 08.3(b) → **08.15** | **Opus** | Relatório adversarial verde, copies aprovadas, nota assinada no ar, onda 1 disparada |
@@ -834,7 +845,7 @@ Esforço máximo: 1 passada por caixa.
 Escalonamento de LLM: Sonnet; não escala.
 Se esgotar: relatar as caixas que ficaram sem assinatura. Não bloqueia o caminho crítico.
 
-### Subetapa 08.3 — Nota técnica jurídica (LGPD art. 11) [Manual] [LLM: Opus] · Status: 🟡 (a) ENTREGUE · (b) com o Adenilson
+### Subetapa 08.3 — Nota técnica jurídica (LGPD art. 11) [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
 **(a) Rascunho entregue em 2026-08-24:** `docs/nota_tecnica_lgpd_rascunho.md`, marcado
 "RASCUNHO — não publicar", com aviso explícito de que não é parecer e de que as citações
 foram escritas de memória e precisam ser conferidas na fonte. Traz os fatos medidos, os seis
@@ -912,7 +923,21 @@ Varejista` são PDFs digitalizados (zero texto extraível), e o ambiente não te
 `pdftoppm` para renderizar página. Não é limitação de esforço, é de ferramenta. Maxwell está
 providenciando versões em texto. Até lá o §5.1 da Nota Oficial cobre **3 das 5 CCTs**, e os
 **22 ACTs** não foram examinados.
-**(b) Bloqueia o eixo Requisição** (08.14 e 08.15) até a versão assinada estar publicada.
+**(b) ✅ FECHADA em 2026-08-26.** As correções de Maxwell e do Dr. Adenilson foram aplicadas nos
+três textos: os **dois pontos centrais** no item 2 da Nota Oficial (o pedido dos dados dos
+sindicalizados, pela via dos direitos individuais que a contribuição gera, ao lado do argumento já
+existente sobre a oposição); a tabela de cláusulas completa nas **5 CCTs**; o quadro dos quatro
+prazos de oposição; a explicação em linguagem corrente das medidas de segurança; e assinatura e
+data preenchidas — **Adenilson Antonio Silva, OAB/MG 96.522**.
+
+**A conversão para `.docx` e `.pdf` fica com Maxwell**, que a executa fora do repositório e
+apresentará os arquivos finais depois. Os `.md` versionados seguem sendo a fonte de verdade. Há em
+`scripts/md_para_html_juridico.mjs` um conversor `.md → .html` funcionando; o
+`scripts/gerar_docx_juridico.ps1`, que fecharia o ciclo pelo Word, **trava** e está commitado com
+aviso no topo e as quatro hipóteses já refutadas.
+
+**O eixo Requisição (08.14/08.15) deixa de estar bloqueado por este item.** Resta apenas publicar
+a página no site e conferir que a URL responde 200 — verificação da própria 08.14.
 Objetivo: ter, público e assinado, o fundamento legal do pedido — porque "sindicalizado ou
 oposição" é **dado pessoal sensível** (LGPD art. 5º, II) e não se apoia nas bases comuns do art. 7º.
 Conclusão: **duas metades, e só a segunda fecha a subetapa.** (a) O CODE entrega ao Adenilson um
