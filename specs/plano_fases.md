@@ -1058,7 +1058,63 @@ Escalonamento de LLM: Opus desde a 1ª — endpoint público com dado pessoal.
 Se esgotar: parar com a função **não publicada** e emitir relatório curto (problema + causas +
 2-3 alternativas).
 
-### Subetapa 08.6 — Página pública `/enviar-dados/:token` (planilha) [Goal] [LLM: Opus] · Status: ⬜
+### Subetapa 08.6 — Página pública `/enviar-dados/:token` (planilha) [Goal] [LLM: Opus] · Status: 🟡 NO AR, aguardando conferência visual de Maxwell
+**Publicada em `crm.sindcompassos.org` em 2026-08-26.** Rota pública em `src/app/router.tsx`, fora
+do `AppShell` e fora do `RoleGate`, no mesmo padrão de `/guia/:token`. Código em
+`src/features/coleta/` (`api.ts`, `lerPlanilha.ts`, `EnviarDadosPage.tsx`).
+
+**Links para conferir (tokens DEMO, gravados em produção):**
+- válido → `https://crm.sindcompassos.org/enviar-dados/73e4234e-46a0-42ef-8af9-aa3a14ab9325`
+- revogado → `https://crm.sindcompassos.org/enviar-dados/cdaf52fb-9203-4d67-aec5-8dae955b9194`
+- expirado → `https://crm.sindcompassos.org/enviar-dados/1237ad75-1ea7-4a37-8ee9-9418f5b3b0c1`
+
+**Decisão que o plano deixava em aberto e foi de Maxwell (2026-08-26): o `exceljs` entra agora.**
+O handoff dizia "não instale ainda — quem precisa é a 08.7"; o próprio plano da 08.7 diz que é o
+`exceljs` que **lê** o `.xlsx` devolvido na 08.6. A dependência era ao contrário do que o handoff
+supunha. A alternativa — escrever um leitor de `.xlsx` só para esta tela — criaria o segundo
+leitor que a 08.7 duplicaria, que é a mesma classe de problema da regra "sem fork".
+
+**Carregado sob demanda, e isso é medição, não zelo:** importado no topo, o `exceljs` levava o
+bundle principal de **1.204 kB para 2.144 kB** — o CRM inteiro, inclusive a tela de login da
+Secretaria num celular, pagando por uma biblioteca que a maioria das sessões nunca usa. Com
+`await import("exceljs")` dentro de `lerPlanilhaXlsx`, ele virou chunk próprio de 938 kB, baixado
+só por quem anexa planilha, e o principal voltou aos 1.204 kB de antes.
+
+**Sem fork, e o teste prova:** `lerPlanilha.ts` só CONVERTE FORMATO (`.xlsx` → o mesmo
+`ParseResultado` do CSV) e não tem uma linha de regra de negócio. Quem valida é o
+`validarTrabalhadores.ts` do resto do CRM, e quem desenha é o `PreviewTable.tsx`.
+
+**A página não lê o banco.** Nenhum `supabase-js` sai de `features/coleta/` — há teste de
+varredura garantindo isso. O único servidor que ela conhece é a Edge Function, em troca do token.
+E o `ContextoTrabalhadores` nasce com **`cpfsExistentes` vazio de propósito**: preenchê-lo exigiria
+ler `trabalhadores`, e a tela passaria a responder "este CPF já está na nossa base" para qualquer
+visitante com um link. Há teste guardando essa linha também — é a "melhoria" mais tentadora desta
+tela.
+
+**Evidência medida — `tests/rls/coleta.spec.ts`, 10/10:** planilha correta com 3 linhas
+aproveitáveis; planilha com defeitos acendendo **a mensagem certa na linha certa** (DV de CPF
+inválido, nome vazio, CPF vazio — as três bloqueantes — e CNPJ fora da carteira como aviso, porque
+a linha entra mas sem vínculo); planilha só com linhas ruins **não** habilitando o envio; `.csv`
+disfarçado recusado ainda no navegador; e **CPF `00123456797` sobrevivendo à leitura com os dois
+zeros à esquerda**. Mais os três tokens contra a Edge Function real: o válido devolve nome e
+carteira, o revogado e o expirado devolvem `ok:false` com mensagem — e a página troca o formulário
+inteiro por "Link inválido".
+
+**Envio completo exercitado uma vez, à mão:** POST com `linhas_recebidas=3`, `linhas_com_erro=0`
+→ `remessas_dados` com **`status='validada'`**, que é exatamente o critério. **A suíte NÃO envia
+remessa a cada execução** — uma por rodada de `npm run test` encheria a fila de revisão da Denise
+(08.10) de arquivo de teste.
+
+**Defeito meu, corrigido no caminho:** a planilha de demonstração trazia o CPF `00123456789`, que
+tem **DV inválido**. O teste pegou. Trocado por `00123456797`, que é válido e mantém os dois zeros
+à esquerda — que era o ponto do dado.
+
+**⚠️ O que falta para dar por CONCLUÍDA:** a conferência **visual** do ciclo. O projeto não tem
+jsdom nem testing-library (testa renderização por análise estática), e a extensão do Chrome não
+está conectada nesta sessão — então o pipeline está provado, mas o pixel não. Maxwell: abra os
+três links acima, anexe uma planilha e confirme. Suíte completa: **189 testes, as mesmas 5 falhas
+pré-existentes**; `typecheck` e `build` limpos; deploy com 0 falhas e 0 divergências de tamanho.
+
 Objetivo: a tela que o contador abre pelo link do e-mail, valida a planilha **no navegador dele** e
 envia — sem login (D3).
 Conclusão: o contador abre `/enviar-dados/:token` sem sessão, vê o nome da própria contabilidade,

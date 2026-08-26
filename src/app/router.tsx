@@ -9,6 +9,7 @@ import { Placeholder } from "@/components/shared/Placeholder";
 import { LoginPage } from "@/features/auth/LoginPage";
 import { RecuperarSenhaPage } from "@/features/auth/RecuperarSenhaPage";
 import { GuiaPublicaPage } from "@/features/servicos/GuiaPublicaPage";
+import { EnviarDadosPage } from "@/features/coleta/EnviarDadosPage";
 import { ListaTrabalhadoresPage } from "@/features/trabalhadores/ListaTrabalhadoresPage";
 import { FichaTrabalhadorPage } from "@/features/trabalhadores/FichaTrabalhadorPage";
 import { ListaEmpresasPage } from "@/features/empresas/ListaEmpresasPage";
@@ -108,6 +109,9 @@ export const router = createBrowserRouter(
     { path: "/login", element: <LoginPage /> },
     { path: "/recuperar-senha", element: <RecuperarSenhaPage /> },
     { path: "/guia/:token", element: <GuiaPublicaPage /> },
+    // Rota pública da coleta externa (ETAPA 08): fora do AppShell e fora do
+    // RoleGate, como a guia do QR. O token é a credencial; não há sessão.
+    { path: "/enviar-dados/:token", element: <EnviarDadosPage /> },
     {
       // Área interna: exige sessão + perfil ativo (RoleGate sem roles).
       element: (

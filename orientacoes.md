@@ -1489,6 +1489,33 @@ E `<Area type="linear">`, nunca `monotone`, para dado financeiro: a spline
 Confira a virada de ano imprimindo a janela gerada — dez→jan é onde esse tipo de
 cálculo costuma errar.
 
+### 4.8 Biblioteca pesada importada no topo entra no bundle de TODO MUNDO
+
+**(a) Problema.** A Subetapa 08.6 precisa ler `.xlsx` no navegador do contador, e o `exceljs`
+entrou com `import ExcelJS from "exceljs"` no topo do módulo. Medido no `npm run build`, o chunk
+principal saltou de **1.204 kB para 2.144 kB**. Quem paga essa conta não é o contador que anexa
+planilha uma vez por trimestre: é a Secretária abrindo a tela de login no celular, todo dia, e
+qualquer papel do CRM que nunca vai chegar perto de `/enviar-dados`.
+
+**(b) Solução.** Import dinâmico no ponto de uso. O Vite corta a biblioteca num chunk à parte e o
+navegador só busca quando a função é chamada de fato — no caso, quando alguém escolhe um arquivo.
+
+**(c) Como implantar.**
+```ts
+// no topo, SÓ o tipo (some na compilação, não vai para o bundle)
+import type ExcelJS from "exceljs";
+
+export async function lerPlanilhaXlsx(arquivo: File) {
+  const { default: ExcelJSRuntime } = await import("exceljs");
+  const livro = new ExcelJSRuntime.Workbook() as ExcelJS.Workbook;
+  ...
+}
+```
+Medido depois: principal de volta a **1.204 kB**, com `exceljs.min-*.js` de **938 kB** num chunk
+próprio. **Confira sempre na saída do `npm run build`** — a lista de assets é a medição, e ela é
+gratuita. Regra prática: biblioteca acima de ~100 kB usada por UMA tela entra por
+`await import()`, não por `import` de topo.
+
 ### 4.6 Automação de navegador não dispara `onChange` de input controlado do React
 
 **(a) Problema.** Verificando a tela `/empresas` com os 16.687 registros reais (Subetapa

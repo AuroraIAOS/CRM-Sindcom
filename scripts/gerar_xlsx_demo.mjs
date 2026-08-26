@@ -160,7 +160,7 @@ const WORKBOOK_RELS =
 // Nomes com prefixo DEMO por regra do projeto: registro de demonstração fica
 // gravado e não pode ser confundido com cadastro real (CLAUDE.md).
 const DEMONSTRACAO = [
-  ["99999901000191", "DEMO — Ana Paula Ribeiro", "00123456789", "35988887777", "1600.00", "sindicalizado"],
+  ["99999901000191", "DEMO — Ana Paula Ribeiro", "00123456797", "35988887777", "1600.00", "sindicalizado"],
   ["99999901000191", "DEMO — Carlos Eduardo Nunes", "11144477735", "35988886666", "1750.50", "oposicao"],
   ["99999901000272", "DEMO — Marta Lopes de Souza", "52998224725", "", "", "sindicalizado"],
 ];
@@ -170,11 +170,23 @@ if (!saida) {
   console.error("Uso: node scripts/gerar_xlsx_demo.mjs <saida.xlsx> [--linhas N]");
   process.exit(1);
 }
+// Com `--com-erros`, sai uma planilha que exercita cada erro que o preview da
+// 08.6 tem de mostrar por linha — é o arquivo que prova a tela, e cada linha
+// aqui existe para acender um erro diferente.
+const COM_ERROS = [
+  ["99999901000191", "DEMO — Linha boa", "11144477735", "35988887777", "1500.00", "sindicalizado"],
+  ["99999901000191", "DEMO — CPF com DV errado", "11111111111", "", "", "sindicalizado"],
+  ["99999901000191", "", "52998224725", "", "", "oposicao"], // nome obrigatório vazio
+  ["", "DEMO — Sem CPF nenhum", "", "", "", "sindicalizado"], // CPF obrigatório vazio
+  ["11222333000181", "DEMO — CNPJ fora da carteira", "87748248800", "", "1400.00", "sindicalizado"],
+];
+
 const indiceLinhas = process.argv.indexOf("--linhas");
-const quantas = indiceLinhas > -1 ? Number.parseInt(process.argv[indiceLinhas + 1], 10) : DEMONSTRACAO.length;
+const fonte = process.argv.includes("--com-erros") ? COM_ERROS : DEMONSTRACAO;
+const quantas = indiceLinhas > -1 ? Number.parseInt(process.argv[indiceLinhas + 1], 10) : fonte.length;
 
 const linhas = [];
-for (let i = 0; i < quantas; i += 1) linhas.push(DEMONSTRACAO[i % DEMONSTRACAO.length]);
+for (let i = 0; i < quantas; i += 1) linhas.push(fonte[i % fonte.length]);
 
 const zip = montarZip([
   { nome: "[Content_Types].xml", conteudo: Buffer.from(CONTENT_TYPES, "utf8") },
