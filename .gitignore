@@ -108,3 +108,7 @@ sandbox/
 # ============================================================
 screenshots/
 .sessoes-teste.json
+
+# Literatura jurídica de referência (12 PDFs, 38 MB) — fora do git por decisão
+# da ETAPA 08. O plano já afirmava que estavam ignorados; NÃO estavam (§2.7).
+docs/fundamentos/

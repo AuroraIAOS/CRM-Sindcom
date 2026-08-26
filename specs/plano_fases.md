@@ -906,7 +906,45 @@ Escalonamento de LLM: Opus desde a 1ª — argumentação jurídica sobre dado s
 Se esgotar / se o Adenilson não devolver: **o eixo Requisição fica bloqueado** (08.14 e 08.15); os
 eixos Estrutural e Informativo seguem. Relatar o bloqueio a Maxwell, nunca improvisar fundamentação.
 
-### Subetapa 08.4 — Esquema das tabelas novas, com RLS e policy explícita [Manual] [LLM: Opus] · Status: ⬜
+### Subetapa 08.4 — Esquema das tabelas novas, com RLS e policy explícita [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+**Aplicada em 2026-08-26**, em `sql/20_comunicacao_externa.sql`, no bench e em produção.
+As seis tabelas existem com RLS ligada e policy explícita (4 policies cada, exceto
+`modelos_coleta` com 2 e `remessas_dados` com 3). **Idempotência medida, não suposta:** a 2ª
+aplicação em produção deixou colunas, policies, constraints, índices, triggers e grants com
+`md5` **idêntico**, e `modelos_coleta` em 1 linha.
+
+**Divergência do critério, e ela é para mais, não para menos.** O critério dizia "`anon`
+recebendo `[]` nas seis tabelas". Medido por requisição real com a anon key, `anon` recebe
+**HTTP 401 / 42501** — `revoke all ... from anon` derruba a chamada no GRANT, **antes** de a
+policy ser avaliada. `[]` seria a negativa por ausência de policy; 401 é a negativa uma camada
+acima. A suíte asserta as duas coisas: dado nenhum sai **e** o erro é de privilégio.
+
+**Um achado real, encontrado pelo advisor logo após a migração subir.** As duas funções de
+trigger novas (`fn_normaliza_email_contabilidade`, `fn_remessa_imutavel`) nasceram com
+`EXECUTE` para PUBLIC — privilégio de fábrica de toda função nova —, e o PostgREST publica
+toda função de `public` como RPC. É a **segunda das três brechas** que o `CLAUDE.md` manda
+procurar. Revogado de `public, anon, authenticated`, e **medido depois**: o INSERT continua
+normalizando o e-mail e o UPDATE continua sendo recusado — o Postgres confere `EXECUTE` de
+função de trigger na hora de **criar** o trigger, não na de disparar (`orientacoes.md` §2.17b).
+
+**Duas decisões de escopo, declaradas:**
+1. **A tabela de tentativas do rate limit não está aqui.** Ela é da 08.5, ao lado da Edge
+   Function que a usa — mesmo arranjo de `tentativas_checkin` em `19_hardening_adversarial.sql`.
+   A 08.4 entrega exatamente as seis tabelas da spec.
+2. **A Secretaria lê `envios_campanha` inteira, e a coluna `token` está nela.** RLS restringe
+   quais *linhas*, nunca quais *colunas*. Adiar essa leitura não era opção: a 08.10 é a tela
+   dela, e sem `envios_campanha` não há caminho de `remessas_dados` até o nome da contabilidade.
+   **A 08.11 fecha isso** com view `SECURITY DEFINER` de filtro interno (padrão de
+   `v_fila_parceiro`) — e o requisito "o token não aparece em claro para quem não é Admin" já é
+   critério de conclusão dela. Registrado aqui para entrar no escopo do portão da 08.12.
+
+**Evidência:** `tests/rls/comunicacao.spec.ts` — **18/18 em produção** (1 pulado: imutabilidade
+da remessa só pode ser exercitada por quem insere remessa, e por desenho isso é exclusividade da
+`service_role`) e **19/19 no bench**. Suíte completa: **179 testes, 5 falhas — as mesmas 5
+pré-existentes**, em `cartas` e `dashboard`, por a base não ter trabalhador aprovado nem vínculo.
+Nenhuma regressão. `typecheck` limpo. Varredura de catálogo: 14 views, e a única sem
+`security_invoker` é `v_fila_parceiro`, exceção deliberada já documentada em §2.15.
+
 Objetivo: `contabilidades`, `contabilidade_estabelecimentos`, `modelos_coleta`, `campanhas`,
 `envios_campanha` e `remessas_dados` no banco, nascidas fechadas (spec §5).
 Conclusão: `sql/20_comunicacao_externa.sql` aplicado e **idempotente** (2ª execução com delta

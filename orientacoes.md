@@ -880,6 +880,53 @@ select table_name, column_name, column_default from information_schema.columns
  where table_schema='public' and column_default ilike '%nome_da_funcao%';
 ```
 
+### 2.17b Função de trigger nova nasce chamável como RPC — e revogar `EXECUTE` dela NÃO quebra o trigger
+
+**(a) Problema.** A migração da Subetapa 08.4 criou duas funções de trigger `SECURITY DEFINER`
+(`fn_normaliza_email_contabilidade`, `fn_remessa_imutavel`). Minutos depois de aplicar, o advisor
+de segurança do Supabase acusou as duas:
+
+```
+Function `public.fn_normaliza_email_contabilidade()` can be executed by the `anon` role
+as a SECURITY DEFINER function via `/rest/v1/rpc/fn_normaliza_email_contabilidade`
+```
+
+Duas heranças se somam para produzir isso, e nenhuma delas está no SQL que se escreve: **toda
+função nova nasce com `EXECUTE` para PUBLIC**, e **o PostgREST publica toda função de `public`
+como RPC**. Ou seja, função de trigger vira endpoint sem que ninguém peça. É a segunda das três
+brechas que o `CLAUDE.md` manda procurar — a RLS não olha `EXECUTE`.
+
+**(b) Solução.** Revogar. E o medo que trava a revogação — "vou quebrar o trigger, como na
+§2.17" — **é infundado aqui, e a diferença importa**: o Postgres confere `EXECUTE` da função de
+trigger na hora de **CRIAR** o trigger, não na hora de **disparar**. O caso da §2.17 é outro
+animal: lá quem quebrou foi uma função `SECURITY INVOKER` que chamava **por dentro** uma terceira
+função cujo `EXECUTE` tinha sido revogado.
+
+Regra prática que separa os dois: **revogar da função que o trigger EXECUTA é seguro; revogar de
+função que a função de trigger CHAMA não é** — a menos que a de trigger seja `SECURITY DEFINER`.
+
+**(c) Como implantar.**
+
+```sql
+revoke execute on function fn_normaliza_email_contabilidade() from public, anon, authenticated;
+revoke execute on function fn_remessa_imutavel() from public, anon, authenticated;
+```
+
+Confira pelo catálogo, e **meça o comportamento depois** — configuração não é prova:
+
+```sql
+select p.proname,
+       has_function_privilege('anon', p.oid, 'EXECUTE')          as anon_executa,
+       has_function_privilege('authenticated', p.oid, 'EXECUTE') as auth_executa
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname='public' and p.prorettype = 'trigger'::regtype;
+```
+
+Medido na 08.4 depois de revogar: `anon_executa = false`, `auth_executa = false`, e a suíte
+continuou verde — o INSERT do Admin ainda normalizava o e-mail e o UPDATE ainda era recusado.
+**Toda migração que cria função de trigger deve terminar com esse `revoke`** e rodar
+`get_advisors` — foi o advisor, não a leitura do código, que achou isto.
+
 ### 2.18 `raise exception` desfaz o `insert` que você acabou de fazer — inclusive o do rate limit
 
 **(a) Problema.** `fn_registrar_checkin` (endpoint público, sem login) aceitava tentativas de PIN
