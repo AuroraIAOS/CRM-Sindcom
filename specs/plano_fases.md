@@ -1144,6 +1144,20 @@ commitado à mão não tem como ser revisado, ninguém vê num diff que o `numFm
 aba **Dados** (só o cabeçalho, **sem linha de exemplo**: exemplo ali seria lido como pessoa de
 verdade) e aba **Instruções**, que o leitor nunca abre.
 
+**Correção de regra de negócio (Maxwell, 2026-08-26): o piso salarial é OBRIGATÓRIO.** A célula
+`B9` da aba Instruções dizia "não". O motivo dado muda a natureza do campo e não estava no plano:
+**a guia de recolhimento é emitida por EMPRESA, não por empregado** — um único piso em branco não
+deixa só aquela pessoa fora do cálculo, impede fechar o boleto da empresa inteira. O campo estava
+opcional em **três** lugares, e os três foram corrigidos: a célula do modelo, o contrato de
+`modelos_coleta` v1 no banco (produção e bench) e o validador. Só `telefone_whatsapp` segue
+opcional — é o único dos seis que não entra em conta nem em classificação.
+
+**No validador virou AVISO, não rejeição, e a escolha é deliberada:** rejeitar a linha descartaria
+a PESSOA e o VÍNCULO, que é justamente a métrica desta etapa. Cadastrar com a lacuna **visível** é
+melhor que não cadastrar, e o motor de cobrança já reporta nominalmente quem ficou sem base de
+cálculo em vez de inventar um valor (§2.1). Se a preferência for barrar a linha, é uma linha de
+código — mas aí uma planilha de 40 pessoas com 3 pisos em branco entrega 37, não 40.
+
 **Três testes novos em `tests/rls/coleta.spec.ts` (13/13)** cobrem exatamente isso: a aba lida é a
 primeira e vem sem linhas; os rótulos do contador mapeiam nos campos certos, com
 `sindicalizado → true` e `oposição → false` medidos; e as colunas de CPF/CNPJ nascem com

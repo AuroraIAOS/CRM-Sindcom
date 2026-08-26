@@ -168,6 +168,33 @@ export function validarTrabalhadores(
     const forma_pagamento_preferida: "holerite" | "boleto_direto" =
       formaPagamentoRaw === "boleto" || formaPagamentoRaw === "boleto_direto" ? "boleto_direto" : "holerite";
 
+    /**
+     * Piso salarial — OBRIGATÓRIO no modelo de coleta desde 2026-08-26
+     * (decisão de Maxwell), e o motivo muda a natureza do campo: a guia de
+     * recolhimento é emitida **por empresa**, não por empregado. Um único piso
+     * em branco não deixa só aquela pessoa fora do cálculo — impede fechar o
+     * valor do boleto da empresa inteira.
+     *
+     * AVISO, e não rejeição da linha. A escolha é deliberada: rejeitar
+     * descartaria a PESSOA e o VÍNCULO, que é justamente a métrica da ETAPA 08
+     * (estabelecimentos com trabalhador vinculado). Cadastrar com a lacuna
+     * VISÍVEL é melhor que não cadastrar — o contador vê antes de enviar, a
+     * Denise vê no preview, e o motor de cobrança já reporta nominalmente quem
+     * ficou sem base de cálculo em vez de inventar um valor (orientacoes §2.1).
+     */
+    const salarioRaw = campo(bruta, mapa, "salario_informado");
+    const salario = salarioRaw ? paraNumero(salarioRaw) : null;
+    if (!salarioRaw) {
+      mensagens.push(
+        "Piso salarial não informado — sem ele não há base de cálculo, e a guia da empresa não fecha",
+      );
+    } else if (salario === null || salario <= 0) {
+      mensagens.push(
+        `Piso salarial "${salarioRaw}" não é um valor válido — a linha entra sem base de cálculo`,
+      );
+    }
+    const salarioValido = salario !== null && salario > 0 ? salario : null;
+
     // cnpj_estabelecimento: cria vínculo só em cadastro novo (specs/importacao.md §3.3).
     let vinculo: TrabalhadorPayloadCompleto["vinculo"] = null;
     const cnpjEstRaw = campo(bruta, mapa, "cnpj_estabelecimento");
@@ -181,10 +208,7 @@ export function validarTrabalhadores(
           estabelecimento_id,
           funcao: vazioParaNull(campo(bruta, mapa, "funcao")),
           data_admissao: parseDataFlexivel(campo(bruta, mapa, "data_admissao")),
-          salario_informado: (() => {
-            const raw = campo(bruta, mapa, "salario_informado");
-            return raw ? paraNumero(raw) : null;
-          })(),
+          salario_informado: salarioValido,
         };
       }
     }

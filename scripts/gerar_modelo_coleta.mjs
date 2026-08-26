@@ -77,9 +77,15 @@ const COLUNAS = [
     chave: "piso",
     largura: 14,
     texto: false,
-    obrigatoria: false,
+    // OBRIGATÓRIA — decisão de Maxwell em 2026-08-26, e o motivo muda a
+    // natureza do campo: a guia de recolhimento é emitida POR EMPRESA, não por
+    // empregado. Um único piso em branco não deixa só aquela pessoa de fora do
+    // cálculo; ele impede fechar o valor do boleto da empresa inteira.
+    obrigatoria: true,
     explicacao:
-      "Salário pago hoje, em reais. Se ficar em branco, o sindicato não consegue calcular a contribuição dessa pessoa.",
+      "Salário pago hoje, em reais. Obrigatório: é a partir dele que se calcula o valor a recolher. " +
+      "Como a guia de recolhimento é emitida por empresa, um único campo em branco impede fechar o " +
+      "boleto de toda a empresa — não só o daquele empregado.",
     exemplo: "1600,00",
   },
   {

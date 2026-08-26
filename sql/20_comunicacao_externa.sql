@@ -479,7 +479,7 @@ values (
     {"nome":"nome","rotulo":"Nome do trabalhador","obrigatoria":true,"tipo":"texto","validacao":"não vazio"},
     {"nome":"cpf","rotulo":"CPF","obrigatoria":true,"tipo":"cpf","validacao":"11 dígitos com dígito verificador válido"},
     {"nome":"telefone_whatsapp","rotulo":"Contato telefônico (WhatsApp)","obrigatoria":false,"tipo":"telefone","validacao":"só dígitos; aviso se não tiver 10 ou 11"},
-    {"nome":"salario_informado","rotulo":"Piso salarial pago","obrigatoria":false,"tipo":"decimal","validacao":"maior que zero; vazio deixa a base de cálculo nula e o motor de cobrança pula a pessoa"},
+    {"nome":"salario_informado","rotulo":"Piso salarial pago","obrigatoria":true,"tipo":"decimal","validacao":"maior que zero; a guia é emitida POR EMPRESA, então um piso em branco impede fechar o boleto da empresa inteira"},
     {"nome":"recolhe_contribuicao","rotulo":"Situação: sindicalizado ou oposição","obrigatoria":true,"tipo":"sindicalizado_ou_oposicao","validacao":"sindicalizado => true (Prata) · oposição => false (Bronze)"}
   ]'::jsonb,
   'trabalhadores',

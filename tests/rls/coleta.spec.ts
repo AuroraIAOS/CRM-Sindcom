@@ -189,6 +189,54 @@ describe("08.6 · o modelo que o contador baixa casa com o validador", () => {
     expect(sindicalizada.valores.vinculo?.estabelecimento_id).toBe(CNPJ_DEMO_1);
   });
 
+  it('o modelo declara o piso como obrigatório, e a célula "B9" diz "sim"', async () => {
+    // Maxwell pediu a correção desta célula em 2026-08-26. Ela não é cosmética:
+    // a guia de recolhimento é emitida POR EMPRESA, então um piso em branco
+    // impede fechar o boleto da empresa inteira, não só o daquele empregado.
+    const ExcelJS = (await import("exceljs")).default;
+    const livro = new ExcelJS.Workbook();
+    await livro.xlsx.readFile(MODELO);
+    const instrucoes = livro.getWorksheet("Instruções")!;
+    expect(instrucoes.getRow(9).getCell(1).value).toBe("piso");
+    expect(instrucoes.getRow(9).getCell(2).value).toBe("sim");
+    // Só o telefone segue opcional entre os seis.
+    const opcionais: string[] = [];
+    for (let linha = 5; linha <= 10; linha += 1) {
+      if (instrucoes.getRow(linha).getCell(2).value === "não") {
+        opcionais.push(String(instrucoes.getRow(linha).getCell(1).value));
+      }
+    }
+    expect(opcionais).toEqual(["telefone"]);
+  });
+
+  it("piso em branco vira AVISO na linha — não rejeição, para não perder o vínculo", async () => {
+    // A escolha é deliberada: rejeitar a linha descartaria a PESSOA e o
+    // VÍNCULO, que é a métrica da ETAPA 08. Cadastrar com a lacuna visível é
+    // melhor que não cadastrar — e sem aviso nenhum seria pior que as duas.
+    const ExcelJS = (await import("exceljs")).default;
+    const livro = new ExcelJS.Workbook();
+    await livro.xlsx.readFile(MODELO);
+    const aba = livro.worksheets[0];
+    aba.addRow([CNPJ_DEMO_1, "DEMO — Sem piso", "00123456797", "", "", "sindicalizado"]);
+    aba.addRow([CNPJ_DEMO_1, "DEMO — Piso zerado", "11144477735", "", "0", "sindicalizado"]);
+    const caminho = `${pastaTemp}/08-6-sem-piso.xlsx`;
+    await livro.xlsx.writeFile(caminho);
+
+    const parse = await lerPlanilhaXlsx(comoArquivo(caminho, "sem-piso.xlsx"));
+    const preview = validarTrabalhadores(parse, contextoDaPagina([CNPJ_DEMO_1]), "ignorar");
+
+    expect(preview[0].status).toBe("aviso");
+    expect(preview[0].mensagens.join(" | ")).toMatch(/Piso salarial não informado/i);
+    expect(preview[1].mensagens.join(" | ")).toMatch(/não é um valor válido/i);
+    // Nenhuma das duas é descartada, e as duas seguem gerando vínculo.
+    expect(preview.filter((l) => l.status === "rejeitada")).toEqual([]);
+    for (const linha of preview) {
+      if (linha.dados?.tipo !== "novo") throw new Error("deveriam ser cadastros novos");
+      expect(linha.dados.valores.vinculo?.estabelecimento_id).toBe(CNPJ_DEMO_1);
+      expect(linha.dados.valores.vinculo?.salario_informado).toBeNull();
+    }
+  });
+
   it("as colunas de CPF e CNPJ nascem formatadas como TEXTO", async () => {
     // A defesa do zero à esquerda (§2.10), e ela só é possível por causa da D6:
     // em CSV não existe formatação de célula. O formato está na COLUNA, que é o

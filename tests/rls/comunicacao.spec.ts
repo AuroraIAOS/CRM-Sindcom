@@ -325,6 +325,14 @@ describe("08.4 · modelo de coleta v1", () => {
     expect(obrigatorias).toContain("recolhe_contribuicao");
     expect(obrigatorias).toContain("cnpj_estabelecimento");
     expect(obrigatorias).toContain("cpf");
+    // `salario_informado` virou obrigatória em 2026-08-26 (decisão de Maxwell),
+    // e o motivo muda a natureza do campo: a guia de recolhimento é emitida POR
+    // EMPRESA. Um único piso em branco não deixa só aquela pessoa fora do
+    // cálculo — impede fechar o boleto da empresa inteira.
+    expect(obrigatorias).toContain("salario_informado");
+    // Só o telefone segue opcional — é o único dos seis que não entra em
+    // nenhuma conta nem em nenhuma classificação.
+    expect(colunas.filter((c) => !c.obrigatoria).map((c) => c.nome)).toEqual(["telefone_whatsapp"]);
   });
 });
 
