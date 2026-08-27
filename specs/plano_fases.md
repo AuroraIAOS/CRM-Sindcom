@@ -1712,7 +1712,26 @@ Esforço máximo: 2 tentativas.
 Escalonamento de LLM: Sonnet; Opus se a conferência de duplicata não fechar.
 Se esgotar: parar e relatar. Lista errada não se corrige depois do disparo.
 
-### Subetapa 08.14 — Copies das trilhas A e B [Manual] [LLM: Opus] · Status: ⬜
+### Subetapa 08.14 — Copies das trilhas A e B [Manual] [LLM: Opus] · Status: 🟡 REDIGIDA — aguarda aprovação de Maxwell e a página jurídica no ar
+**Redigida em 2026-08-27** (Circuito 4, Opus): [`docs/copies_campanha_08_14.md`](../docs/copies_campanha_08_14.md)
+— as 4 copies (trilha A: 1 e-mail · trilha B: estrutural, informativo, requisição), com assunto,
+pré-cabeçalho, corpo, assinatura e descadastro. **Não marcada como concluída**: o critério do plano
+é aprovação de Maxwell, e o da Requisição exige a página jurídica respondendo 200.
+
+**Duas medições mudaram a copy antes de ela ser escrita:**
+- **`{{ contact.NOME }}` não é usável em nenhuma das 4.** Em A/B/C o campo `nome` **é o próprio
+  e-mail** (0 de 89, 0 de 248 e 0 de 613 linhas têm nome ≠ e-mail — o `contabilidades.nome` ainda é
+  a caixa, como a 08.13 registrou); e em D ele é a razão social crua da RFB, que no empresário
+  individual **contém o CPF** (`"DULCE TERRA DA SILVA 04181495698"`). Usá-lo imprimiria um CPF no
+  corpo de milhares de e-mails. O único campo de mesclagem das 4 copies é `{{ contact.LINK }}`.
+- **`envios.sindcompassos.org` não tem MX** (medido por DNS hoje): resposta ao `Reply-To` naquele
+  subdomínio volta com erro, numa copy que diz "responda este e-mail". Correção é na Brevo, não no
+  DNS — `Reply-To: secretaria@sindcompassos.org`, que alinha porque o DMARC está em `aspf=r`.
+
+**Bloqueio medido:** `https://sindcompassos.org/base-legal-dados/` → **HTTP 404**. O texto está
+pronto e assinado (OAB/MG 96.522), mas a publicação no site é de Maxwell. Sem ela, a copy de
+Requisição apontaria para um 404 justamente no e-mail que carrega o argumento jurídico.
+
 Objetivo: os textos — **1 e-mail** para contabilidades (trilha A) e **3** para empresas isoladas
 (trilha B: estrutural, informativo, requisição), spec §9.
 Conclusão: as 4 copies escritas e **aprovadas por Maxwell**; a do eixo **Requisição** só é dada por
