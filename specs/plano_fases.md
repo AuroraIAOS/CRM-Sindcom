@@ -570,8 +570,9 @@ execução" abaixo, não na numeração das subetapas.**
 
 ### ✅ CIRCUITOS 1, 2 E 3 CONCLUÍDOS — 2026-08-26
 
-**Três quartos da ETAPA 08 estão fechados.** Resta só o Circuito 4 (Opus: 08.12 → 08.14 →
-08.3(b) → 08.15, portão adversarial e disparo).
+**Três quartos da ETAPA 08 estão fechados.** Resta só o Circuito 4 (Opus: 08.12 → 08.14 → 08.15,
+portão adversarial e disparo). A 08.3(b) — que a tabela de execução original também listava neste
+circuito — **já fechou em 2026-08-26**, dentro do Circuito 1: ver linha 937 abaixo.
 
 **Circuito 3 — Superfície do contador (Sonnet), 08.7 → 08.8 → 08.11 → 08.13, todas em produção.**
 Modelo `.xlsx` pré-preenchido gerado no navegador (08.7); formulário direto para os 8.241 grupos de
@@ -608,8 +609,10 @@ As 3 remanescentes são de `cartas`, que fixa contagens do cenário DEMO Kabum (
 RPC) · §2.22 (três armadilhas do primeiro bucket privado) · §2.23 e §2.23b (o vocabulário
 "sindicalizado" virava Bronze; e cabeçalho ausente é pior que valor errado, porque nem gera aviso).
 
-**Resta do Circuito 1:** a **08.3(b)** — os textos jurídicos revisados e assinados. É o que bloqueia
-o eixo Requisição (08.14/08.15), e foi absorvida pelo Circuito 4 na tabela de execução abaixo.
+**Circuito 1 fechou por completo em 2026-08-26.** A 08.3(b) — textos jurídicos revisados e
+assinados por **Adenilson Antonio Silva, OAB/MG 96.522** — foi a última peça, e destrava o eixo
+Requisição (08.14/08.15). Resta só publicar a página pública no site e conferir que a URL responde
+200 — isso é verificação da própria 08.14, não uma subetapa à parte.
 
 **O merge continua sendo atribuição exclusiva de Maxwell.** A branch é `feature/comunicacao-externa`.
 
@@ -680,7 +683,7 @@ LLM no meio. Numeração é endereço; circuito é itinerário.
 | **1 — Preparo externo** ✅ | **08.1** → 08.0 → 08.2 → 08.3 | **Opus** | **CONCLUÍDO em 2026-08-26.** DMARC publicado e `dmarc=pass` medido nos dois receptores; links conferidos; assinaturas instaladas; três textos jurídicos em forma final, revisados por Maxwell e pelo Dr. Adenilson |
 | **2 — Núcleo seguro** ✅ | **08.4** → **08.9** → **08.5** → **08.6** → **08.10** | **Opus** | **CONCLUÍDO em 2026-08-26.** O caminho completo do dado: tabela fechada → contabilidade semeada → recepção → página do contador → cadastro pela Denise |
 | **3 — Superfície do contador** ✅ | 08.7 → 08.8 → 08.11 → 08.13 | **Sonnet** | **CONCLUÍDO em 2026-08-26.** Modelo `.xlsx`, formulário, tela de cobertura (token mascarado pendente de revisão) e os 9.186 tokens reais das 4 listas por caixa |
-| **4 — Portão e disparo** | **08.12** → 08.14 → 08.3(b) → **08.15** | **Opus** | Relatório adversarial verde, copies aprovadas, nota assinada no ar, onda 1 disparada |
+| **4 — Portão e disparo** | **08.12** → 08.14 → **08.15** | **Opus** | Relatório adversarial verde, copies aprovadas, onda 1 disparada — a 08.3(b) (nota assinada) já fechou no Circuito 1 |
 
 **Por que assim:**
 
