@@ -1283,6 +1283,110 @@ sumir para um papel. As duas mexem em exposição de dado; só a primeira deslig
 sem precisar é a mesma classe de erro que criar view sem `security_invoker` (§2.15), só que ao
 contrário: lá faltou proteção que devia existir, aqui sobraria bypass que não precisa existir.
 
+### 2.25 O hardening de GRANT não é hereditário: `pg_default_acl` reabre a porta a cada objeto novo
+
+**(a) Problema.** A ETAPA 07 varreu `public` e revogou `TRUNCATE`/`REFERENCES`/`TRIGGER` de `anon` e
+`authenticated` nas 43 relações de então (§2.16). Medido na ETAPA 08, no portão adversarial: a
+**única** relação criada depois daquela varredura — a view `v_cobertura_contabilidades`, da 08.11 —
+estava com os três de volta, para os dois papéis. Nenhuma migration escreveu esse GRANT.
+
+A causa está em `pg_default_acl`, e não em nada que alguém tenha digitado:
+
+```sql
+select pg_get_userbyid(d.defaclrole) as dono, n.nspname, d.defaclobjtype, d.defaclacl::text
+  from pg_default_acl d left join pg_namespace n on n.oid = d.defaclnamespace;
+-- dono=postgres · public · 'r' ·
+--   {postgres=arwdDxtm/postgres, anon=arwdDxtm/postgres,
+--    authenticated=arwdDxtm/postgres, service_role=arwdDxtm/postgres}
+```
+
+`arwdDxtm` inclui **SELECT**. Ou seja: **toda tabela ou view nova criada por `postgres` em `public`
+nasce legível por `anon`.** É a raiz do achado A-01 da ETAPA 07 — a view `empresas_estabelecimentos`
+nunca recebeu `GRANT SELECT` de ninguém, ela nasceu com ele. O relatório de então chamou isso de
+"privilégio de fábrica"; o mecanismo exato só apareceu aqui.
+
+**(b) Solução.** Duas partes, e a segunda é a que importa: varrer conserta os objetos de hoje,
+**mudar o default** conserta os de amanhã. Tirar `anon` por completo é seguro (o CRM inteiro
+consulta autenticado; as superfícies públicas usam `SECURITY DEFINER` ou `service_role`). De
+`authenticated` tira-se só os três privilégios inúteis — tirar o DML faria toda tabela nova
+responder `42501` ao app, e `42501` se disfarça de RLS quebrada, que é a investigação mais cara
+deste projeto.
+
+**(c) Como implantar.**
+
+```sql
+-- 1. os objetos que já existem — por pg_class, NUNCA por pg_tables (§2.16)
+do $do$
+declare r record;
+begin
+  for r in select format('%I.%I', n.nspname, c.relname) as alvo
+             from pg_class c join pg_namespace n on n.oid = c.relnamespace
+            where n.nspname='public' and c.relkind in ('r','v','m','p')
+  loop
+    execute format('revoke truncate, references, trigger on %s from anon, authenticated', r.alvo);
+  end loop;
+end $do$;
+
+-- 2. a raiz
+alter default privileges for role postgres in schema public revoke all on tables from anon;
+alter default privileges for role postgres in schema public
+  revoke truncate, references, trigger on tables from authenticated;
+```
+
+**Prove criando uma tabela depois** — e leia o controle negativo na mesma medição, senão você não
+sabe se apenas negou tudo:
+
+```sql
+create table prova_default (id int);
+select has_table_privilege('anon','public.prova_default','SELECT')          -- false ✅
+     , has_table_privilege('authenticated','public.prova_default','SELECT')  -- true  ✅
+     , has_table_privilege('authenticated','public.prova_default','TRUNCATE');-- false ✅
+drop table prova_default;
+```
+
+**Regra geral:** varredura de hardening tem prazo de validade igual à data em que rodou. Sempre que
+corrigir privilégio em massa, pergunte **de onde ele veio** — se veio de um default, corrigir os
+objetos é enxugar gelo.
+
+### 2.26 O advisor só enxerga função `SECURITY DEFINER` — e a `INVOKER` que consome sequência passa
+
+**(a) Problema.** O lint `anon_security_definer_function_executable` do Supabase acusa função
+`SECURITY DEFINER` chamável sem login. `fn_gera_guia_pagamento()` é `SECURITY INVOKER`, `VOLATILE`,
+sem argumentos, e faz `nextval('seq_guia_pagamento')`. O advisor nunca a citou; ela foi executada
+por `anon`, sem login nenhum, só com a anon key (que é pública, vai no bundle):
+
+```
+POST /rest/v1/rpc/fn_gera_guia_pagamento  →  200 "GP-2026-000017" ... (5x, 5 números queimados)
+```
+
+É o gêmeo do achado A-02 da ETAPA 07 — lá a numeração da guia de SERVIÇO foi fechada; a de
+PAGAMENTO ficou, porque **não era `DEFAULT` de coluna nenhuma** e portanto não entrou naquela
+correção. Achá-la exigiu a varredura de catálogo cruzando `has_function_privilege` com o corpo da
+função; leitura de migration não encontraria, porque não há nada de errado escrito.
+
+**(b) Solução.** Revogar o `EXECUTE`. É seguro quando a única chamadora é `SECURITY DEFINER` com
+dono `postgres` — o privilégio conferido lá dentro é o do dono, não o de quem chamou. Isso **precisa
+ser medido**, não deduzido: foi exatamente essa a suposição que quebrou a Secretaria na ETAPA 07.
+
+**(c) Como implantar — e como medir em PRODUÇÃO sem consumir o recurso.** O truque está no verbo:
+o PostgREST recusa função `VOLATILE` por `GET`, então o código de status revela a exposição **sem
+executar nada**:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" "$URL/rest/v1/rpc/<funcao>" -H "apikey: $ANON"
+# 405 → o endpoint EXISTE e só falta o verbo POST  (exposta)
+# 401/404 → este papel não a executa                (fechada)
+```
+
+```sql
+revoke execute on function public.<funcao>() from public, anon, authenticated;
+revoke usage, select, update on sequence public.<sequencia> from anon, authenticated;
+```
+
+**Regra geral:** advisor limpo não é varredura feita. Ele cobre um conjunto declarado de padrões;
+o que está fora dele só aparece cruzando o catálogo à mão. E, ao provar um achado que **consome**
+algo (numeração, cota, crédito), procure primeiro a medição que não consome.
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo
@@ -1741,6 +1845,37 @@ git grep -n -E "\.select\([^)]*\btoken\b" -- src/features/x/
 **Regra geral:** ao escrever qualquer guard novo baseado em `git grep`, rode-o uma vez ANTES de
 declarar pronto e leia os achados — se um deles for o comentário que você acabou de escrever
 explicando o guard, é o padrão que precisa mudar, não o comentário.
+
+### 4.10 Guarda que recorta corpo de função por tamanho fixo acusa a função VIZINHA
+
+**(a) Problema.** Parente do §4.9, e apareceu no portão adversarial da 08.12. Um guarda novo
+procurava, nos arquivos `sql/`, toda função que avança sequência e não tem o `EXECUTE` revogado.
+Ele achava a assinatura por regex e recortava o "corpo" com `codigo.slice(inicio, inicio + 4000)`.
+Resultado: o recorte **derramava na função seguinte** do arquivo, e o guarda acusou
+`fn_set_updated_at`, que não toca sequência nenhuma — ela só tinha o azar de vir logo depois da
+função culpada. Dois vermelhos, um real e um inventado por mim.
+
+**(b) Solução.** Recortar pelo delimitador REAL do corpo, não por contagem de caracteres. Em SQL do
+Postgres o corpo é dollar-quoted, e o rótulo de abertura é o mesmo do fechamento — capture-o e
+procure a próxima ocorrência dele.
+
+**(c) Como implantar.**
+```ts
+const re = /create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?(\w+)\s*\([\s\S]*?(\$\w*\$)/gi;
+let m: RegExpExecArray | null;
+while ((m = re.exec(codigo)) !== null) {
+  const [, nomeDaFuncao, marcador] = m;
+  const inicio = m.index + m[0].length;
+  const fim = codigo.indexOf(marcador, inicio);        // o MESMO rótulo fecha
+  const corpo = codigo.slice(inicio, fim === -1 ? codigo.length : fim);
+  // ...
+}
+```
+**Regra geral, somando ao §4.9:** um guarda textual sobre código-fonte erra de duas formas — casando
+com o comentário que o explica (§4.9) e casando com o vizinho de quem ele quer pegar (esta). Nas
+duas, o sintoma é o mesmo: ele acusa algo que você sabe estar certo. Quando isso acontecer,
+**suspeite do guarda antes de suspeitar do código** — e leia a lista inteira de achados dele, não só
+o primeiro.
 
 ## 5. Ambiente de desenvolvimento (Windows)
 
@@ -2212,3 +2347,41 @@ coberto (ex.: `DEMO — Ouro com carta (não regride, regra 5.2)`). Fixtures de
 suíte automatizada são outra coisa: use prefixo da subetapa (`02.6 teste —`) e
 remova no `afterAll`. Só apague dado DEMO por reparo técnico ou segurança — e
 avise o que foi removido e por quê.
+
+### 7.8 Resposta não-JSON num teste de endpoint pode ser a BORDA, não o seu código
+
+**(a) Problema.** No portão adversarial da 08.12, um caso mandava um token com
+forma de comando SQL para a Edge Function pública e fazia `await r.json()`. O
+teste quebrou com `SyntaxError: Unexpected token '<', "<!DOCTYPE "...`. Lido
+como está, o sintoma sugere que o endpoint quebrou e devolveu uma página de
+erro — ou seja, um achado.
+
+Medido com `curl`, a página é outra coisa:
+
+```
+HTTP 403
+<title>Attention Required! | Cloudflare</title>
+```
+
+É a **borda da Supabase** barrando o payload pelas regras gerenciadas de WAF. A
+requisição nunca chegou à função. Não havia defeito nenhum; havia uma camada a
+mais do que eu supunha existir, e um teste meu que presumia JSON em toda
+resposta.
+
+**(b) Solução.** Em teste de endpoint público, **nunca** presuma o content-type
+da resposta de um caminho de erro. Leia como texto, afirme o que de fato
+importa — o desfecho —, e trate o status separadamente. E, ao ver HTML onde
+deveria haver JSON, meça com `curl` antes de escrever "achado": a diferença
+entre a sua aplicação e a borda na frente dela aparece no `<title>`.
+
+**(c) Como implantar.**
+```ts
+const r = await fetch(url);
+const texto = await r.text();                     // nunca .json() direto
+expect(r.status).not.toBe(200);
+expect(texto).not.toContain('"ok":true');         // o desfecho, não o formato
+```
+**Regra geral:** o portão adversarial mede um sistema com mais camadas do que o
+repositório descreve (CDN, WAF, gateway). Camada que você não sabia que existia
+aparece primeiro como um teste quebrando de um jeito estranho — e o reflexo
+certo é medir de novo, não registrar achado.

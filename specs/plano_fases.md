@@ -1594,7 +1594,45 @@ Esforço máximo: 3 tentativas.
 Escalonamento de LLM: Sonnet nas 2 primeiras; Opus na 3ª.
 Se esgotar: parar e emitir relatório curto.
 
-### Subetapa 08.12 — Portão de segurança adversarial da nova superfície [Manual] [LLM: Opus] · Status: ⬜
+### Subetapa 08.12 — Portão de segurança adversarial da nova superfície [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+**Executada em 2026-08-27** (Circuito 4, Opus). Relatório completo:
+[`docs/RELATORIO_08_ADVERSARIAL.md`](../docs/RELATORIO_08_ADVERSARIAL.md).
+
+**50 ataques** em `tests/adversarial/05_comunicacao.spec.ts` · **3 falhas reais**, todas corrigidas e
+provadas no bench (`sql/23_hardening_08_12.sql`, **não aplicado em produção** — aplicar é ordem de
+Maxwell) · **4 achados aceitos com motivo** · **3 falsos achados descartados por medição**.
+
+**As três falhas apareceram na varredura de catálogo, antes de eu escrever um único ataque** — e
+nenhuma sairia de leitura de código, porque duas não estão escritas em lugar nenhum: são
+privilégios que o objeto ganha ao nascer.
+
+- **A-08.01 (médio/alto, ABERTO em produção):** `fn_gera_guia_pagamento()` é executável por `anon`
+  via RPC e faz `nextval` — anônimo sem login queima a numeração da guia de pagamento (medido: 5
+  números consumidos no bench). Gêmeo não corrigido do A-02 da ETAPA 07; o advisor não a acusa
+  porque só olha função `SECURITY DEFINER`, e esta é `INVOKER` (orientacoes.md §2.26).
+- **A-08.02 (médio):** `pg_default_acl` faz **toda relação nova nascer com tudo concedido a `anon`,
+  inclusive SELECT** — a varredura de hardening da ETAPA 07 não é hereditária, e a view da 08.11 já
+  nasceu com os grants de fábrica de volta. É a raiz do achado A-01 da ETAPA 07 (orientacoes.md
+  §2.25). Corrigido nos objetos e **na raiz**, com prova em tabela criada depois.
+- **A-08.04 (baixo):** `empresas_estabelecimentos` — a view do A-01 — seguia sendo o único objeto de
+  `public` sem definição versionada. Versionada e com a segunda camada de GRANT fechada.
+
+**A superfície que a etapa construiu resistiu inteira:** isolamento entre contadores nos dois
+sentidos, token expirado/revogado sem oráculo, freio engatando na 6ª tentativa, bucket privado
+negado a `anon` **com o caminho exato em mãos**, 5 formatos de arquivo hostil recusados por
+conteúdo, injeção de fórmula neutralizada no caminho completo, e a garantia central — **nem o envio
+aceito escreve em `trabalhadores` ou em `vinculos_empregaticios`**.
+
+**Decisão de segurança que a 08.11 deixou pendente, agora fechada: NÃO aplicar a Parte 2 do
+`sql/22`.** A view de mascaramento não fecharia nada — Presidente e Secretaria leem a TABELA, e uma
+view só restringe quem não tem caminho até a base. O narrowing de coluna, que fecharia, é
+tudo-ou-nada para o papel `authenticated` e tiraria o token do Admin, que precisa dele para as
+listas da 08.13. Aceito com severidade medida e gatilho de reavaliação declarado (§4 do relatório).
+
+**Suíte: 272 testes em produção, 4 falhas** = as 3 pré-existentes de `cartas` (§7.1b) + 1 que **é**
+o A-08.01 aberto, e que fica verde quando o `sql/23` subir. **Zero regressão** (eram 222/3).
+`typecheck` limpo. Nenhuma escrita em produção; nenhum e-mail disparado.
+
 Objetivo: atacar de propósito o que esta etapa criou. **Obrigatório pelo `CLAUDE.md`** — o gatilho
 é "qualquer etapa nova, integração nova ou deploy que amplie a superfície exposta", e esta etapa é
 as três coisas.
