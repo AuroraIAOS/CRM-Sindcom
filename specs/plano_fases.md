@@ -1598,9 +1598,11 @@ Se esgotar: parar e emitir relatório curto.
 **Executada em 2026-08-27** (Circuito 4, Opus). Relatório completo:
 [`docs/RELATORIO_08_ADVERSARIAL.md`](../docs/RELATORIO_08_ADVERSARIAL.md).
 
-**50 ataques** em `tests/adversarial/05_comunicacao.spec.ts` · **3 falhas reais**, todas corrigidas e
-provadas no bench (`sql/23_hardening_08_12.sql`, **não aplicado em produção** — aplicar é ordem de
-Maxwell) · **4 achados aceitos com motivo** · **3 falsos achados descartados por medição**.
+**50 ataques** em `tests/adversarial/05_comunicacao.spec.ts` · **3 falhas reais**, todas corrigidas,
+provadas no bench e **aplicadas em produção no mesmo dia, por ordem explícita de Maxwell**
+(`sql/23_hardening_08_12.sql`; verificação pós-aplicação no §11 do relatório) · **4 achados aceitos
+com motivo** · **3 falsos achados descartados por medição**. **O merge para `main` não foi
+executado** — segue sendo atribuição exclusiva de Maxwell.
 
 **As três falhas apareceram na varredura de catálogo, antes de eu escrever um único ataque** — e
 nenhuma sairia de leitura de código, porque duas não estão escritas em lugar nenhum: são
@@ -1629,9 +1631,9 @@ view só restringe quem não tem caminho até a base. O narrowing de coluna, que
 tudo-ou-nada para o papel `authenticated` e tiraria o token do Admin, que precisa dele para as
 listas da 08.13. Aceito com severidade medida e gatilho de reavaliação declarado (§4 do relatório).
 
-**Suíte: 272 testes em produção, 4 falhas** = as 3 pré-existentes de `cartas` (§7.1b) + 1 que **é**
-o A-08.01 aberto, e que fica verde quando o `sql/23` subir. **Zero regressão** (eram 222/3).
-`typecheck` limpo. Nenhuma escrita em produção; nenhum e-mail disparado.
+**Suíte: 272 testes em produção, 3 falhas** — só as 3 pré-existentes de `cartas` (§7.1b), depois da
+aplicação. **Zero regressão** (eram 222 testes com as mesmas 3 falhas). `typecheck` limpo, advisor
+sem achado novo, nenhum deploy necessário (nada em `src/`). Nenhum e-mail disparado.
 
 Objetivo: atacar de propósito o que esta etapa criou. **Obrigatório pelo `CLAUDE.md`** — o gatilho
 é "qualquer etapa nova, integração nova ou deploy que amplie a superfície exposta", e esta etapa é

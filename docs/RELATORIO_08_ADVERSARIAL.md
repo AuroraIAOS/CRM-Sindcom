@@ -20,11 +20,11 @@ encontrou 3 falhas reais e resolveu 1 decisão de segurança que estava em abert
 | Ataques escritos | **50**, em `tests/adversarial/05_comunicacao.spec.ts` |
 | Falhas reais encontradas | **3** |
 | Corrigidas e provadas no bench | **3 de 3** |
-| Aplicadas em produção | **0** — aplicar é ordem do Maxwell |
+| **Aplicadas em produção** | **3 de 3** — em 2026-08-27, **por ordem do Maxwell** (§11) |
 | Decisão de segurança pendente, agora fechada | **1** (a máscara do token — decidida: **não aplicar**, §4) |
 | Achados medidos e **aceitos** com motivo | **4** |
 | Falsos achados descartados por medição | **3** |
-| Suíte em produção | **272 testes, 4 falhas** = 3 pré-existentes (`cartas`) + **1 que é o achado aberto** |
+| Suíte em produção | **272 testes, 3 falhas** — só as 3 pré-existentes de `cartas` (eram 4 antes da aplicação: a quarta *era* o achado) |
 | Suíte adversarial no bench | **45/45** (5 casos são exclusivos de produção) |
 
 **As três falhas apareceram na varredura de catálogo, antes de eu escrever um único ataque** — e
@@ -46,7 +46,7 @@ dela, em heranças que a etapa nova apenas revelou:
 
 ## 2. Achados, um a um
 
-### 🟠 A-08.01 — Anônimo consome a numeração da guia de pagamento · **MÉDIO/ALTO · CORRIGIDO NO BENCH · ABERTO EM PRODUÇÃO**
+### 🟠 A-08.01 — Anônimo consome a numeração da guia de pagamento · **MÉDIO/ALTO · CORRIGIDO E APLICADO EM PRODUÇÃO**
 
 **Vetor:** V2 · **Medido ao vivo no bench, sem login nenhum, só com a anon key:**
 
@@ -97,18 +97,20 @@ uma correção de segurança impediu a Secretaria de criar guia e só 12 testes 
 
 | alvo | `POST /rpc/fn_gera_guia_pagamento` | `GET` no mesmo caminho |
 |---|---|---|
-| bench (corrigido) | nenhum número devolvido | **401** — o papel não executa |
-| produção (aberto) | *não medido de propósito* | **405** — o endpoint existe, falta o verbo |
+| bench, antes | 5 números consumidos | 405 — o endpoint existe, falta o verbo |
+| bench, depois | nenhum número devolvido | **401** — o papel não executa |
+| produção, antes | *não medido de propósito* | **405** |
+| **produção, depois** (2026-08-27) | — | **401** ✅ |
 
 > **Como o achado foi provado em produção sem queimar um número real.** A função é `VOLATILE`, e o
 > PostgREST recusa `VOLATILE` por `GET`. O código de status separa "existe como endpoint e só falta
-> o verbo certo" (**405**) de "este papel não a executa" (**401/404**) — sem executar nada. É esse
-> o caso que roda contra produção e está **vermelho hoje**; ele fica verde no minuto em que o
-> `sql/23` for aplicado.
+> o verbo certo" (**405**) de "este papel não a executa" (**401/404**) — sem executar nada. Foi esse
+> o caso que rodou vermelho contra produção até a aplicação do `sql/23`, e é ele que fica na suíte
+> como regressão permanente.
 
 ---
 
-### 🟡 A-08.02 — O privilégio de fábrica não é hereditário: ele volta em todo objeto novo · **MÉDIO · CORRIGIDO NO BENCH**
+### 🟡 A-08.02 — O privilégio de fábrica não é hereditário: ele volta em todo objeto novo · **MÉDIO · CORRIGIDO E APLICADO EM PRODUÇÃO**
 
 **Vetor:** V2 · **Medido em produção, na varredura de grants:**
 
@@ -181,7 +183,7 @@ não leem tabela como `anon`: as 2 RPCs do QR são `SECURITY DEFINER`, e as 2 Ed
 
 ---
 
-### 🔵 A-08.04 — A view do achado crítico da ETAPA 07 continua sem definição no repositório · **BAIXO · CORRIGIDO NO BENCH**
+### 🔵 A-08.04 — A view do achado crítico da ETAPA 07 continua sem definição no repositório · **BAIXO · CORRIGIDO E APLICADO EM PRODUÇÃO**
 
 **Vetor:** método · Comparando `pg_class` com os arquivos `sql/`, das 52 relações de `public`
 **uma única** não tem definição versionada: `empresas_estabelecimentos` — precisamente a do achado
@@ -406,13 +408,13 @@ apareceram na minha própria suíte, e nenhum era falha do sistema.
 | Verificação | Resultado |
 |---|---|
 | Suíte adversarial nova, no **bench** (com as correções) | **45/45** — 5 casos são exclusivos de produção |
-| Suíte adversarial nova, em **produção** (sem as correções) | **34 verdes, 1 vermelho** — o vermelho **é** o A-08.01, aberto |
-| Suíte **completa** em produção | **272 testes, 4 falhas** = 3 pré-existentes (`cartas`, §7.1b) + o A-08.01 |
-| Regressão introduzida por esta subetapa | **nenhuma** — eram 222/3 antes, são 272/(3+1) agora |
+| Suíte adversarial nova, em **produção** | **35/35** depois da §11 (era 34 verdes + 1 vermelho, e o vermelho **era** o A-08.01) |
+| Suíte **completa** em produção | **272 testes, 3 falhas** — só as 3 pré-existentes de `cartas` (§7.1b), depois da aplicação da §11 |
+| Regressão introduzida por esta subetapa | **nenhuma** — eram 222 testes com 3 falhas antes, são 272 testes com as **mesmas** 3 falhas agora |
 | Controle negativo em cada correção | sim (§2) — motor de cobrança, tabela nova pós-correção, Admin no bucket, planilha legítima aceita |
 | `npm run typecheck` | limpo |
 | Ataque destrutivo contra produção | **nenhum** — `exigirBench()` recusa por construção; em produção só houve leitura e recusas que escrevem no registro do freio |
-| Escrita em produção nesta subetapa | **nenhuma** além das linhas de `tentativas_remessa` que toda recusa gera por desenho |
+| Escrita em produção nesta subetapa | nenhuma escrita de DADO — só as linhas de `tentativas_remessa` que toda recusa gera por desenho, mais o DDL de privilégio da §11 |
 | Integridade dos 9.186 tokens reais | intacta — nenhum revogado, nenhum reemitido, nenhum disparo feito |
 | `get_advisors` (security) | nenhum achado novo: os 2 INFO (`tentativas_*` com RLS e sem policy) são deliberados, e o ERROR de `v_fila_parceiro` é a exceção documentada da ETAPA 07 |
 | Fixture do bench | criada na hora e removida no `afterAll` (alvo contido) |
@@ -471,11 +473,9 @@ Nenhuma bloqueia o merge; todas ficam registradas para não virarem esquecimento
 
 **Ressalvas que acompanham, e não bloqueiam:**
 
-- **A-08.01 está ABERTO em produção neste momento.** É uma linha de `revoke`, e o dano é operacional
-  (numeração de documento), não vazamento de dado. Se preferir fechá-lo antes do merge, é a única
-  correção deste relatório que se aplica isolada e sem efeito colateral.
-- **A suíte de produção não fica 100% verde** enquanto isso: 3 falhas pré-existentes de `cartas` (que
-  são de dados, não de segurança, e já estavam lá antes desta etapa) e o vermelho do A-08.01.
+- **~~A-08.01 está ABERTO em produção~~** — fechado em 2026-08-27 por ordem do Maxwell (§11).
+- **A suíte de produção não fica 100% verde**: restam as 3 falhas pré-existentes de `cartas`, que são
+  de dados e não de segurança, e já estavam lá antes desta etapa.
 - **O bench recebeu a Edge Function e o `sql/22` Parte 1** — se ele for reciclado, isso se perde.
 
 ---
@@ -488,3 +488,48 @@ com `enviado_em` nulo, e as 4 campanhas continuam sem `eixo` e sem `assunto` —
 O passo 7 do método e a regra do `CLAUDE.md` são explícitos: mesmo com parecer favorável, **ordenar
 o merge, aplicar o `sql/23` em produção e autorizar o disparo da onda 1 são atribuições exclusivas
 do Maxwell**. O portão atacou, corrigiu, mediu, decidiu o que lhe foi pedido decidir — e parou.
+
+O parecer da §9 foi entregue com `main` intocada e com produção ainda sem o `sql/23`. **A aplicação
+registrada na §11 aconteceu depois, por ordem explícita do Maxwell, nunca por iniciativa própria** —
+que é exatamente o que a regra prevê. A distinção que ela protege ficou preservada.
+
+---
+
+## 11. Aplicação em produção — 2026-08-27, por ordem do Maxwell
+
+De posse do relatório, **Maxwell ordenou aplicar o `sql/23_hardening_08_12.sql` inteiro em
+produção**. Executado em seguida. **O merge para `main` continua não executado.**
+
+### O que foi aplicado
+
+| Bloco | Conteúdo |
+|---|---|
+| A-08.01 | `revoke execute` da função da numeração + `revoke usage/select/update` nas duas sequências |
+| A-08.02 (a) | varredura por `pg_class` revogando TRUNCATE/REFERENCES/TRIGGER de `anon` e `authenticated` em todas as relações de `public` |
+| A-08.02 (b) | `alter default privileges` — `anon` fora por completo, `authenticated` sem os três |
+| A-08.04 | `empresas_estabelecimentos` versionada com `security_invoker = on` + `revoke all from anon` |
+
+### Verificação pós-aplicação, medida ao vivo
+
+| Verificação | Resultado |
+|---|---|
+| A-08.01 · `EXECUTE` de `fn_gera_guia_pagamento` para `anon` / `authenticated` | **false / false** |
+| A-08.01 · `GET /rest/v1/rpc/fn_gera_guia_pagamento` com a anon key | **401** (era **405**) |
+| A-08.02 · grants de fábrica em `public` para `anon`/`authenticated` | **zero** |
+| A-08.02 · `pg_default_acl` de `postgres` em `public`, tipo relação | `{postgres=arwdDxtm, authenticated=arwdm, service_role=arwdDxtm}` — **`anon` sumiu da lista**, e `authenticated` ficou sem `D`, `x` e `t` |
+| A-08.04 · `empresas_estabelecimentos` | `security_invoker = on` · `anon` SELECT **false** · `authenticated` SELECT **true** |
+| **Suíte completa contra produção** | **272 testes, 3 falhas** — exatamente as 3 pré-existentes de `cartas` |
+| Controle negativo do motor de cobrança | `cobrancas.spec.ts` inteira verde, inclusive a geração de guia com `GP-\d{4}-\d{6}` |
+| `get_advisors` (security) | **idêntico ao de antes** — nenhum achado novo. Os 2 INFO (`tentativas_*`) são deliberados e o ERROR de `v_fila_parceiro` é a exceção documentada da ETAPA 07 |
+| Deploy de frontend | **não necessário** — nenhum arquivo de `src/` foi tocado nesta subetapa |
+
+**A suíte de produção voltou a ficar sem nenhuma falha de segurança em aberto.** As 3 que restam são
+de `cartas`, causadas por dados do cenário DEMO (§7.1b), anteriores à ETAPA 08 e alheias a este portão.
+
+### O que continua valendo depois desta aplicação
+
+- **O merge é do Maxwell.** A branch é `feature/comunicacao-externa`; `main` não foi tocada.
+- **O disparo da onda 1 (08.15) não aconteceu** e não acontece sem ordem explícita — as copies ainda
+  precisam de aprovação e a página jurídica ainda responde 404 (`docs/copies_campanha_08_14.md` §7).
+- **As recomendações da §8 continuam abertas**, em especial as 43 relações com GRANT herdado para
+  `anon`. A correção da raiz garante que a lista **não cresce mais**; encolhê-la é decisão à parte.

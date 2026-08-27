@@ -2,9 +2,11 @@
 -- CRM SINDCOM — sql/23_hardening_08_12.sql
 -- ETAPA 08 · Subetapa 08.12 — correções do portão de segurança adversarial
 --
--- STATUS: APLICADO NO BENCH (`ikculjjvvyajhfxifuga`), com controle negativo
--- medido. **NÃO aplicado em produção** — aplicar é ordem do Maxwell, junto do
--- merge (regra do CLAUDE.md: o portão relata e para).
+-- STATUS: APLICADO NO BENCH (`ikculjjvvyajhfxifuga`) e, em 2026-08-27, TAMBÉM
+-- EM PRODUÇÃO (`vcswvscjqifelslsdjth`) — **por ordem explícita do Maxwell**, de
+-- posse do relatório, nunca por iniciativa do CODE. Verificação pós-aplicação
+-- em docs/RELATORIO_08_ADVERSARIAL.md §11. O merge para `main` continua NÃO
+-- executado: é atribuição exclusiva do Maxwell.
 --
 -- Achados que este arquivo fecha (`docs/RELATORIO_08_ADVERSARIAL.md`):
 --   A-08.01  anônimo consome a numeração da guia de pagamento pela API REST
