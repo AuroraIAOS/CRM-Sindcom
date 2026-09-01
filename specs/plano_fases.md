@@ -1827,9 +1827,103 @@ Rejeição acima de **2%** ou queda em spam **interrompe** — nunca "tenta de n
 | 03 | 100 → 150 | 613 pequenas | 7.438 (47%) |
 | 04 | 200 → 300 | 8.236 empresas isoladas | 15.679 (100%) |
 
+**Estrutura:** uma subetapa de CONSTRUÇÃO (**9.00**, a tela de descadastramento) e sete de
+OPERAÇÃO (9.0 a 9.6).
+
 **Copies:** `docs/copies_campanha_08_14.md` — arquivo único, texto fechado, prazo decidido por onda
 (20 / 15 / 10 / 10). **Segurança:** o portão adversarial da 08.12 já está verde e aplicado em
 produção (`docs/RELATORIO_08_ADVERSARIAL.md`).
+
+> **Sobre a numeração:** a **9.00** vem antes da **9.0**. Ela nasceu depois, na discussão de
+> 2026-09-01, e é a única subetapa de CONSTRUÇÃO desta etapa — as demais são operação. Manteve-se a
+> numeração das outras para não invalidar as referências já escritas nos documentos e nos commits.
+
+### Subetapa 9.00 — Tela de descadastramento e coleta de dados [Goal] [LLM: Sonnet] · Status: ⬜
+
+Objetivo: transformar o descadastro de **perda** em **sinal**. Hoje quem sai da lista some dentro da
+Brevo e o Sindcom não fica sabendo nem quem saiu, nem por quê. Esta subetapa constrói a página que
+recebe quem clicou em "descadastre-se aqui", **reforça que sair da lista não extingue a obrigação da
+empresa**, e coleta o motivo antes de concluir.
+
+**Origem:** discussão de 2026-09-01 (`docs/copies_campanha_08_14.md` §10). Maxwell propôs retirar o
+descadastro, por ser comunicação a pessoa jurídica com dever legal. A medição mostrou que 87,2% da
+lista é caixa pessoal e que 79,9% dela é Google + Microsoft, que **exigem** descadastro em um clique
+— então o link fica, e o que muda é o que ele diz e o que ele registra.
+
+Conclusão:
+
+1. **Página pública `/descadastrar/:token`**, sem login, no mesmo padrão de `/enviar-dados/:token`
+   (não lê o banco pelo navegador; conversa só com Edge Function).
+2. Ela **abre explicando**, antes de qualquer campo, que o descadastro **encerra os envios desta
+   campanha e não afasta as obrigações da empresa perante a convenção coletiva** — mesmo texto do
+   rodapé dos e-mails, para que quem chegou ali por aquele link reencontre a mesma frase.
+3. **Formulário de motivo, de resposta obrigatória**, com múltipla escolha (uma opção) + campo livre
+   opcional. O botão **"Confirmar descadastro" nasce desabilitado** e só habilita depois da escolha.
+4. **Nova tabela `descadastros_campanha`** guardando o motivo, a via, o vínculo com
+   `envios_campanha` e o rastro (IP, user-agent, momento) — dado estratégico, não operacional.
+5. **`envios_campanha` ganha `descadastrado_em`**, para que a tela `/cobertura` possa distinguir
+   "não respondeu" de "pediu para não ser mais contatado e não respondeu" — que são situações
+   diferentes e pedem encaminhamentos diferentes.
+6. A tela de cobertura (08.11) passa a **marcar** o descadastrado na listagem e na exportação.
+
+**As opções do formulário não são genéricas — cada uma existe porque leva a uma ação diferente:**
+
+| Motivo | O que o Sindcom faz com isso |
+|---|---|
+| Não sou mais o contador desta empresa / a empresa encerrou | **higiene de base** — o mais valioso: corrige a RFB, que está desatualizada |
+| Já enviei os dados solicitados | **qualidade de dado** — se enviou e a cobertura não registra, há defeito no caminho |
+| Recebo mensagens demais deste remetente | **ritmo** — se aparecer muito, a cadência da trilha B está errada |
+| Não entendi o que o sindicato está pedindo | **copy** — o texto falhou, e isso se conserta |
+| Prefiro tratar por telefone ou pessoalmente | **canal** — vira lista de ligação, não de e-mail |
+| Discordo do pedido ou o considero indevido | **jurídico** — vai para o Dr. Adenilson, e é a única que pede resposta nominal |
+| Outro | campo livre |
+
+**TRÊS DECISÕES DE CONSTRUÇÃO QUE PRECISAM SER TOMADAS ANTES DE CODAR** — e a primeira é
+bloqueante, porque errá-la derruba a campanha inteira:
+
+**(a) Os dois caminhos de descadastro coexistem, e só um passa pelo formulário.** Google e Microsoft
+exigem **descadastro em um clique** pelo cabeçalho `List-Unsubscribe` / `List-Unsubscribe-Post`
+(RFC 8058): é o botão "Cancelar inscrição" que o Gmail desenha **acima** do e-mail, e ele tem de
+funcionar **sem formulário, sem confirmação e sem página intermediária**. Um formulário obrigatório
+nesse caminho é descumprimento, e o custo é entregabilidade do domínio inteiro.
+
+> **Portanto:** o cabeçalho continua sendo o de um clique da Brevo, e **o formulário vive apenas no
+> link do CORPO do e-mail** — que é o que a maioria das pessoas clica, porque é o que elas leem.
+> Quem sai pelo botão do Gmail sai sem motivo registrado, e a tabela registra isso como
+> `via = 'um_clique'`. **Cobertura parcial de propósito é melhor que campanha barrada.**
+
+**(b) O formulário nunca pode virar obstáculo à saída.** Uma pergunta obrigatória é defensável; um
+questionário não é. **Uma única pergunta de múltipla escolha, uma tela, um clique depois da
+escolha** — e, se a gravação do motivo falhar por qualquer razão, **o descadastro acontece assim
+mesmo** e o erro vai para o log. O dado é subproduto; o direito de sair é o ato principal.
+
+**(c) Quem efetiva o descadastro na Brevo, e em que ordem.** A escolha muda o comportamento:
+- *Recomendado* — a Edge Function grava o motivo e **em seguida** chama a API da Brevo para remover
+  o contato da lista. Dá a ordem que a subetapa pede (motivo → descadastro) e mantém o registro
+  mesmo se a chamada à Brevo falhar (fica pendente e se repete).
+- *Alternativa* — usar a página de descadastro personalizada da Brevo, que remove o contato **antes**
+  de redirecionar para a nossa página. Mais simples, mas inverte a ordem: quando o formulário
+  aparece, a pessoa já saiu, e responder vira opcional na prática.
+
+Qualidade: **o token do link é a mesma credencial de `/enviar-dados/`** — é ele que diz qual envio
+está se descadastrando, e é o que permite ligar o motivo à contabilidade. Token revogado ou expirado
+**não impede** o descadastro (quem quer sair sai), só entra na tabela sem vínculo resolvido.
+`descadastros_campanha` nasce com RLS, policy explícita e `revoke all ... from anon` — o padrão da
+seção 11 do `sql/20`, e o portão da 08.12 conferiu que ele funciona. A escrita é da Edge Function
+com `service_role`, como em `receber-remessa`: **nenhum papel autenticado insere ali**, e a página
+não lê o banco. Texto em pt-BR, tom conforme `docs/design-tokens.md` — a página **não confronta**,
+pela mesma razão pela qual as copies não confrontam.
+
+Evidência: uma passagem completa pelo link do corpo (motivo gravado + contato removido na Brevo +
+`descadastrado_em` preenchido), uma pelo botão de um clique do Gmail (contato removido, linha com
+`via = 'um_clique'`), a marcação aparecendo em `/cobertura`, e o teste de RLS da tabela nova.
+
+Esforço máximo: 3 tentativas.
+Escalonamento de LLM: Sonnet; **Opus se tocar no cabeçalho `List-Unsubscribe`** — ali o erro não
+aparece em teste, aparece em reputação de domínio, semanas depois.
+Se esgotar: **a campanha não fica bloqueada por isto.** O descadastro padrão da Brevo já funciona e
+já é conforme; esta subetapa acrescenta a coleta do motivo. Se ela não fechar, dispara-se sem ela e
+perde-se o dado — não a onda.
 
 ### Subetapa 9.0 — Pré-voo: o que tem de estar de pé antes de qualquer disparo [Manual] [LLM: Sonnet] · Status: ⬜
 Objetivo: fechar as pendências de infraestrutura que a Etapa 08 identificou e não podia resolver
@@ -1945,11 +2039,16 @@ ligação não queima reputação de domínio.
 **Aceite da Etapa 09:** (1) Onda 00 verde nos 8 pontos, com evidência; (2) as 4 ondas reais
 disparadas, cada uma com rejeição abaixo de 2%; (3) `envios_campanha.enviado_em` preenchido em
 9.186 linhas; (4) a métrica que decide tudo — **estabelecimentos com ao menos um trabalhador
-vinculado** — medida antes e depois de cada onda, e crescendo.
+vinculado** — medida antes e depois de cada onda, e crescendo; (5) **todo descadastro com motivo
+registrado** em `descadastros_campanha`, exceto os que vierem pelo botão de um clique do provedor,
+que por construção não têm motivo (9.00).
 
 **Riscos:** domínio marcado como spam (mitigado pelo aquecimento, pela regra dos 2% e pela Onda 00,
 que agora testa antes) · contador não responde (cobertura + telefone) · a onda 04 é o público mais
-frio e o maior volume, e é onde a reputação construída nas três primeiras pode ser perdida de uma vez.
+frio e o maior volume, e é onde a reputação construída nas três primeiras pode ser perdida de uma vez
+· **descumprir o descadastro em um clique** (RFC 8058) por causa do formulário da 9.00 — este é o
+único risco desta etapa cujo dano não aparece em teste nenhum: ele aparece semanas depois, como
+queda de entrega no Gmail, e já terá custado a base.
 
 ---
 

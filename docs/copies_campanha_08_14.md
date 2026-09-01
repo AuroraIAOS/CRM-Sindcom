@@ -59,7 +59,7 @@ quebrado, nenhum CPF vai no corpo, e a copy fica idêntica ao que o destinatári
 | **Reply-To** | **`secretaria@sindcompassos.org`** | ⚠️ **correção pendente, ver §6** — `envios.sindcompassos.org` **não tem MX** (medido hoje): resposta enviada para lá volta |
 | **Anexo** | **nenhum**, em nenhuma das 4 | anexo em disparo em massa derruba entregabilidade |
 | **Mesclagem** | só `{{ contact.LINK }}` | §1 |
-| **Descadastro** | obrigatório nas 4, no rodapé | exigência da spec e do ESP |
+| **Descadastro** | obrigatório nas 4, no rodapé, **com o texto que delimita o seu alcance** | não é só exigência da spec e do ESP: **79,9% da lista é Google + Microsoft**, e os dois exigem descadastro em um clique de remetente em massa. Ver §10 |
 | **Formato** | HTML simples + versão texto | sem imagem remota, mesma razão da 08.2: o cliente do destinatário bloqueia imagem por padrão |
 | **Prazo** | prazo variável conforme ONDA | **único campo em branco deste documento** — ver §5 |
 
@@ -132,7 +132,7 @@ Av. dos Expedicionários, 137 · Centro · Passos/MG
 
 ---
 
-*Você recebeu este e-mail porque este endereço consta como contato de empresas do comércio na base pública da Receita Federal. [Descadastrar]*
+*Você recebeu este e-mail porque este endereço consta como contato de empresas do comércio na base pública da Receita Federal. Se preferir não receber estas mensagens, [descadastre-se aqui]. O descadastro encerra apenas os envios desta campanha e **não afasta as obrigações da empresa perante a convenção coletiva** — para assuntos formais, o Sindcom continua utilizando os canais institucionais e, quando necessário, a notificação por via própria.*
 
 ---
 
@@ -202,7 +202,7 @@ Av. dos Expedicionários, 137 · Centro · Passos/MG
 
 ---
 
-*Você recebeu este e-mail porque este endereço consta como contato desta empresa na base pública da Receita Federal. [Descadastrar]*
+*Você recebeu este e-mail porque este endereço consta como contato desta empresa na base pública da Receita Federal. Se preferir não receber estas mensagens, [descadastre-se aqui]. O descadastro encerra apenas os envios desta campanha e **não afasta as obrigações da empresa perante a convenção coletiva** — para assuntos formais, o Sindcom continua utilizando os canais institucionais e, quando necessário, a notificação por via própria.*
 
 ---
 
@@ -264,7 +264,7 @@ Av. dos Expedicionários, 137 · Centro · Passos/MG
 
 ---
 
-*Você recebeu este e-mail porque este endereço consta como contato desta empresa na base pública da Receita Federal. [Descadastrar]*
+*Você recebeu este e-mail porque este endereço consta como contato desta empresa na base pública da Receita Federal. Se preferir não receber estas mensagens, [descadastre-se aqui]. O descadastro encerra apenas os envios desta campanha e **não afasta as obrigações da empresa perante a convenção coletiva** — para assuntos formais, o Sindcom continua utilizando os canais institucionais e, quando necessário, a notificação por via própria.*
 
 ---
 
@@ -332,7 +332,7 @@ Av. dos Expedicionários, 137 · Centro · Passos/MG
 
 ---
 
-*Você recebeu este e-mail porque este endereço consta como contato desta empresa na base pública da Receita Federal. [Descadastrar]*
+*Você recebeu este e-mail porque este endereço consta como contato desta empresa na base pública da Receita Federal. Se preferir não receber estas mensagens, [descadastre-se aqui]. O descadastro encerra apenas os envios desta campanha e **não afasta as obrigações da empresa perante a convenção coletiva** — para assuntos formais, o Sindcom continua utilizando os canais institucionais e, quando necessário, a notificação por via própria.*
 
 ---
 
@@ -495,4 +495,62 @@ conferência acrescentou depois, para que nada mude em silêncio.
 | 3 | §5 reescrita: o prazo deixou de ser "campo em branco" e virou **tabela por onda** | a decisão já tinha sido tomada por Maxwell; o texto ainda a tratava como pendência |
 | 4 | §7 reescrita: a URL passou de `/base-legal-dados/` para **`/dados/`**, e o bloqueio deixou de ser "página não publicada" e virou **"site fora do ar com Erro 500"** | o material jurídico ficou pronto; o obstáculo mudou de lugar |
 | 5 | Referência a `docs/juridico/03_pagina_publica.md` trocada | aquele arquivo não existe mais; o material agora é `01_nota_tecnica.pdf`, `02_nota_resumida.pdf` e `03_pagina_dados.json` |
+| 7 | **Rodapé das 4 reescrito** (2026-09-01, 2ª rodada): o descadastro passou a dizer que encerra *os envios desta campanha* e **não afasta as obrigações da empresa perante a CCT** | Maxwell levantou a hipótese de retirar o descadastro, por ser comunicação a pessoa jurídica com dever legal. A medição derrubou a premissa e o mecanismo derrubou a ideia — ver §10. O texto novo diz o que ele queria dizer, sem afirmar um direito que Google, Microsoft e Brevo não respeitariam de qualquer forma. |
 | 6 | §8 reescrita como **checklist de fechamento da Etapa 08**, separando o que é texto (fechado) do que é infraestrutura (pendente) e do que é prova de ponta a ponta (Subetapa 9.1) | o disparo saiu da Etapa 08 e virou a Etapa 09 |
+
+---
+
+## 10. Por que o descadastro fica — a discussão de 2026-09-01
+
+Maxwell levantou uma hipótese com um núcleo correto: **estes e-mails vão para empresas e contadores
+com dever legal**, não para trabalhadores. Descadastrar-se poderia levá-los a não responder, ferindo
+direito de terceiros — e dificultar a comunicação com o sindicato é, em tese, conduta antissindical.
+A pergunta era se a empresa teria mesmo o direito de sair da lista.
+
+**O núcleo do argumento é válido, e ficou incorporado ao texto:** sair da lista muda o **canal**,
+não o **dever**. A obrigação nasce da CF art. 8º, III, da CLT art. 513 e da CCT — não do fato de o
+endereço estar numa lista da Brevo. E a base do pedido é o art. 11, II, "d" da LGPD (exercício
+regular de direitos), não consentimento: ninguém consentiu em receber, e ninguém precisa consentir.
+**O link de descadastro não é, aqui, concessão de base legal.** É por isso que o rodapé novo diz
+exatamente isso, em vez de simplesmente sumir.
+
+**Três medições, porém, desaconselham retirar o link.**
+
+**(1) A premissa "só pessoa jurídica" não se sustenta na lista real.** Medido nos 4 CSVs:
+
+| Segmento | Caixas | Em provedor gratuito | Nome contém CPF |
+|---|---|---|---|
+| A (grandes) | 89 | 59 — 66,3% | 0 |
+| B (médias) | 248 | 154 — 62,1% | 0 |
+| C (pequenas) | 613 | 413 — 67,4% | 0 |
+| D (isoladas) | 8.236 | 7.388 — 89,7% | **1.325** |
+| **Total** | **9.186** | **8.014 — 87,2%** | **1.325 — 14,4%** |
+
+**87,2% da lista é caixa pessoal em provedor gratuito**, e **1.325 registros trazem CPF dentro da
+própria razão social** (empresário individual, onde a pessoa jurídica *é* a pessoa física). A LGPD
+protege dado de **pessoa natural** (art. 5º, I): `contato@empresa.com.br` num CNPJ é terreno seguro
+para o argumento; `fulana.s@bol.com.br` de uma MEI não é — e essa é a maioria da base.
+
+**(2) O que decide não é a LGPD — é quem entrega o e-mail.** **79,9% da lista é Google (55,4%) +
+Microsoft (24,5%).** Desde 2024 os dois exigem, de remetente em massa (a onda 04 são 8.236 caixas),
+**descadastro em um clique pelo cabeçalho `List-Unsubscribe`**, e recusam ou degradam quem não
+cumpre. É um portão no servidor de destino: não se argumenta com ele. A Brevo, além disso, exige nos
+termos de uso e **injeta o link de qualquer forma** — retirar do texto não retira do e-mail, só
+deixa o rodapé com duas mensagens se contradizendo.
+
+**(3) Retirar o descadastro não retira a saída: muda a saída de lugar.** Quem quer sair e não acha
+"descadastrar" clica em **"marcar como spam"**. Descadastro é invisível para reputação; marcação
+como spam a destrói — e destrói para o **domínio inteiro**, incluindo as guias de pagamento da
+Etapa 02 e as 8.000 empresas que nunca quiseram sair. Seria trocar alguns descadastros por dano
+coletivo à entregabilidade.
+
+**Sobre o enquadramento antissindical**, dois motivos para não o invocar aqui: o sindicato **não
+perde o acesso** (telefone, notificação com AR, ofício e via administrativa seguem de pé, e as duas
+últimas têm força probatória maior que um e-mail); e **o próprio jurídico já traçou essa linha** ao
+entregar a página — o enquadramento como conduta antissindical fica na Nota Técnica completa,
+**nunca** no corpo dos e-mails, porque *"esta página convence, não confronta"*.
+
+**O que a decisão vira, na prática:** o descadastro deixa de ser perda e vira **sinal**. Empresa que
+se descadastrou **e** não enviou dados é a candidata mais forte à via formal — há registro de que
+foi contatada, de que optou por interromper o canal e de que não cumpriu. Hoje esse dado se perde
+dentro da Brevo. **A Subetapa 9.00 da ETAPA 09 existe para capturá-lo.**
