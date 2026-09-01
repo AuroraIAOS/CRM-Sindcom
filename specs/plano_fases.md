@@ -547,7 +547,7 @@ porque só a função `SECURITY DEFINER` e a `service_role` escrevem ali.
 
 ---
 
-## ETAPA 08 — COMUNICAÇÃO EXTERNA E COLETA DE DADOS · Complexidade: ALTA · Status: ⬜
+## ETAPA 08 — COMUNICAÇÃO EXTERNA E COLETA DE DADOS · Complexidade: ALTA · Status: ✅ CONCLUÍDA (2026-09-01)
 
 Objetivo geral: converter a base de **empresas** em base de **pessoas**. O CRM está em produção
 com 17.300 estabelecimentos e 16.671 empresas vinculados às suas CCTs, e com **1 trabalhador e
