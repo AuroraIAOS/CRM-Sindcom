@@ -144,6 +144,8 @@ export function useSolicitacao(id: string | undefined) {
 // Escrita
 // ---------------------------------------------------------------------------
 
+type InsertSolicitacao = Database["public"]["Tables"]["solicitacoes_servico"]["Insert"];
+
 /** Builder puro do payload de INSERT. Não carrega `valor_particular`/
  *  `valor_convenio`: o snapshot de preço é do trigger `fn_valida_solicitacao`. */
 export function montarPayloadSolicitacao(valores: SolicitacaoFormValues, registradaPor: string | null) {
@@ -171,9 +173,17 @@ export function useCriarSolicitacao() {
       valores: SolicitacaoFormValues;
       registradaPor: string | null;
     }) => {
+      // `numero_guia` NÃO vai no payload, e o cast existe por causa disso.
+      // Ele deixou de ser `DEFAULT` de coluna na ETAPA 07 (orientacoes.md
+      // §2.17: `fn_gera_numero_guia` era chamável por RPC e cada chamada
+      // queimava a numeração das guias) e passou a ser preenchido por um
+      // trigger `BEFORE INSERT` SECURITY DEFINER. O gerador de tipos do
+      // Supabase não enxerga trigger — só `column_default` —, então ele marca a
+      // coluna como obrigatória no Insert. Quem manda `numero_guia` daqui é que
+      // estaria errado: a numeração é do banco.
       const { data, error } = await supabase
         .from("solicitacoes_servico")
-        .insert(montarPayloadSolicitacao(valores, registradaPor))
+        .insert(montarPayloadSolicitacao(valores, registradaPor) as unknown as InsertSolicitacao)
         .select("id")
         .single();
       if (error) throw error;

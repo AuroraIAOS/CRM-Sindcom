@@ -1,0 +1,56 @@
+# BACKUP — /home2/davide59/sindcompassos.org/.htaccess
+# Estado ORIGINAL, capturado em 2026-08-25 antes de acrescentar o redirecionamento
+# para HTTPS. Este é o site institucional WordPress, que fica em docroot próprio,
+# fora do alcance da conta FTP do CRM (confinada a /crm.sindcompassos.org).
+#
+# Para restaurar: cPanel > Gerenciador de arquivos > /sindcompassos.org > .htaccess
+# > Editar, e colar o conteúdo abaixo da linha de corte, sem esta cabeça.
+#
+# Dois blocos são gerenciados por software e NÃO devem ser editados à mão:
+#   - "# BEGIN NFD EPC ... # END NFD EPC"  → plugin de cache de página (Newfold/Endurance)
+#   - "# BEGIN WordPress ... # END WordPress" → regerado pelo próprio WordPress
+# Qualquer regra própria tem de ficar FORA desses marcadores, e o redirecionamento
+# de HTTPS especificamente ACIMA do bloco de cache — que termina em [L] e
+# interromperia o processamento antes de a regra ser alcançada.
+#
+# ----------------------------------------------------------------------------
+
+# BEGIN NFD EPC
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+RewriteRule ^wp-content/endurance-page-cache/ - [L]
+RewriteCond %{REQUEST_METHOD} !POST
+RewriteCond %{QUERY_STRING} !.*=.*
+RewriteCond %{HTTP_COOKIE} !(wordpress_test_cookie|comment_author|wp\-postpass|wordpress_logged_in|wptouch_switch_toggle|wp_woocommerce_session_) [NC]
+RewriteCond %{DOCUMENT_ROOT}/wp-content/endurance-page-cache/$1/_index.html -f
+RewriteRule ^(.*)$ /wp-content/endurance-page-cache/$1/_index.html [L]
+</IfModule>
+<IfModule mod_expires.c>
+ExpiresActive On
+ExpiresByType image/jpg "access plus 24 hours"
+ExpiresByType image/jpeg "access plus 24 hours"
+ExpiresByType image/gif "access plus 24 hours"
+ExpiresByType image/png "access plus 24 hours"
+ExpiresByType text/css "access plus 24 hours"
+ExpiresByType application/pdf "access plus 1 week"
+ExpiresByType text/javascript "access plus 24 hours"
+ExpiresByType text/html "access plus 2 hours"
+ExpiresByType image/x-icon "access plus 1 year"
+ExpiresDefault "access plus 24 hours"
+</IfModule>
+# END NFD EPC
+# BEGIN WordPress
+# As diretrizes (linhas) entre "BEGIN WordPress" e "END WordPress" são
+# geradas dinamicamente e só devem ser modificadas através de filtros do WordPress.
+# Quaisquer alterações nas diretivas entre esses marcadores serão sobrescritas.
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+# END WordPress

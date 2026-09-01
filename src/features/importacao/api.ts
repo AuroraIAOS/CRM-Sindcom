@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 import type { EmpresaPayload } from "./validarEmpresas";
 import type { EstabelecimentoPayload } from "./validarEstabelecimentos";
@@ -189,68 +190,86 @@ export function useContextoTrabalhadores() {
   });
 }
 
+/**
+ * A gravação em si, fora do hook.
+ *
+ * Extraída na Subetapa 08.10 por dois motivos, e nenhum deles é estética:
+ *  1. a tela de revisão de remessas (`features/remessas/`) precisa da MESMA
+ *     gravação, e duas cópias divergiriam justamente nas regras de nível;
+ *  2. só assim ela é testável fora do React — a suíte precisa provar que
+ *     reenviar a mesma planilha não duplica ninguém e que as três flags de
+ *     nível não se mexem, e um hook não roda em Node.
+ *
+ * `cliente` é parâmetro para que o teste use a sessão dele (o cliente global
+ * do app carrega a sessão do navegador, que não existe no Vitest).
+ */
+export async function importarTrabalhadores(
+  linhas: TrabalhadorPreviewDados[],
+  cliente: SupabaseClient = supabase,
+): Promise<{ inseridos: number; atualizados: number }> {
+  const novos = linhas.filter((l) => l.tipo === "novo");
+  const contatos = linhas.filter((l) => l.tipo === "contato");
+  let inseridos = 0;
+  let atualizados = 0;
+
+  for (const lote of emLotes(novos)) {
+    const payload = lote.map(({ valores }) => {
+      const { vinculo: _vinculo, ...semVinculo } = valores;
+      return semVinculo;
+    });
+    const { data, error } = await cliente
+      .from("trabalhadores")
+      .upsert(payload, { onConflict: "cpf" })
+      .select("id, cpf");
+    if (error) throw error;
+    inseridos += lote.length;
+
+    const idPorCpf = new Map((data ?? []).map((t) => [t.cpf, t.id]));
+    const vinculosParaCriar = lote
+      .filter((l) => l.valores.vinculo !== null)
+      .map((l) => {
+        const trabalhador_id = idPorCpf.get(l.valores.cpf);
+        if (!trabalhador_id) return null;
+        const v = l.valores.vinculo!;
+        return {
+          trabalhador_id,
+          estabelecimento_id: v.estabelecimento_id,
+          funcao: v.funcao,
+          data_admissao: v.data_admissao,
+          salario_informado: v.salario_informado,
+          principal: true,
+        };
+      })
+      .filter((v): v is NonNullable<typeof v> => v !== null);
+
+    // Best-effort: um vínculo problemático (ex.: já tem principal ativo)
+    // não deve derrubar o lote de trabalhadores, que já foi gravado.
+    for (const vinculo of vinculosParaCriar) {
+      const { error: erroVinculo } = await cliente.from("vinculos_empregaticios").insert(vinculo);
+      if (erroVinculo) {
+        console.error("Vínculo não criado na importação:", erroVinculo.message);
+      }
+    }
+  }
+
+  // Atualização de contato: cada objeto exclui estruturalmente as 3 flags
+  // de nível — impossível sobrescrevê-las por este caminho (ver schemas).
+  for (const lote of emLotes(contatos)) {
+    for (const linha of lote) {
+      const { cpf, ...dadosContato } = linha.valores;
+      const { error } = await cliente.from("trabalhadores").update(dadosContato).eq("cpf", cpf);
+      if (error) throw error;
+      atualizados += 1;
+    }
+  }
+
+  return { inseridos, atualizados };
+}
+
 export function useImportarTrabalhadores() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (linhas: TrabalhadorPreviewDados[]) => {
-      const novos = linhas.filter((l) => l.tipo === "novo");
-      const contatos = linhas.filter((l) => l.tipo === "contato");
-      let inseridos = 0;
-      let atualizados = 0;
-
-      for (const lote of emLotes(novos)) {
-        const payload = lote.map(({ valores }) => {
-          const { vinculo: _vinculo, ...semVinculo } = valores;
-          return semVinculo;
-        });
-        const { data, error } = await supabase
-          .from("trabalhadores")
-          .upsert(payload, { onConflict: "cpf" })
-          .select("id, cpf");
-        if (error) throw error;
-        inseridos += lote.length;
-
-        const idPorCpf = new Map((data ?? []).map((t) => [t.cpf, t.id]));
-        const vinculosParaCriar = lote
-          .filter((l) => l.valores.vinculo !== null)
-          .map((l) => {
-            const trabalhador_id = idPorCpf.get(l.valores.cpf);
-            if (!trabalhador_id) return null;
-            const v = l.valores.vinculo!;
-            return {
-              trabalhador_id,
-              estabelecimento_id: v.estabelecimento_id,
-              funcao: v.funcao,
-              data_admissao: v.data_admissao,
-              salario_informado: v.salario_informado,
-              principal: true,
-            };
-          })
-          .filter((v): v is NonNullable<typeof v> => v !== null);
-
-        // Best-effort: um vínculo problemático (ex.: já tem principal ativo)
-        // não deve derrubar o lote de trabalhadores, que já foi gravado.
-        for (const vinculo of vinculosParaCriar) {
-          const { error: erroVinculo } = await supabase.from("vinculos_empregaticios").insert(vinculo);
-          if (erroVinculo) {
-            console.error("Vínculo não criado na importação:", erroVinculo.message);
-          }
-        }
-      }
-
-      // Atualização de contato: cada objeto exclui estruturalmente as 3 flags
-      // de nível — impossível sobrescrevê-las por este caminho (ver schemas).
-      for (const lote of emLotes(contatos)) {
-        for (const linha of lote) {
-          const { cpf, ...dadosContato } = linha.valores;
-          const { error } = await supabase.from("trabalhadores").update(dadosContato).eq("cpf", cpf);
-          if (error) throw error;
-          atualizados += 1;
-        }
-      }
-
-      return { inseridos, atualizados };
-    },
+    mutationFn: (linhas: TrabalhadorPreviewDados[]) => importarTrabalhadores(linhas),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["importacao"] });
       void queryClient.invalidateQueries({ queryKey: ["trabalhadores"] });

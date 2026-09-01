@@ -6,6 +6,7 @@ import {
   normalizarCabecalho,
   normalizarIdentificador,
   paraBooleano,
+  interpretarSituacaoSindical,
   vazioParaNull,
   type LinhaPreview,
   type ParseResultado,
@@ -60,6 +61,26 @@ export type ContextoTrabalhadores = {
 
 export type PoliticaDuplicataTrabalhador = "ignorar" | "atualizar_contato";
 
+/**
+ * Descarta linhas em que `nome` E `cpf` estão vazios — o caso do modelo
+ * pré-preenchido da Subetapa 08.7, onde `cnpj_estabelecimento` já vem
+ * preenchido em TODA linha (uma por estabelecimento da carteira do
+ * contador) e ele só edita as que têm gente para cadastrar. Sem isto, cada
+ * estabelecimento que ele ainda não completou apareceria como linha
+ * REJEITADA ("CPF é obrigatório"), inflando o contador de erro por um
+ * motivo que não é erro — é linha do modelo que ele não usou ainda.
+ *
+ * Roda ANTES de `validarTrabalhadores`, nos dois pontos que leem planilha de
+ * trabalhador (`EnviarDadosPage` e a revisão da Denise em `/remessas`) — é o
+ * "único lugar" que decide o que conta como linha vazia, no mesmo espírito
+ * do `interpretarSituacaoSindical`.
+ */
+export function descartarLinhasSemPessoa(parse: ParseResultado): ParseResultado {
+  const mapa = construirMapaColunas(parse.cabecalhos, { cpf: CAMPOS.cpf, nome: CAMPOS.nome });
+  const linhas = parse.linhas.filter((l) => campo(l, mapa, "cpf") !== "" || campo(l, mapa, "nome") !== "");
+  return { cabecalhos: parse.cabecalhos, linhas };
+}
+
 const CAMPOS: Record<string, string[]> = {
   cpf: ["cpf"],
   nome: ["nome"],
@@ -67,13 +88,24 @@ const CAMPOS: Record<string, string[]> = {
   telefone_whatsapp: ["telefone whatsapp", "telefone_whatsapp", "telefone"],
   email: ["email", "e-mail"],
   municipio: ["municipio"],
-  recolhe_contribuicao: ["recolhe contribuicao", "recolhe_contribuicao"],
+  // "situacao" e "status" são os rótulos do MODELO entregue ao contador — ele
+  // não fala "recolhe_contribuicao". Sem estes apelidos, a coluna não casaria,
+  // `campo()` devolveria "" e todo mundo cairia no padrão legal (contribui):
+  // quem se OPÔS entraria Prata, em silêncio. É a mesma classe de acidente da
+  // §2.23, pela porta do cabeçalho em vez da pelo valor.
+  recolhe_contribuicao: [
+    "recolhe contribuicao", "recolhe_contribuicao",
+    "situacao", "situação", "situacao sindical", "situacao_sindical", "status",
+  ],
   recolhe_mensalidade: ["recolhe mensalidade", "recolhe_mensalidade"],
   forma_pagamento: ["forma pagamento", "forma_pagamento"],
-  cnpj_estabelecimento: ["cnpj estabelecimento", "cnpj_estabelecimento"],
+  cnpj_estabelecimento: ["cnpj estabelecimento", "cnpj_estabelecimento", "cnpj"],
   funcao: ["funcao"],
   data_admissao: ["data admissao", "data_admissao"],
-  salario_informado: ["salario informado", "salario_informado"],
+  // "piso" é como a CCT e o contador chamam o salário-base.
+  salario_informado: [
+    "salario informado", "salario_informado", "piso", "piso salarial", "piso_salarial", "salario",
+  ],
 };
 
 function paraNumero(v: string): number | null {
@@ -99,7 +131,18 @@ export function validarTrabalhadores(
     if (!nome) mensagens.push("Nome é obrigatório");
     if (zeroComido) mensagens.push("CPF com 10 dígitos — zero à esquerda restaurado");
 
-    const recolhe_contribuicao_sindical = paraBooleano(campo(bruta, mapa, "recolhe_contribuicao"), true);
+    // Vocabulário do modelo de coleta ("sindicalizado"/"oposição") e o do CSV
+    // interno ("sim"/"não") passam pelo MESMO tradutor — ver `parsers.ts`. O
+    // padrão legal (contribui) só vale para célula vazia; valor presente e não
+    // reconhecido vira aviso na linha em vez de virar Bronze em silêncio.
+    const situacao = interpretarSituacaoSindical(campo(bruta, mapa, "recolhe_contribuicao"), true);
+    const recolhe_contribuicao_sindical = situacao.valor;
+    if (!situacao.reconhecido) {
+      mensagens.push(
+        `Situação sindical "${campo(bruta, mapa, "recolhe_contribuicao")}" não reconhecida — ` +
+          `use "sindicalizado" ou "oposição". Aplicado o padrão (contribui); confira antes de importar.`,
+      );
+    }
     const recolhe_mensalidade_convenio = paraBooleano(campo(bruta, mapa, "recolhe_mensalidade"), false);
     if (recolhe_mensalidade_convenio && !recolhe_contribuicao_sindical) {
       mensagens.push("Mensalidade do convênio exige contribuição sindical (regra de negócio)");
@@ -145,6 +188,33 @@ export function validarTrabalhadores(
     const forma_pagamento_preferida: "holerite" | "boleto_direto" =
       formaPagamentoRaw === "boleto" || formaPagamentoRaw === "boleto_direto" ? "boleto_direto" : "holerite";
 
+    /**
+     * Piso salarial — OBRIGATÓRIO no modelo de coleta desde 2026-08-26
+     * (decisão de Maxwell), e o motivo muda a natureza do campo: a guia de
+     * recolhimento é emitida **por empresa**, não por empregado. Um único piso
+     * em branco não deixa só aquela pessoa fora do cálculo — impede fechar o
+     * valor do boleto da empresa inteira.
+     *
+     * AVISO, e não rejeição da linha. A escolha é deliberada: rejeitar
+     * descartaria a PESSOA e o VÍNCULO, que é justamente a métrica da ETAPA 08
+     * (estabelecimentos com trabalhador vinculado). Cadastrar com a lacuna
+     * VISÍVEL é melhor que não cadastrar — o contador vê antes de enviar, a
+     * Denise vê no preview, e o motor de cobrança já reporta nominalmente quem
+     * ficou sem base de cálculo em vez de inventar um valor (orientacoes §2.1).
+     */
+    const salarioRaw = campo(bruta, mapa, "salario_informado");
+    const salario = salarioRaw ? paraNumero(salarioRaw) : null;
+    if (!salarioRaw) {
+      mensagens.push(
+        "Piso salarial não informado — sem ele não há base de cálculo, e a guia da empresa não fecha",
+      );
+    } else if (salario === null || salario <= 0) {
+      mensagens.push(
+        `Piso salarial "${salarioRaw}" não é um valor válido — a linha entra sem base de cálculo`,
+      );
+    }
+    const salarioValido = salario !== null && salario > 0 ? salario : null;
+
     // cnpj_estabelecimento: cria vínculo só em cadastro novo (specs/importacao.md §3.3).
     let vinculo: TrabalhadorPayloadCompleto["vinculo"] = null;
     const cnpjEstRaw = campo(bruta, mapa, "cnpj_estabelecimento");
@@ -158,10 +228,7 @@ export function validarTrabalhadores(
           estabelecimento_id,
           funcao: vazioParaNull(campo(bruta, mapa, "funcao")),
           data_admissao: parseDataFlexivel(campo(bruta, mapa, "data_admissao")),
-          salario_informado: (() => {
-            const raw = campo(bruta, mapa, "salario_informado");
-            return raw ? paraNumero(raw) : null;
-          })(),
+          salario_informado: salarioValido,
         };
       }
     }

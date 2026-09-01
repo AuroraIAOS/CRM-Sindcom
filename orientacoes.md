@@ -87,6 +87,219 @@ Hashes diferentes = o que está no ar não é o que você acabou de construir.
 
 ---
 
+
+### 1.5 CRM e site respondiam em HTTP puro — e a ORDEM das regras no `.htaccess` decide se o conserto funciona
+
+**(a) Problema.** Medido na ETAPA 08, ao verificar os links do site (Subetapa 08.0):
+
+```
+GET http://crm.sindcompassos.org/          → HTTP/1.1 200 OK   (sem redirecionar)
+GET http://sindcompassos.org/              → HTTP/1.1 200 OK   (sem redirecionar)
+```
+
+Nenhum dos dois forçava HTTPS, e não havia HSTS em lugar nenhum. No site institucional isso
+já é ruim; **no CRM é pior**, e o motivo não é o de sempre. As chamadas ao Supabase saem por
+`https://` cravado no bundle, então a credencial não trafega em claro — o problema é outro:
+**o HTML e o JavaScript eram entregues por canal aberto**, e é esse JavaScript que fala com o
+Supabase. Um atacante na mesma rede troca o script e captura o que quiser, com TLS intacto do
+outro lado. Aplicação com login servida em HTTP é MITM por construção, ainda que a API seja
+TLS.
+
+**(b) Solução.** Regra de redirecionamento no `.htaccess`, **antes de tudo**:
+
+```apache
+RewriteEngine On
+RewriteBase /
+
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+```
+
+**A ordem é o ponto, e é onde isso silenciosamente não funciona.** O `.htaccess` do CRM tem
+o fallback de SPA (`RewriteRule ^ index.html [L]`). Se o redirecionamento vier **depois**, a
+requisição HTTP casa com o fallback, termina em `index.html` com `[L]` e **nunca chega à
+regra de HTTPS** — o app continua sendo entregue em texto claro e o `.htaccess` "tem" a regra.
+Falha que passa em revisão de código e só aparece em medição.
+
+HSTS num bloco separado, com duas escolhas deliberadas:
+
+```apache
+Header always set Strict-Transport-Security "max-age=86400" env=HTTPS
+```
+
+- **`env=HTTPS`** — o cabeçalho só é emitido sob TLS. Em resposta HTTP ele é ignorado por
+  especificação, mas mantê-lo no lugar certo evita leitura errada em auditoria.
+- **`max-age` curto (1 dia) na primeira aplicação** — HSTS é compromisso que o navegador
+  guarda; se o TLS quebrar, não há como voltar atrás dentro da janela já distribuída. Elevar
+  para `31536000` só depois de dias com o redirecionamento estável.
+- **`includeSubDomains` fica de fora** — alcançaria `envios.sindcompassos.org` e qualquer
+  subdomínio futuro, que não têm relação com este servidor.
+
+**(c) Como implantar.** O `.htaccess` do CRM é versionado em `public/.htaccess` e o Vite o
+copia para `dist/` no build — então a correção entra por commit, não por edição no servidor.
+Como só ele mudou, o envio é cirúrgico, sem republicar os 21 arquivos:
+
+```bash
+set -a; . ./.env.deploy; set +a
+curl -sS --ftp-ssl-control -T dist/.htaccess --user "$FTP_USER:$FTP_PASS" \
+  "ftp://$FTP_HOST:21/.htaccess" -w "http=%{http_code} bytes=%{size_upload}\n"
+```
+
+**Verificar comportamento, nunca o arquivo.** As três medições que importam — e a segunda é a
+que pega o erro de ordem descrito acima:
+
+```bash
+curl -s -o /dev/null -w "%{http_code} -> %{redirect_url}\n" http://crm.sindcompassos.org/
+curl -sL -o /dev/null -w "%{http_code} %{url_effective}\n" http://crm.sindcompassos.org/dashboard
+curl -sI https://crm.sindcompassos.org/ | grep -i strict-transport
+```
+
+Esperado: `301` para `https://`, rota profunda terminando em `200` (prova que o fallback de
+SPA sobreviveu), e o HSTS presente **apenas** na resposta HTTPS.
+
+**Duas medições prévias que definem a forma da regra**, e valem para qualquer host novo:
+`curl -sI` procurando `cf-ray`/`via` diz se há proxy no caminho (se houver, `%{HTTPS}` não é
+confiável e o `X-Forwarded-Proto` passa a ser a condição real); e conferir se um asset volta
+com `Cache-Control` prova que o `mod_headers` está ativo, sem o que o bloco de HSTS é
+silenciosamente ignorado.
+
+**(d) O site institucional é outro docroot — e a mesma armadilha, pior.** `sindcompassos.org`
+(WordPress) fica em `/home2/davide59/sindcompassos.org`, **fora do alcance da conta FTP do
+deploy**, que é confinada a `/crm.sindcompassos.org` (verificado: listar a raiz do FTP mostra
+só arquivos do CRM). A correção lá se faz pelo **Gerenciador de arquivos do cPanel**, e não
+por FTP.
+
+O `.htaccess` daquele site tem **dois blocos gerenciados por software**:
+
+```
+# BEGIN NFD EPC        ← cache de página (Newfold/Endurance), regerado pelo plugin
+# END NFD EPC
+# BEGIN WordPress      ← regerado pelo WordPress; o próprio arquivo avisa que
+# END WordPress           "alterações entre esses marcadores serão sobrescritas"
+```
+
+**Regra própria vai FORA dos dois marcadores, e o redirecionamento especificamente ACIMA de
+tudo.** O bloco de cache é o primeiro do arquivo e termina em
+`RewriteRule ^(.*)$ /wp-content/endurance-page-cache/$1/_index.html [L]`: uma requisição HTTP
+que caia numa página **já cacheada** para ali e **nunca alcança** uma regra colocada depois.
+O site continuaria em texto claro com a regra presente no arquivo — o mesmo erro do fallback
+de SPA, só que disparado apenas para as URLs que por acaso estão em cache, o que é ainda mais
+difícil de perceber em teste manual.
+
+O bloco que funcionou, como primeiras linhas do arquivo:
+
+```apache
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+</IfModule>
+<IfModule mod_headers.c>
+Header always set Strict-Transport-Security "max-age=86400" env=HTTPS
+</IfModule>
+```
+
+**Antes de editar, guarde o original.** Cópia do estado anterior em
+`docs/htaccess_site_institucional_backup_2026-08-25.txt`, com instruções de restauração.
+
+**Editar o ACE do cPanel por automação:** digitar 50 linhas é frágil; escrever direto no
+editor é confiável, e permite abortar se o arquivo não estiver no estado esperado.
+
+```js
+const ed = window.ace.edit('codewindow');
+const orig = ed.getValue();
+if (orig.split('\n')[0].trim() !== '# BEGIN NFD EPC') return 'ABORTADO: topo inesperado';
+ed.setValue(bloco + '\n' + orig, -1);
+```
+
+A guarda do topo e a conferência de que o resultado ainda **termina** em `# END WordPress`
+são o que impede sobrescrever um arquivo que mudou desde a leitura.
+
+**Verificação — e `num_redirects` é o número que importa:**
+
+```bash
+curl -sL -o /dev/null -w "final=%{http_code} saltos=%{num_redirects} url=%{url_effective}\n" \
+  http://sindcompassos.org/contato/
+```
+
+Esperado `final=200 saltos=1`. **Dois ou mais saltos indicam redirecionamento em cascata**
+(regra duplicada, ou o WordPress redirecionando por cima) e mais de 10 é laço — que é o modo
+clássico de derrubar um site inteiro com esta mudança.
+
+**Vigiar:** o `.htaccess` daquele site aparecia **modificado no mesmo dia**, sem intervenção
+nossa — o plugin de cache reescreve o próprio bloco sozinho. Se um dia o redirecionamento
+sumir, a causa é essa, e a saída passa a ser um plugin de SSL em vez do arquivo. Reconferir
+alguns dias depois de aplicar.
+
+### 1.6 Erro 500 no site inteiro: o teste que separa `.htaccess` de PHP custa UMA requisição
+
+**(a) Problema.** Em 2026-09-01 o site institucional inteiro devolvia **500** — home, subpáginas e
+`/wp-admin/`. O CRM (`crm.sindcompassos.org`, outro docroot) respondia 200, então a hospedagem
+estava de pé. A suspeita natural num site WordPress é plugin, tema ou banco, e é aí que se perde a
+tarde: são dezenas de candidatos e nenhum se descarta rápido.
+
+**O teste que decide em uma requisição:** peça um arquivo **estático**, que nunca passa pelo PHP.
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://SEU-SITE/wp-includes/js/jquery/jquery.min.js
+```
+
+- **500 num arquivo estático** ⇒ **não é PHP.** É o Apache recusando o diretório inteiro, e a causa
+  quase sempre é `.htaccess` inválido. Nenhum plugin consegue produzir esse sintoma.
+- **200 no estático e 500 no PHP** ⇒ aí sim é aplicação: plugin, tema, memória, banco.
+
+E **o `error_log` da conta não ajuda neste caso** — o dele estava com data de dias antes. Erro de
+sintaxe de `.htaccess` vai para o log de erro do *servidor*, não para o da conta; log velho não
+significa "nada aconteceu".
+
+**(b) Solução — e o defeito real, que não era o esperado.** O arquivo não tinha diretiva errada: ele
+tinha **perdido o começo**. A linha 1 era
+
+```
+commerce_session_) [NC]
+```
+
+isto é, o **rabo de um `RewriteCond`** cuja primeira metade sumiu junto com as ~7 linhas anteriores
+(`# BEGIN NFD EPC`, `<IfModule mod_rewrite.c>`, `RewriteEngine On`, `RewriteBase /`…). O Apache lê
+`commerce_session_)` como comando desconhecido e derruba o diretório. Do restante do arquivo, o
+bloco de cache aparecia **duas vezes**: um truncado no topo e um íntegro logo abaixo — assinatura de
+escrita concorrente, com o plugin de cache reescrevendo o próprio bloco enquanto o arquivo era
+salvo por outra via.
+
+O gatilho foi editar uma página no WP Admin (renomear o slug de `/servicos-sindicais/` para
+`/servicos/`) e **fechar o WP Admin antes de a alteração propagar** — o plugin de cache ficou
+reescrevendo o bloco no meio do caminho.
+
+**(c) Como implantar.**
+
+1. **Tenha o backup ANTES de precisar dele.** Este projeto tinha:
+   `docs/htaccess_site_institucional_backup_2026-08-25.txt`, com o conteúdo íntegro e a explicação
+   de qual bloco é gerenciado por qual software. Sem ele, a recuperação vira adivinhação.
+2. Restaure pelo cPanel → Gerenciador de arquivos → o docroot do site → `.htaccess` → **Editar**.
+   O caminho direto para o editor, sem depender de clique em tabela, é:
+   `…/frontend/jupiter/filemanager/editit.html?file=.htaccess&dir=%2Fhome2%2FCONTA%2FSITE`
+3. **Leia o arquivo quebrado antes de sobrescrever.** Foi o que revelou que a causa era truncamento,
+   e não uma diretiva errada — diagnósticos diferentes, prevenções diferentes.
+4. **Uma mudança por vez.** O redirecionamento HTTP→HTTPS (§1.5) **não** foi reintroduzido no mesmo
+   salvamento: primeiro restaurar e provar que voltou, depois acrescentar. Empilhar as duas deixaria
+   sem resposta a pergunta "qual delas quebrou?" caso continuasse 500.
+5. **Confirme por requisição, nos dois níveis** — estático e PHP:
+   ```bash
+   for u in / /wp-includes/js/jquery/jquery.min.js /wp-admin/ /alguma-subpagina/; do
+     curl -s -o /dev/null -w "$u -> %{http_code}\n" -L "https://SEU-SITE$u"; sleep 5
+   done
+   ```
+   **Espace as requisições.** Logo depois de o site voltar, uma rajada devolveu **503** nas
+   subpáginas — proteção de excesso, não defeito. Com 5s entre elas, todas deram 200. Confundir
+   esse 503 com "ainda quebrado" leva a mexer de novo num arquivo que já estava certo.
+
+**Regra geral:** quando um site inteiro cai, a primeira pergunta não é "qual plugin?", é **"o
+servidor web ainda serve um byte estático?"**. A resposta separa dois mundos de investigação, e ela
+custa uma requisição.
+
+---
 ## 2. Banco de dados (Postgres/Supabase)
 
 ### 2.1 `least()` ignora NULLs — e cobrou o teto de quem não tinha base
@@ -308,6 +521,42 @@ causa era o arquivo, não o código. **Antes de confiar num `.env*` para uma
 credencial que já funciona em produção**, confira contra onde ela realmente
 está sendo usada (aqui, outro nó do próprio n8n) — arquivo de exemplo/local
 pode ter ficado com valor de rascunho.
+
+### 2.7b `git add -A` commitou 38 MB de PDF que o plano dizia estarem ignorados
+
+**(a) Problema.** `specs/plano_fases.md` afirmava, sobre os 12 PDFs de literatura jurídica em
+`docs/fundamentos`: *"fora do git, por `.gitignore`"*. **Não estavam.** O `.gitignore` nunca teve a
+entrada, e eles apareciam como `?? docs/fundamentos/` no `git status` — que é justamente o estado
+que `git add -A` varre. Um commit de rotina levou **38 MB de binário** para dentro da história do
+repositório, e binário na história não sai com um `git rm` depois: fica lá para sempre, baixado por
+todo mundo que clonar.
+
+É a §2.7 outra vez — **documentação divergindo da realidade** —, só que aqui a fonte de verdade não
+é o banco, é o `.gitignore`.
+
+**(b) Solução.** Pegar **antes do push**, porque aí ainda é um `--amend`. O sinal está na saída do
+próprio `git add`: conferir a lista de arquivos que entraram, não só o `git commit` ter dado certo.
+
+**(c) Como implantar.** Antes de qualquer `git add -A` numa sessão que tenha gerado ou recebido
+arquivo grande:
+
+```bash
+git status --short              # `??` é o que -A vai varrer
+git check-ignore -v docs/fundamentos/algum.pdf   # silêncio = NÃO está ignorado
+```
+
+E, se já entrou e ainda **não** houve push:
+
+```bash
+printf '\ndocs/fundamentos/\n' >> .gitignore
+git rm -r --cached docs/fundamentos    # tira do índice, mantém no disco
+git add .gitignore && git commit --amend --no-edit
+git show --stat HEAD                   # conferir a lista final
+```
+
+**Regra transferível:** quando um documento do projeto afirma que algo *está* configurado
+(gitignore, cron, policy, DNS), isso é **hipótese**, não fato — o comando que verifica custa
+segundos e a correção depois do push custa reescrita de história.
 
 ---
 
@@ -733,6 +982,140 @@ select table_name, column_name, column_default from information_schema.columns
  where table_schema='public' and column_default ilike '%nome_da_funcao%';
 ```
 
+### 2.17b Função de trigger nova nasce chamável como RPC — e revogar `EXECUTE` dela NÃO quebra o trigger
+
+**(a) Problema.** A migração da Subetapa 08.4 criou duas funções de trigger `SECURITY DEFINER`
+(`fn_normaliza_email_contabilidade`, `fn_remessa_imutavel`). Minutos depois de aplicar, o advisor
+de segurança do Supabase acusou as duas:
+
+```
+Function `public.fn_normaliza_email_contabilidade()` can be executed by the `anon` role
+as a SECURITY DEFINER function via `/rest/v1/rpc/fn_normaliza_email_contabilidade`
+```
+
+Duas heranças se somam para produzir isso, e nenhuma delas está no SQL que se escreve: **toda
+função nova nasce com `EXECUTE` para PUBLIC**, e **o PostgREST publica toda função de `public`
+como RPC**. Ou seja, função de trigger vira endpoint sem que ninguém peça. É a segunda das três
+brechas que o `CLAUDE.md` manda procurar — a RLS não olha `EXECUTE`.
+
+**(b) Solução.** Revogar. E o medo que trava a revogação — "vou quebrar o trigger, como na
+§2.17" — **é infundado aqui, e a diferença importa**: o Postgres confere `EXECUTE` da função de
+trigger na hora de **CRIAR** o trigger, não na hora de **disparar**. O caso da §2.17 é outro
+animal: lá quem quebrou foi uma função `SECURITY INVOKER` que chamava **por dentro** uma terceira
+função cujo `EXECUTE` tinha sido revogado.
+
+Regra prática que separa os dois: **revogar da função que o trigger EXECUTA é seguro; revogar de
+função que a função de trigger CHAMA não é** — a menos que a de trigger seja `SECURITY DEFINER`.
+
+**(c) Como implantar.**
+
+```sql
+revoke execute on function fn_normaliza_email_contabilidade() from public, anon, authenticated;
+revoke execute on function fn_remessa_imutavel() from public, anon, authenticated;
+```
+
+Confira pelo catálogo, e **meça o comportamento depois** — configuração não é prova:
+
+```sql
+select p.proname,
+       has_function_privilege('anon', p.oid, 'EXECUTE')          as anon_executa,
+       has_function_privilege('authenticated', p.oid, 'EXECUTE') as auth_executa
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+ where n.nspname='public' and p.prorettype = 'trigger'::regtype;
+```
+
+Medido na 08.4 depois de revogar: `anon_executa = false`, `auth_executa = false`, e a suíte
+continuou verde — o INSERT do Admin ainda normalizava o e-mail e o UPDATE ainda era recusado.
+**Toda migração que cria função de trigger deve terminar com esse `revoke`** e rodar
+`get_advisors` — foi o advisor, não a leitura do código, que achou isto.
+
+### 2.23 Vocabulário do usuário ≠ vocabulário do parser: "sindicalizado" virava Bronze em silêncio
+
+**(a) Problema.** O modelo de coleta v1 pede ao contador a palavra **sindicalizado** ou
+**oposição** (spec §7). O parser genérico do projeto era este:
+
+```ts
+export function paraBooleano(v, padrao) {
+  const s = (v ?? "").trim().toLowerCase();
+  if (!s) return padrao;
+  return ["sim", "1", "true", "verdadeiro"].includes(s);   // <- tudo o mais vira FALSE
+}
+```
+
+`"sindicalizado"` não está na lista. Logo `recolhe_contribuicao_sindical = false`, e a pessoa entra
+**Bronze**. Medido numa remessa real: o CPF marcado como sindicalizado foi gravado com `false` e
+`nivel = 'bronze'`. Em escala, isso classificaria como Bronze **a base coletada inteira** —
+inclusive quem se sindicalizou —, zerando a base de cálculo da contribuição e o P1 da etapa.
+
+O que torna a falha traiçoeira é que **não há erro em lugar nenhum**: a coluna existe, o valor é
+booleano válido, a linha importa. Só o significado está invertido. E, por causa da regra inviolável
+de nível, a correção depois **não pode vir por planilha** — exige UPDATE deliberado, pessoa a pessoa.
+
+**(b) Solução.** Um tradutor ÚNICO para essa coluna, que reconheça os dois vocabulários — o do
+contador e o do CSV interno — e que **avise quando não reconhecer**, em vez de cair no padrão em
+silêncio.
+
+**(c) Como implantar.** Em `src/features/importacao/parsers.ts`:
+
+```ts
+const SITUACAO_CONTRIBUI     = ["sim","1","true","verdadeiro","sindicalizado","sindicalizada",...];
+const SITUACAO_NAO_CONTRIBUI = ["nao","não","0","false","falso","oposicao","oposição",...];
+
+export function interpretarSituacaoSindical(v, padrao) {
+  const s = (v ?? "").trim().toLowerCase();
+  if (!s) return { valor: padrao, reconhecido: true, vazio: true };   // padrão legal
+  if (SITUACAO_CONTRIBUI.includes(s))     return { valor: true,  reconhecido: true, vazio: false };
+  if (SITUACAO_NAO_CONTRIBUI.includes(s)) return { valor: false, reconhecido: true, vazio: false };
+  return { valor: padrao, reconhecido: false, vazio: false };          // <- vira AVISO na linha
+}
+```
+
+**Regra transferível, e é a lição maior:** sempre que uma tela pede uma PALAVRA ao usuário e o
+código guarda um BOOLEANO, o tradutor entre os dois é código de negócio — não utilitário. Ele
+precisa de nome próprio, de lugar único e de um caminho explícito para "não reconheci". `padrao`
+silencioso num campo que decide dinheiro é a mesma família do `least()` da §2.1: o valor de
+fallback aplicado justamente a quem menos se sabe.
+
+### 2.23b Cabeçalho que não casa é PIOR que valor errado — ele nem gera aviso
+
+**(a) Problema.** Corrigido o vocabulário da §2.23, o modelo `.xlsx` entregue ao contador trazia os
+rótulos amigáveis `piso` e `status` (em vez de `salario_informado` e `recolhe_contribuicao`).
+Nenhum dos dois estava na lista de apelidos de `CAMPOS`. O que acontece então:
+
+```
+construirMapaColunas(...)  →  mapa["recolhe_contribuicao"] = undefined
+campo(bruta, mapa, "recolhe_contribuicao")  →  ""            (coluna não existe)
+interpretarSituacaoSindical("", true)  →  { valor: true, reconhecido: true, vazio: true }
+```
+
+Célula vazia é o caso **previsto** — "padrão legal, contribui" — e por isso **não gera aviso
+nenhum**. Resultado: com o cabeçalho errado, **todo trabalhador marcado como oposição entra Prata,
+em silêncio**, e a defesa construída na §2.23 não dispara, porque ela protege o VALOR não
+reconhecido, não a COLUNA ausente.
+
+O mesmo arquivo trazia `piso` sem casar com `salario_informado`: salário nulo para todo mundo, e o
+motor de cobrança pulando a base inteira.
+
+**(b) Solução.** Duas, e as duas juntas:
+1. os rótulos amigáveis entram como **apelidos** em `CAMPOS` — quem escreve o modelo pensa no
+   contador, não no nome da coluna do banco;
+2. o modelo **é gerado por script**, não commitado à mão. Binário no repo não passa por revisão:
+   ninguém vê num diff que um cabeçalho mudou ou que o `numFmt` caiu.
+
+**(c) Como implantar.** O teste que fecha o buraco não é sobre o parser — é sobre o ARQUIVO que o
+usuário baixa, lido pelo validador de verdade:
+
+```ts
+const parse = await lerPlanilhaXlsx(modeloBaixado);
+const preview = validarTrabalhadores(parse, ctx, "ignorar");
+expect(preview[0].dados.valores.recolhe_contribuicao_sindical).toBe(true);   // "sindicalizado"
+expect(preview[1].dados.valores.recolhe_contribuicao_sindical).toBe(false);  // "oposição"
+```
+
+**Regra transferível:** todo template distribuído a usuário externo precisa de um teste que o leia
+**pelo caminho de produção**. Conferir o cabeçalho a olho não pega o caso em que a coluna some do
+mapa — porque some sem erro, sem aviso e com um default plausível no lugar.
+
 ### 2.18 `raise exception` desfaz o `insert` que você acabou de fazer — inclusive o do rate limit
 
 **(a) Problema.** `fn_registrar_checkin` (endpoint público, sem login) aceitava tentativas de PIN
@@ -849,6 +1232,226 @@ function subDoToken(accessToken: string): string | null {
 ```
 
 Medido: de 6 arquivos caindo por rate limit para **159/160 verdes** em execução única.
+
+### 2.16b `REVOKE` de privilégio que não é seu é NO-OP SILENCIOSO
+
+**(a) Problema.** Na Subetapa 08.5, ao ligar o Storage pela primeira vez neste projeto, mediu-se
+que `anon` e `authenticated` têm **TRUNCATE, REFERENCES e TRIGGER** em `storage.objects`,
+`storage.buckets` e `storage.buckets_analytics` — a mesma herança de fábrica da §2.16, agora fora
+do schema `public`, que o `19_hardening_adversarial.sql` nunca varreu.
+
+A revogação foi escrita, a migração **aplicou com sucesso**, e o grant **continuou lá**:
+
+```
+revoke truncate on storage.objects from anon;   →  sqlstate 00000, sem erro
+select ... information_schema.role_table_grants  →  anon:TRUNCATE ainda presente
+```
+
+O `postgres` deste projeto **não é superuser** (`rolsuper = false`) e **não é membro de
+`supabase_storage_admin`**, dono daquelas tabelas. O Postgres, nesse caso, não levanta exceção:
+`REVOKE` só retira o que o executor tem grant option para retirar, e retirar nada é um comando
+válido. É a mesma família do §2.6d — **a negativa não recusa, ela não faz nada**.
+
+**(b) Solução.** Nunca dar um `REVOKE`/`GRANT` por concluído porque a migração "passou". Conferir
+no catálogo **depois**, e tratar o que sobrou como item aberto e não como item fechado.
+
+**(c) Como implantar.**
+```sql
+-- Antes: quem sou eu, e posso mexer no dono desta tabela?
+select current_user,
+       (select rolsuper from pg_roles where rolname = current_user) as sou_superuser,
+       pg_has_role(current_user, 'supabase_storage_admin', 'MEMBER') as sou_membro;
+
+-- Depois de QUALQUER revoke: conferir que sumiu de fato.
+select grantee, table_schema, table_name, privilege_type
+  from information_schema.role_table_grants
+ where grantee in ('anon','authenticated')
+   and privilege_type in ('TRUNCATE','REFERENCES','TRIGGER');
+```
+**No caso concreto o item ficou ACEITO COM MOTIVO, não resolvido**: o schema `storage` não é
+exposto pelo PostgREST (medido: `Accept-Profile: storage` → PGRST106 "Only the following schemas
+are exposed: public, graphql_public"), `anon`/`authenticated` têm `rolcanlogin = false`, e não há
+verbo TRUNCATE em REST. Registrado assim no relatório da 08.12 — a diferença entre "fechado" e
+"inalcançável, e sabemos por quê" é a diferença entre segurança e sorte.
+
+### 2.22 Storage: três armadilhas que aparecem juntas no primeiro bucket privado
+
+**(a) Problema.** O Storage nunca tinha sido usado neste CRM (zero buckets até 2026-08-26). Ao
+criar o primeiro bucket privado, três medições deram resultado enganoso em sequência:
+
+1. **`anon` listando o bucket devolveu `200 []` — e isso não provava nada**, porque o bucket
+   estava vazio. Um bucket vazio devolve `[]` para todo mundo, inclusive para quem teria
+   permissão. Só com um objeto DENTRO é que o `[]` do `anon` vira prova.
+2. **`anon` tentando upload recebeu `415 invalid_mime_type`** — o `allowed_mime_types` do bucket
+   dispara **antes** da autorização. Dar o teste por passado ali seria concluir "a RLS barrou"
+   quando quem barrou foi o filtro de tipo. Com o content-type correto, a resposta real apareceu:
+   `403 "new row violates row-level security policy"`.
+3. **Bucket privado sem policy nenhuma nega o `authenticated` também** — e o sintoma não parece
+   permissão. Medido com login de Admin: `list` devolve `[]` e `createSignedUrl` devolve
+   **"Object not found"**. O arquivo existe; a policy é que não. Construir a tela de revisão em
+   cima disso teria produzido "arquivo não encontrado" para a Denise, com o arquivo lá.
+
+**(b) Solução.** `storage.objects` é RLS de tabela como qualquer outra, mas com API própria:
+`service_role` (a Edge Function) ignora, e todo o resto precisa de policy explícita. Uma policy de
+`select` restrita ao bucket e aos papéis internos resolve o item 3 sem abrir nada para `anon`.
+
+**(c) Como implantar.**
+```sql
+create policy pol_remessas_leitura_interna on storage.objects for select
+  to authenticated
+  using (bucket_id = 'remessas' and public.fn_eh('admin','presidente','secretaria'));
+```
+E medir com **objeto dentro do bucket**, papel por papel, com o controle negativo junto:
+
+| ator | list | createSignedUrl | baixar |
+|---|---|---|---|
+| Admin / Secretaria | 1 | OK | HTTP 200, 3640 bytes |
+| Jurídico / Parceiro | 0 | NEGADO | — |
+| `anon` | 0 | NEGADO | — |
+
+**Regra transferível:** teste de negativa contra recurso VAZIO é teste que passa sozinho. Popule
+primeiro, ataque depois.
+
+### 2.24 Mascarar uma COLUNA não precisa desligar RLS da LINHA
+
+**(a) Problema.** Na Subetapa 08.11, `sql/20_comunicacao_externa.sql` já registrava a "troca
+consciente" de que Presidente e Secretaria leem `envios_campanha` inteira, com a coluna `token` em
+claro — RLS restringe LINHAS, nunca COLUNAS. O comentário no código sugeria resolver copiando o
+padrão de `v_fila_parceiro`: view `security_invoker = off` (SECURITY DEFINER) com um filtro interno
+substituindo a RLS desligada. Mas `v_fila_parceiro` resolve um problema DIFERENTE do meu: ela
+precisa mostrar ao parceiro linhas que a RLS crua esconderia por completo (a fila de OUTRO
+parceiro), então bypassar RLS e refazer o filtro à mão é necessário ali. No caso do token, a RLS de
+`envios_campanha` já decide corretamente QUEM vê a LINHA (admin/presidente/secretaria) — falta só
+apagar o CONTEÚDO de uma coluna para quem não é Admin. Copiar o padrão SECURITY DEFINER ali seria
+desligar uma proteção que não precisa ser desligada.
+
+**(b) Solução.** Uma `case when fn_eh('admin') then coluna else null end`, dentro de uma view
+`security_invoker = on` comum. A RLS das tabelas de origem continua valendo por completo (view
+comum não pode enxergar mais linha que o dono da sessão enxergaria direto na tabela); só o VALOR de
+uma coluna específica é substituído por `null` conforme o papel de quem consulta. Princípio do menor
+privilégio: não desligue um mecanismo (RLS) para resolver um problema que uma expressão dentro do
+`select` já resolve.
+
+**(c) Como implantar.**
+```sql
+create or replace view v_exemplo_mascarada
+with (security_invoker = on) as   -- NÃO off — não há linha a reexpor aqui
+select
+  e.id, e.email,
+  case when fn_eh('admin') then e.token else null end as token,  -- só o CONTEÚDO muda
+  e.token_expira_em
+from envios_campanha e;           -- RLS de origem decide sozinha quem vê a LINHA
+```
+**Regra de decisão, para a próxima vez:** SECURITY DEFINER (`off` + filtro interno, padrão
+`v_fila_parceiro`) é para quando a RLS crua esconderia uma LINHA que o papel deveria ver. `CASE`
+dentro de `security_invoker = on` é para quando a RLS crua já está certa e só uma COLUNA precisa
+sumir para um papel. As duas mexem em exposição de dado; só a primeira desliga RLS — e desligar RLS
+sem precisar é a mesma classe de erro que criar view sem `security_invoker` (§2.15), só que ao
+contrário: lá faltou proteção que devia existir, aqui sobraria bypass que não precisa existir.
+
+### 2.25 O hardening de GRANT não é hereditário: `pg_default_acl` reabre a porta a cada objeto novo
+
+**(a) Problema.** A ETAPA 07 varreu `public` e revogou `TRUNCATE`/`REFERENCES`/`TRIGGER` de `anon` e
+`authenticated` nas 43 relações de então (§2.16). Medido na ETAPA 08, no portão adversarial: a
+**única** relação criada depois daquela varredura — a view `v_cobertura_contabilidades`, da 08.11 —
+estava com os três de volta, para os dois papéis. Nenhuma migration escreveu esse GRANT.
+
+A causa está em `pg_default_acl`, e não em nada que alguém tenha digitado:
+
+```sql
+select pg_get_userbyid(d.defaclrole) as dono, n.nspname, d.defaclobjtype, d.defaclacl::text
+  from pg_default_acl d left join pg_namespace n on n.oid = d.defaclnamespace;
+-- dono=postgres · public · 'r' ·
+--   {postgres=arwdDxtm/postgres, anon=arwdDxtm/postgres,
+--    authenticated=arwdDxtm/postgres, service_role=arwdDxtm/postgres}
+```
+
+`arwdDxtm` inclui **SELECT**. Ou seja: **toda tabela ou view nova criada por `postgres` em `public`
+nasce legível por `anon`.** É a raiz do achado A-01 da ETAPA 07 — a view `empresas_estabelecimentos`
+nunca recebeu `GRANT SELECT` de ninguém, ela nasceu com ele. O relatório de então chamou isso de
+"privilégio de fábrica"; o mecanismo exato só apareceu aqui.
+
+**(b) Solução.** Duas partes, e a segunda é a que importa: varrer conserta os objetos de hoje,
+**mudar o default** conserta os de amanhã. Tirar `anon` por completo é seguro (o CRM inteiro
+consulta autenticado; as superfícies públicas usam `SECURITY DEFINER` ou `service_role`). De
+`authenticated` tira-se só os três privilégios inúteis — tirar o DML faria toda tabela nova
+responder `42501` ao app, e `42501` se disfarça de RLS quebrada, que é a investigação mais cara
+deste projeto.
+
+**(c) Como implantar.**
+
+```sql
+-- 1. os objetos que já existem — por pg_class, NUNCA por pg_tables (§2.16)
+do $do$
+declare r record;
+begin
+  for r in select format('%I.%I', n.nspname, c.relname) as alvo
+             from pg_class c join pg_namespace n on n.oid = c.relnamespace
+            where n.nspname='public' and c.relkind in ('r','v','m','p')
+  loop
+    execute format('revoke truncate, references, trigger on %s from anon, authenticated', r.alvo);
+  end loop;
+end $do$;
+
+-- 2. a raiz
+alter default privileges for role postgres in schema public revoke all on tables from anon;
+alter default privileges for role postgres in schema public
+  revoke truncate, references, trigger on tables from authenticated;
+```
+
+**Prove criando uma tabela depois** — e leia o controle negativo na mesma medição, senão você não
+sabe se apenas negou tudo:
+
+```sql
+create table prova_default (id int);
+select has_table_privilege('anon','public.prova_default','SELECT')          -- false ✅
+     , has_table_privilege('authenticated','public.prova_default','SELECT')  -- true  ✅
+     , has_table_privilege('authenticated','public.prova_default','TRUNCATE');-- false ✅
+drop table prova_default;
+```
+
+**Regra geral:** varredura de hardening tem prazo de validade igual à data em que rodou. Sempre que
+corrigir privilégio em massa, pergunte **de onde ele veio** — se veio de um default, corrigir os
+objetos é enxugar gelo.
+
+### 2.26 O advisor só enxerga função `SECURITY DEFINER` — e a `INVOKER` que consome sequência passa
+
+**(a) Problema.** O lint `anon_security_definer_function_executable` do Supabase acusa função
+`SECURITY DEFINER` chamável sem login. `fn_gera_guia_pagamento()` é `SECURITY INVOKER`, `VOLATILE`,
+sem argumentos, e faz `nextval('seq_guia_pagamento')`. O advisor nunca a citou; ela foi executada
+por `anon`, sem login nenhum, só com a anon key (que é pública, vai no bundle):
+
+```
+POST /rest/v1/rpc/fn_gera_guia_pagamento  →  200 "GP-2026-000017" ... (5x, 5 números queimados)
+```
+
+É o gêmeo do achado A-02 da ETAPA 07 — lá a numeração da guia de SERVIÇO foi fechada; a de
+PAGAMENTO ficou, porque **não era `DEFAULT` de coluna nenhuma** e portanto não entrou naquela
+correção. Achá-la exigiu a varredura de catálogo cruzando `has_function_privilege` com o corpo da
+função; leitura de migration não encontraria, porque não há nada de errado escrito.
+
+**(b) Solução.** Revogar o `EXECUTE`. É seguro quando a única chamadora é `SECURITY DEFINER` com
+dono `postgres` — o privilégio conferido lá dentro é o do dono, não o de quem chamou. Isso **precisa
+ser medido**, não deduzido: foi exatamente essa a suposição que quebrou a Secretaria na ETAPA 07.
+
+**(c) Como implantar — e como medir em PRODUÇÃO sem consumir o recurso.** O truque está no verbo:
+o PostgREST recusa função `VOLATILE` por `GET`, então o código de status revela a exposição **sem
+executar nada**:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}" "$URL/rest/v1/rpc/<funcao>" -H "apikey: $ANON"
+# 405 → o endpoint EXISTE e só falta o verbo POST  (exposta)
+# 401/404 → este papel não a executa                (fechada)
+```
+
+```sql
+revoke execute on function public.<funcao>() from public, anon, authenticated;
+revoke usage, select, update on sequence public.<sequencia> from anon, authenticated;
+```
+
+**Regra geral:** advisor limpo não é varredura feita. Ele cobre um conjunto declarado de padrões;
+o que está fora dele só aparece cruzando o catálogo à mão. E, ao provar um achado que **consome**
+algo (numeração, cota, crédito), procure primeiro a medição que não consome.
 
 ## 3. Integrações (n8n, e-mail, Docker)
 
@@ -1033,6 +1636,59 @@ o contêiner sem `--ip` quebra a integração. Teste de dentro do outro contêin
 
 ---
 
+
+### 3.8 DMARC de subdomínio SOBREPÕE o do domínio organizacional — e o ESP quer os relatórios para ele
+
+**(a) Problema.** Na ETAPA 08, ao autenticar `envios.sindcompassos.org` na Brevo, ela
+mandou publicar 7 registros. O quarto era:
+
+```
+_dmarc.envios   TXT   v=DMARC1; p=none; rua=mailto:rua@dmarc.brevo.com
+```
+
+Parece inofensivo, e é o registro que o painel deles instrui a copiar. Mas o DMARC
+resolve **do mais específico para o mais genérico**: existindo `_dmarc.envios...`, é ele
+que vale para o subdomínio, e o `_dmarc` do domínio organizacional **deixa de ser
+consultado ali**. Consequência: os relatórios agregados da nossa própria campanha —
+justamente o subdomínio cujos números mais interessam — iriam **para a Brevo**, e nós
+ficaríamos cegos sobre o que o mundo vê do nosso envio.
+
+Isso contraria o critério de qualidade da própria subetapa, que exige `rua` apontando
+para caixa monitorada para poder decidir *quando* endurecer a política.
+
+**(b) Solução.** Publicar o mesmo nome com o **nosso** `rua`. A verificação da Brevo
+passou verde do mesmo jeito — **ela só checa que existe um DMARC válido no nome
+esperado, não que o conteúdo seja o dela**. Medido na tela: "Os valores Registro DMARC na
+Brevo e na conta do seu provedor de domínio correspondem", com o nosso valor publicado.
+
+```
+_dmarc.envios   TXT   v=DMARC1; p=none; rua=mailto:deploycrm@sindcompassos.org; fo=1; adkim=r; aspf=r
+```
+
+**(c) Como implantar.** Três pontos que valem para qualquer ESP:
+
+1. **`rua` precisa ser caixa do próprio domínio.** Relatório enviado para caixa de outro
+   domínio (um Gmail, por exemplo) exige um registro de autorização
+   `<dominio>._report._dmarc.<destino>` publicado **pelo destino** — que não controlamos.
+   Mesmo domínio dispensa isso.
+2. **`aspf=r` (relaxado) não é detalhe.** O Return-Path do Brevo é
+   `bounces-…@em.envios.sindcompassos.org` — um nível **mais fundo** que o `From:` em
+   `envios.sindcompassos.org`. Com alinhamento **estrito** o SPF não alinharia, e medimos
+   um caso real (Outlook) em que o DKIM deu `timeout` e **o DMARC só passou porque o SPF
+   alinhou pelo relaxado**. Estrito teria derrubado o DMARC inteiro naquele receptor.
+3. **Confira qual DMARC está valendo** antes de concluir qualquer coisa sobre política:
+   ```bash
+   nslookup -type=TXT _dmarc.envios.sindcompassos.org 8.8.8.8   # o específico manda
+   nslookup -type=TXT _dmarc.sindcompassos.org 8.8.8.8          # só vale se o de cima não existir
+   ```
+   E leia o cabeçalho `Authentication-Results` de um e-mail **recebido de verdade**: ele
+   diz `dmarc=pass (p=NONE sp=NONE ...)`, ou seja, qual política foi de fato aplicada.
+   Painel de fornecedor dizendo "configurado" não é medição.
+
+**Regra geral:** todo registro que um fornecedor manda publicar no *nosso* domínio merece
+ser lido antes de colado. O que ele otimiza é a operação dele, não a nossa observabilidade.
+
+---
 ## 4. Frontend e React
 
 ### 4.1 Falta de `key` faz o estado grudar entre entidades
@@ -1127,6 +1783,33 @@ E `<Area type="linear">`, nunca `monotone`, para dado financeiro: a spline
 Confira a virada de ano imprimindo a janela gerada — dez→jan é onde esse tipo de
 cálculo costuma errar.
 
+### 4.8 Biblioteca pesada importada no topo entra no bundle de TODO MUNDO
+
+**(a) Problema.** A Subetapa 08.6 precisa ler `.xlsx` no navegador do contador, e o `exceljs`
+entrou com `import ExcelJS from "exceljs"` no topo do módulo. Medido no `npm run build`, o chunk
+principal saltou de **1.204 kB para 2.144 kB**. Quem paga essa conta não é o contador que anexa
+planilha uma vez por trimestre: é a Secretária abrindo a tela de login no celular, todo dia, e
+qualquer papel do CRM que nunca vai chegar perto de `/enviar-dados`.
+
+**(b) Solução.** Import dinâmico no ponto de uso. O Vite corta a biblioteca num chunk à parte e o
+navegador só busca quando a função é chamada de fato — no caso, quando alguém escolhe um arquivo.
+
+**(c) Como implantar.**
+```ts
+// no topo, SÓ o tipo (some na compilação, não vai para o bundle)
+import type ExcelJS from "exceljs";
+
+export async function lerPlanilhaXlsx(arquivo: File) {
+  const { default: ExcelJSRuntime } = await import("exceljs");
+  const livro = new ExcelJSRuntime.Workbook() as ExcelJS.Workbook;
+  ...
+}
+```
+Medido depois: principal de volta a **1.204 kB**, com `exceljs.min-*.js` de **938 kB** num chunk
+próprio. **Confira sempre na saída do `npm run build`** — a lista de assets é a medição, e ela é
+gratuita. Regra prática: biblioteca acima de ~100 kB usada por UMA tela entra por
+`await import()`, não por `import` de topo.
+
 ### 4.6 Automação de navegador não dispara `onChange` de input controlado do React
 
 **(a) Problema.** Verificando a tela `/empresas` com os 16.687 registros reais (Subetapa
@@ -1155,6 +1838,110 @@ que apareceram na mesma sessão: (1) contar `document.querySelectorAll('tbody tr
 logo após disparar o evento mede **antes** da resposta chegar — espere o debounce + a
 requisição; (2) um `Page.captureScreenshot` que estoura timeout não significa app travado —
 confirme com `get_page_text`, que é mais leve, antes de concluir qualquer coisa.
+
+
+### 4.7 Clique por coordenada em tabela que se desloca abre a linha errada — e pode ser o registro errado
+
+**(a) Problema.** No Zone Editor do cPanel (ETAPA 08), a sequência foi: capturar a tela,
+localizar o botão "Gerenciar" da linha `sindcompassos.org` em (804, 450), clicar. O que
+abriu foi o diálogo **"Adicionar um registro MX para isepem.com.br"** — outro domínio da
+mesma conta cPanel, e um que o `docs/deploy.md` manda explicitamente não tocar.
+
+Entre a captura e o clique a página terminou de renderizar: a altura da viewport mudou de
+684 para 676 px e a tabela inteira desceu ~78 px. A coordenada continuava válida na
+imagem que eu tinha; já não correspondia ao que estava sob o cursor. Nada foi gravado
+porque o diálogo abre vazio, mas **um clique adiante seria escrita em zona de DNS de
+terceiro**.
+
+**(b) Solução.** Resolver o elemento por **referência**, não por posição: `find` devolve um
+`ref` estável, e o clique por `ref` acompanha o elemento mesmo que ele se mova. Depois da
+troca, os 7 registros DNS seguintes foram criados sem um único erro de alvo.
+
+**(c) Como implantar.**
+```
+find("botão Gerenciar na linha do domínio sindcompassos.org")  →  ref_153
+computer(action="left_click", ref="ref_153")        // não: coordinate=[804,450]
+```
+
+Três regras que ficam, e a terceira é a que evita estrago:
+
+1. **Coordenada só para o que não tem elemento** (canvas, mapa, área de arrasto). Para
+   botão, link, campo e linha de tabela, sempre `ref`.
+2. **Captura de tela envelhece.** Em página que ainda está montando — tabela com dezenas
+   de linhas, painel que carrega assíncrono —, a imagem que você está lendo já não é a
+   página que vai receber o clique. Se precisar mesmo de coordenada, recapture
+   imediatamente antes.
+3. **Em painel multi-inquilino, confirme o alvo no texto do diálogo antes de digitar
+   qualquer coisa.** O título dizia o domínio errado em voz alta; ler o título é mais
+   barato que desfazer um registro. E navegar por URL direta da zona
+   (`#/manage?domain=<dominio>`) elimina a etapa de clicar na tabela — foi assim que os
+   registros seguintes foram feitos.
+
+**Vale para além do cPanel:** qualquer console de infraestrutura que hospede vários
+projetos na mesma sessão (Supabase, Cloudflare, provedores de DNS) tem essa mesma classe
+de acidente, e ali o clique errado não abre um diálogo vazio — executa.
+
+### 4.9 Guard por `git grep` de padrão textual pega o comentário que EXPLICA o guard
+
+**(a) Problema.** Repetiu-se **três vezes** na ETAPA 08, em três formas: (1) na 08.6, o link do
+modelo virou `href={CONSTANTE}` e o guard de `04_renderizacao.spec.ts` (que procura
+`(href|src)=\{[a-zA-Z_]`) barrou — certo, era um caso real — mas na primeira correção continuou
+vermelho porque **o comentário explicando o guard continha o próprio padrão que ele procura**; (2)
+na 08.7, o comentário do botão de download dizia literalmente `` `href={variável}` `` para explicar
+por que o download usa DOM em vez de JSX — mesmo efeito; (3) na 08.11, um teste novo
+(`tests/rls/cobertura.spec.ts`) fazia `git grep -E "\btoken\b"` para provar que a feature nunca lê a
+credencial do link, e pegou os PRÓPRIOS comentários do código explicando por que ela nunca deve
+aparecer ali — que, claro, escrevem a palavra "token" várias vezes.
+
+**(b) Solução.** Um guard por `git grep` sobre texto-fonte não distingue código de comentário — ele
+não tem ideia do que está explicando o quê. Duas saídas, conforme o caso: (1) reescrever o
+COMENTÁRIO para não conter o padrão textual exato (parafrasear em vez de citar o código, como neste
+próprio arquivo faz agora); (2) estreitar o PADRÃO do guard para casar só com a FORMA DE USO real —
+`\.select\([^)]*\btermo\b` em vez de `\btermo\b` sozinho — que não aparece em prosa comum.
+
+**(c) Como implantar.** Prefira (2) sempre que o risco real é uma chamada de código específica (um
+`.select(...)`, um `href={...}` em JSX), não a palavra em si:
+```bash
+# ruim: casa qualquer menção à palavra, inclusive em comentário explicando o guard
+git grep -n -E "\btoken\b" -- src/features/x/
+
+# melhor: casa só o USO — dentro de um .select(...)
+git grep -n -E "\.select\([^)]*\btoken\b" -- src/features/x/
+```
+**Regra geral:** ao escrever qualquer guard novo baseado em `git grep`, rode-o uma vez ANTES de
+declarar pronto e leia os achados — se um deles for o comentário que você acabou de escrever
+explicando o guard, é o padrão que precisa mudar, não o comentário.
+
+### 4.10 Guarda que recorta corpo de função por tamanho fixo acusa a função VIZINHA
+
+**(a) Problema.** Parente do §4.9, e apareceu no portão adversarial da 08.12. Um guarda novo
+procurava, nos arquivos `sql/`, toda função que avança sequência e não tem o `EXECUTE` revogado.
+Ele achava a assinatura por regex e recortava o "corpo" com `codigo.slice(inicio, inicio + 4000)`.
+Resultado: o recorte **derramava na função seguinte** do arquivo, e o guarda acusou
+`fn_set_updated_at`, que não toca sequência nenhuma — ela só tinha o azar de vir logo depois da
+função culpada. Dois vermelhos, um real e um inventado por mim.
+
+**(b) Solução.** Recortar pelo delimitador REAL do corpo, não por contagem de caracteres. Em SQL do
+Postgres o corpo é dollar-quoted, e o rótulo de abertura é o mesmo do fechamento — capture-o e
+procure a próxima ocorrência dele.
+
+**(c) Como implantar.**
+```ts
+const re = /create\s+(?:or\s+replace\s+)?function\s+(?:public\.)?(\w+)\s*\([\s\S]*?(\$\w*\$)/gi;
+let m: RegExpExecArray | null;
+while ((m = re.exec(codigo)) !== null) {
+  const [, nomeDaFuncao, marcador] = m;
+  const inicio = m.index + m[0].length;
+  const fim = codigo.indexOf(marcador, inicio);        // o MESMO rótulo fecha
+  const corpo = codigo.slice(inicio, fim === -1 ? codigo.length : fim);
+  // ...
+}
+```
+**Regra geral, somando ao §4.9:** um guarda textual sobre código-fonte erra de duas formas — casando
+com o comentário que o explica (§4.9) e casando com o vizinho de quem ele quer pegar (esta). Nas
+duas, o sintoma é o mesmo: ele acusa algo que você sabe estar certo. Quando isso acontecer,
+**suspeite do guarda antes de suspeitar do código** — e leia a lista inteira de achados dele, não só
+o primeiro.
 
 ## 5. Ambiente de desenvolvimento (Windows)
 
@@ -1468,6 +2255,39 @@ prosseguir para o próximo passo (rodar o workflow, assumir o resultado etc.).
 Mesma família do §7.2 ("passou" ≠ "funcionou"), aplicada ao próprio ato de
 gerar o dado de teste, não só de ler o resultado.
 
+### 7.1d §7.1b vale para CABEÇALHO de arquivo real, não só para contagem
+
+**(a) Problema.** Na Subetapa 08.7, `tests/rls/remessas.spec.ts` (08.10)
+começou a falhar sozinho, sem eu ter tocado no arquivo: o teste baixava a
+remessa **mais recente** da campanha DEMO e exigia literalmente a coluna
+`recolhe_contribuicao` no cabeçalho. Consultando `remessas_dados` direto no
+banco, apareceram **3 remessas** na campanha DEMO, todas do mesmo IP, com
+`recebida_em` no mesmo dia — evidência de que Maxwell testou o link
+`/enviar-dados/:token` real no navegador (evidência pedida pela própria
+08.6/08.7) mais de uma vez. A mais recente trazia os cabeçalhos do MODELO
+atual (`status`, o rótulo que o contador vê), não o `recolhe_contribuicao` do
+arquivo manual mais antigo usado para montar a 08.5. Nenhuma linha de código
+de produção mudou; o teste é que fixava qual VERSÃO do modelo a remessa mais
+recente deveria ter.
+
+**(b) Solução.** É o mesmo princípio do §7.1b (não fixar contagem que dado de
+demonstração vai mudar), generalizado: também não fixar o RÓTULO exato de uma
+coluna cujo apelido é deliberadamente flexível (`validarTrabalhadores.ts`
+reconhece vários). Assertar que a planilha tem as colunas de IDENTIDADE
+(`cnpj_estabelecimento`, `nome`, `cpf`) e que **algum** apelido reconhecido de
+situação sindical está presente — não qual exatamente.
+
+**(c) Como implantar.**
+```ts
+expect(parse.cabecalhos).toEqual(expect.arrayContaining(["cnpj_estabelecimento", "nome", "cpf"]));
+const APELIDOS_SITUACAO_SINDICAL = ["recolhe_contribuicao", "situacao", "situação", "status"];
+expect(parse.cabecalhos.some((h) => APELIDOS_SITUACAO_SINDICAL.includes(h))).toBe(true);
+```
+**Regra geral:** qualquer teste que leia "o registro mais recente" de uma
+tabela que recebe dado de demonstração ativo (aqui, `remessas_dados` via um
+link público real e testável) está sujeito ao mesmo risco de um `count()`
+fixo — o conteúdo do registro muda, não só a quantidade.
+
 ### 7.5 Fallback silencioso de rota transforma "tela não construída" em "tela vazia"
 
 **(a) Problema.** As abas "Cartas de oposição" e "Jurídico" apareciam no menu,
@@ -1593,3 +2413,87 @@ coberto (ex.: `DEMO — Ouro com carta (não regride, regra 5.2)`). Fixtures de
 suíte automatizada são outra coisa: use prefixo da subetapa (`02.6 teste —`) e
 remova no `afterAll`. Só apague dado DEMO por reparo técnico ou segurança — e
 avise o que foi removido e por quê.
+
+### 7.8 Resposta não-JSON num teste de endpoint pode ser a BORDA, não o seu código
+
+**(a) Problema.** No portão adversarial da 08.12, um caso mandava um token com
+forma de comando SQL para a Edge Function pública e fazia `await r.json()`. O
+teste quebrou com `SyntaxError: Unexpected token '<', "<!DOCTYPE "...`. Lido
+como está, o sintoma sugere que o endpoint quebrou e devolveu uma página de
+erro — ou seja, um achado.
+
+Medido com `curl`, a página é outra coisa:
+
+```
+HTTP 403
+<title>Attention Required! | Cloudflare</title>
+```
+
+É a **borda da Supabase** barrando o payload pelas regras gerenciadas de WAF. A
+requisição nunca chegou à função. Não havia defeito nenhum; havia uma camada a
+mais do que eu supunha existir, e um teste meu que presumia JSON em toda
+resposta.
+
+**(b) Solução.** Em teste de endpoint público, **nunca** presuma o content-type
+da resposta de um caminho de erro. Leia como texto, afirme o que de fato
+importa — o desfecho —, e trate o status separadamente. E, ao ver HTML onde
+deveria haver JSON, meça com `curl` antes de escrever "achado": a diferença
+entre a sua aplicação e a borda na frente dela aparece no `<title>`.
+
+**(c) Como implantar.**
+```ts
+const r = await fetch(url);
+const texto = await r.text();                     // nunca .json() direto
+expect(r.status).not.toBe(200);
+expect(texto).not.toContain('"ok":true');         // o desfecho, não o formato
+```
+**Regra geral:** o portão adversarial mede um sistema com mais camadas do que o
+repositório descreve (CDN, WAF, gateway). Camada que você não sabia que existia
+aparece primeiro como um teste quebrando de um jeito estranho — e o reflexo
+certo é medir de novo, não registrar achado.
+
+### 7.9 Teste vermelho "por um motivo conhecido" para de avisar sobre um motivo novo
+
+**(a) Problema.** Três casos de `cartas.spec.ts` estavam vermelhos desde a ETAPA 07, e todo
+relatório desde então os classificou da mesma forma: *"falhas de dados, não de segurança,
+anteriores a esta etapa"*. A classificação estava certa e, exatamente por isso, ninguém foi ver.
+
+Quando finalmente se olhou, havia **duas** causas empilhadas, e só uma era a conhecida:
+
+1. **A conhecida (§7.1b):** o caso dos "4 baldes" fixava os números do cenário DEMO Kabum
+   (17/68/12/3, 100 pessoas). Esse cenário foi apagado da base em algum momento — a tabela
+   `auditoria` registra **519 DELETEs** em `trabalhadores`. O teste cobrava um cenário inexistente.
+2. **A que ninguém procurou, e era um defeito de verdade:** `v_relatorio_convencao` devolvia **zero
+   linhas em produção**. Não por falta de gente — havia 4 trabalhadores aprovados com vínculo ativo
+   —, mas porque a view faz `join estabelecimentos e on e.convencao_id = c.id`, e **os dois únicos
+   estabelecimentos com trabalhador vinculado eram justamente os 2 (de 17.302) sem `convencao_id`**.
+   Resultado: 100% da base de pessoas ficava fora de todo relatório por convenção, e a tela
+   `/cartas` aparecia vazia sem dizer por quê.
+
+O segundo defeito estava **escondido atrás do primeiro**: o vermelho que já se esperava absorveu o
+vermelho novo, e por semanas.
+
+**(b) Solução.** Duas, e a segunda é a que evita a repetição:
+
+- **No dado:** atribuir a convenção aos estabelecimentos DEMO. As duas views saíram de 0 para 4
+  linhas na mesma medição.
+- **No teste:** parar de depender de dado ambiente. Cada caso passou a **criar as pessoas de que
+  precisa** — com vínculo a um estabelecimento que tem convenção — e a afirmar o **invariante** em
+  vez da contagem: "uma pessoa em cada um dos 4 baldes", não "17/68/12/3". O `beforeAll` ainda
+  confere explicitamente que o estabelecimento DEMO tem convenção, com mensagem dizendo o que
+  significa se não tiver.
+
+**(c) Como implantar.** A regra de método, que vale além deste caso:
+
+> **Falha "conhecida" tem prazo de validade.** Toda vez que um relatório for escrever *"as N falhas
+> restantes são as mesmas de sempre"*, **abra uma delas e confirme que a mensagem de erro ainda é a
+> mesma de sempre.** Custa um comando; a alternativa é o que aconteceu aqui.
+
+```bash
+npx vitest run tests/rls/AQUELE_ARQUIVO.spec.ts   # e LEIA a mensagem, não só a contagem
+```
+
+E, ao escrever teste sobre view com `join` por chave opcional (`convencao_id`, `municipio_id`,
+qualquer FK anulável), lembre que **`join` interno some com a linha em silêncio**. Se o número
+esperado for zero, o teste não distingue "não há dado" de "o join derrubou tudo" — a não ser que a
+fixture do próprio teste esteja garantidamente do lado certo do join.

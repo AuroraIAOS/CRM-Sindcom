@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -68,6 +68,13 @@ export type Database = {
             columns: ["trabalhador_id"]
             isOneToOne: false
             referencedRelation: "v_base_calculo_trabalhador"
+            referencedColumns: ["trabalhador_id"]
+          },
+          {
+            foreignKeyName: "atendimentos_juridicos_trabalhador_id_fkey"
+            columns: ["trabalhador_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
             referencedColumns: ["trabalhador_id"]
           },
           {
@@ -184,6 +191,13 @@ export type Database = {
             foreignKeyName: "beneficiados_titular_id_fkey"
             columns: ["titular_id"]
             isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["trabalhador_id"]
+          },
+          {
+            foreignKeyName: "beneficiados_titular_id_fkey"
+            columns: ["titular_id"]
+            isOneToOne: false
             referencedRelation: "v_mensalidade_titular"
             referencedColumns: ["trabalhador_id"]
           },
@@ -256,6 +270,47 @@ export type Database = {
           },
         ]
       }
+      campanhas: {
+        Row: {
+          agendada_para: string | null
+          assunto: string | null
+          created_at: string
+          eixo: string | null
+          id: string
+          modelo_coleta_id: string | null
+          nome: string
+          onda: number | null
+        }
+        Insert: {
+          agendada_para?: string | null
+          assunto?: string | null
+          created_at?: string
+          eixo?: string | null
+          id?: string
+          modelo_coleta_id?: string | null
+          nome: string
+          onda?: number | null
+        }
+        Update: {
+          agendada_para?: string | null
+          assunto?: string | null
+          created_at?: string
+          eixo?: string | null
+          id?: string
+          modelo_coleta_id?: string | null
+          nome?: string
+          onda?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campanhas_modelo_coleta_id_fkey"
+            columns: ["modelo_coleta_id"]
+            isOneToOne: false
+            referencedRelation: "modelos_coleta"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cartas_oposicao: {
         Row: {
           ano_base: number
@@ -313,6 +368,13 @@ export type Database = {
             foreignKeyName: "cartas_oposicao_trabalhador_id_fkey"
             columns: ["trabalhador_id"]
             isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["trabalhador_id"]
+          },
+          {
+            foreignKeyName: "cartas_oposicao_trabalhador_id_fkey"
+            columns: ["trabalhador_id"]
+            isOneToOne: false
             referencedRelation: "v_mensalidade_titular"
             referencedColumns: ["trabalhador_id"]
           },
@@ -358,6 +420,112 @@ export type Database = {
           descricao?: string | null
           updated_at?: string
           valor?: string
+        }
+        Relationships: []
+      }
+      contabilidade_estabelecimentos: {
+        Row: {
+          confirmado: boolean
+          contabilidade_id: string
+          created_at: string
+          estabelecimento_id: string
+          id: string
+          origem: string
+        }
+        Insert: {
+          confirmado?: boolean
+          contabilidade_id: string
+          created_at?: string
+          estabelecimento_id: string
+          id?: string
+          origem?: string
+        }
+        Update: {
+          confirmado?: boolean
+          contabilidade_id?: string
+          created_at?: string
+          estabelecimento_id?: string
+          id?: string
+          origem?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contabilidade_estabelecimentos_contabilidade_id_fkey"
+            columns: ["contabilidade_id"]
+            isOneToOne: false
+            referencedRelation: "contabilidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contabilidade_estabelecimentos_contabilidade_id_fkey"
+            columns: ["contabilidade_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_contabilidades"
+            referencedColumns: ["contabilidade_id"]
+          },
+          {
+            foreignKeyName: "contabilidade_estabelecimentos_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_estabelecimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contabilidade_estabelecimentos_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "estabelecimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contabilidade_estabelecimentos_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["estabelecimento_id"]
+          },
+          {
+            foreignKeyName: "contabilidade_estabelecimentos_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_relatorio_convencao"
+            referencedColumns: ["estabelecimento_id"]
+          },
+        ]
+      }
+      contabilidades: {
+        Row: {
+          ativa: boolean
+          cnpj: string | null
+          created_at: string
+          email: string
+          id: string
+          nome: string
+          observacoes: string | null
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativa?: boolean
+          cnpj?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativa?: boolean
+          cnpj?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          telefone?: string | null
+          updated_at?: string
         }
         Relationships: []
       }
@@ -448,6 +616,101 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "qualificacoes_responsavel"
             referencedColumns: ["codigo"]
+          },
+        ]
+      }
+      envios_campanha: {
+        Row: {
+          campanha_id: string
+          contabilidade_id: string | null
+          created_at: string
+          email: string
+          enviado_em: string | null
+          estabelecimento_id: string | null
+          id: string
+          primeira_remessa_em: string | null
+          token: string
+          token_expira_em: string
+          token_revogado_em: string | null
+          ultima_remessa_em: string | null
+        }
+        Insert: {
+          campanha_id: string
+          contabilidade_id?: string | null
+          created_at?: string
+          email: string
+          enviado_em?: string | null
+          estabelecimento_id?: string | null
+          id?: string
+          primeira_remessa_em?: string | null
+          token?: string
+          token_expira_em?: string
+          token_revogado_em?: string | null
+          ultima_remessa_em?: string | null
+        }
+        Update: {
+          campanha_id?: string
+          contabilidade_id?: string | null
+          created_at?: string
+          email?: string
+          enviado_em?: string | null
+          estabelecimento_id?: string | null
+          id?: string
+          primeira_remessa_em?: string | null
+          token?: string
+          token_expira_em?: string
+          token_revogado_em?: string | null
+          ultima_remessa_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "envios_campanha_campanha_id_fkey"
+            columns: ["campanha_id"]
+            isOneToOne: false
+            referencedRelation: "campanhas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_contabilidade_id_fkey"
+            columns: ["contabilidade_id"]
+            isOneToOne: false
+            referencedRelation: "contabilidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_contabilidade_id_fkey"
+            columns: ["contabilidade_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_contabilidades"
+            referencedColumns: ["contabilidade_id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_estabelecimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "estabelecimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["estabelecimento_id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_relatorio_convencao"
+            referencedColumns: ["estabelecimento_id"]
           },
         ]
       }
@@ -564,11 +827,25 @@ export type Database = {
             referencedColumns: ["cnpj_basico"]
           },
           {
+            foreignKeyName: "estabelecimentos_cnpj_basico_fkey"
+            columns: ["cnpj_basico"]
+            isOneToOne: false
+            referencedRelation: "empresas_estabelecimentos"
+            referencedColumns: ["cnpj_basico"]
+          },
+          {
             foreignKeyName: "estabelecimentos_convencao_id_fkey"
             columns: ["convencao_id"]
             isOneToOne: false
             referencedRelation: "convencoes_coletivas"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estabelecimentos_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["convencao_id"]
           },
           {
             foreignKeyName: "estabelecimentos_convencao_id_fkey"
@@ -638,6 +915,13 @@ export type Database = {
             columns: ["trabalhador_id"]
             isOneToOne: false
             referencedRelation: "v_base_calculo_trabalhador"
+            referencedColumns: ["trabalhador_id"]
+          },
+          {
+            foreignKeyName: "eventos_nivel_trabalhador_id_fkey"
+            columns: ["trabalhador_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
             referencedColumns: ["trabalhador_id"]
           },
           {
@@ -744,6 +1028,13 @@ export type Database = {
             foreignKeyName: "faturas_trabalhador_id_fkey"
             columns: ["trabalhador_id"]
             isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["trabalhador_id"]
+          },
+          {
+            foreignKeyName: "faturas_trabalhador_id_fkey"
+            columns: ["trabalhador_id"]
+            isOneToOne: false
             referencedRelation: "v_mensalidade_titular"
             referencedColumns: ["trabalhador_id"]
           },
@@ -799,6 +1090,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      modelos_coleta: {
+        Row: {
+          ativo: boolean
+          colunas: Json
+          created_at: string
+          destino: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          colunas: Json
+          created_at?: string
+          destino: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          colunas?: Json
+          created_at?: string
+          destino?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
       }
       motivos_situacao_cadastral: {
         Row: {
@@ -1038,6 +1356,13 @@ export type Database = {
             foreignKeyName: "pisos_convencao_convencao_id_fkey"
             columns: ["convencao_id"]
             isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["convencao_id"]
+          },
+          {
+            foreignKeyName: "pisos_convencao_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
             referencedRelation: "v_relatorio_convencao"
             referencedColumns: ["convencao_id"]
           },
@@ -1099,6 +1424,76 @@ export type Database = {
             columns: ["parceiro_id"]
             isOneToOne: false
             referencedRelation: "v_dash_top_parceiros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      remessas_dados: {
+        Row: {
+          arquivo_path: string
+          envio_id: string
+          id: string
+          ip_origem: unknown
+          linhas_com_erro: number | null
+          linhas_recebidas: number | null
+          modelo_coleta_id: string
+          processada_em: string | null
+          processada_por: string | null
+          recebida_em: string
+          relatorio: Json | null
+          status: string
+          user_agent: string | null
+        }
+        Insert: {
+          arquivo_path: string
+          envio_id: string
+          id?: string
+          ip_origem?: unknown
+          linhas_com_erro?: number | null
+          linhas_recebidas?: number | null
+          modelo_coleta_id: string
+          processada_em?: string | null
+          processada_por?: string | null
+          recebida_em?: string
+          relatorio?: Json | null
+          status?: string
+          user_agent?: string | null
+        }
+        Update: {
+          arquivo_path?: string
+          envio_id?: string
+          id?: string
+          ip_origem?: unknown
+          linhas_com_erro?: number | null
+          linhas_recebidas?: number | null
+          modelo_coleta_id?: string
+          processada_em?: string | null
+          processada_por?: string | null
+          recebida_em?: string
+          relatorio?: Json | null
+          status?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "remessas_dados_envio_id_fkey"
+            columns: ["envio_id"]
+            isOneToOne: false
+            referencedRelation: "envios_campanha"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remessas_dados_modelo_coleta_id_fkey"
+            columns: ["modelo_coleta_id"]
+            isOneToOne: false
+            referencedRelation: "modelos_coleta"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remessas_dados_processada_por_fkey"
+            columns: ["processada_por"]
+            isOneToOne: false
+            referencedRelation: "perfis"
             referencedColumns: ["id"]
           },
         ]
@@ -1170,6 +1565,13 @@ export type Database = {
             columns: ["cnpj_basico"]
             isOneToOne: false
             referencedRelation: "empresas"
+            referencedColumns: ["cnpj_basico"]
+          },
+          {
+            foreignKeyName: "repasses_cnpj_basico_fkey"
+            columns: ["cnpj_basico"]
+            isOneToOne: false
+            referencedRelation: "empresas_estabelecimentos"
             referencedColumns: ["cnpj_basico"]
           },
           {
@@ -1331,7 +1733,7 @@ export type Database = {
           horario?: string | null
           id?: string
           motivo_rejeicao?: string | null
-          numero_guia?: string
+          numero_guia: string
           observacoes?: string | null
           parceiro_id: string
           registrada_por?: string | null
@@ -1436,6 +1838,13 @@ export type Database = {
             foreignKeyName: "solicitacoes_servico_trabalhador_id_fkey"
             columns: ["trabalhador_id"]
             isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["trabalhador_id"]
+          },
+          {
+            foreignKeyName: "solicitacoes_servico_trabalhador_id_fkey"
+            columns: ["trabalhador_id"]
+            isOneToOne: false
             referencedRelation: "v_mensalidade_titular"
             referencedColumns: ["trabalhador_id"]
           },
@@ -1485,10 +1894,65 @@ export type Database = {
             foreignKeyName: "taxas_convencao_convencao_id_fkey"
             columns: ["convencao_id"]
             isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["convencao_id"]
+          },
+          {
+            foreignKeyName: "taxas_convencao_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
             referencedRelation: "v_relatorio_convencao"
             referencedColumns: ["convencao_id"]
           },
         ]
+      }
+      tentativas_checkin: {
+        Row: {
+          id: number
+          ocorrida_em: string
+          sucesso: boolean
+          token_alvo: string
+        }
+        Insert: {
+          id?: number
+          ocorrida_em?: string
+          sucesso: boolean
+          token_alvo: string
+        }
+        Update: {
+          id?: number
+          ocorrida_em?: string
+          sucesso?: boolean
+          token_alvo?: string
+        }
+        Relationships: []
+      }
+      tentativas_remessa: {
+        Row: {
+          id: number
+          ip_origem: unknown
+          motivo: string | null
+          ocorrida_em: string
+          sucesso: boolean
+          token_alvo: string
+        }
+        Insert: {
+          id?: number
+          ip_origem?: unknown
+          motivo?: string | null
+          ocorrida_em?: string
+          sucesso: boolean
+          token_alvo: string
+        }
+        Update: {
+          id?: number
+          ip_origem?: unknown
+          motivo?: string | null
+          ocorrida_em?: string
+          sucesso?: boolean
+          token_alvo?: string
+        }
+        Relationships: []
       }
       trabalhadores: {
         Row: {
@@ -1623,8 +2087,22 @@ export type Database = {
             foreignKeyName: "vinculos_empregaticios_estabelecimento_id_fkey"
             columns: ["estabelecimento_id"]
             isOneToOne: false
+            referencedRelation: "empresas_estabelecimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vinculos_empregaticios_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
             referencedRelation: "estabelecimentos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vinculos_empregaticios_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["estabelecimento_id"]
           },
           {
             foreignKeyName: "vinculos_empregaticios_estabelecimento_id_fkey"
@@ -1651,6 +2129,13 @@ export type Database = {
             foreignKeyName: "vinculos_empregaticios_trabalhador_id_fkey"
             columns: ["trabalhador_id"]
             isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["trabalhador_id"]
+          },
+          {
+            foreignKeyName: "vinculos_empregaticios_trabalhador_id_fkey"
+            columns: ["trabalhador_id"]
+            isOneToOne: false
             referencedRelation: "v_mensalidade_titular"
             referencedColumns: ["trabalhador_id"]
           },
@@ -1665,6 +2150,65 @@ export type Database = {
       }
     }
     Views: {
+      empresas_estabelecimentos: {
+        Row: {
+          capital_social: number | null
+          cnae_principal: string | null
+          cnpj_basico: string | null
+          cnpj_completo: string | null
+          convencao_id: string | null
+          email: string | null
+          id: string | null
+          municipio_id: number | null
+          nome_fantasia: string | null
+          porte: string | null
+          razao_social: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "estabelecimentos_cnae_principal_fkey"
+            columns: ["cnae_principal"]
+            isOneToOne: false
+            referencedRelation: "cnaes"
+            referencedColumns: ["codigo"]
+          },
+          {
+            foreignKeyName: "estabelecimentos_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "convencoes_coletivas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estabelecimentos_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["convencao_id"]
+          },
+          {
+            foreignKeyName: "estabelecimentos_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "v_relatorio_convencao"
+            referencedColumns: ["convencao_id"]
+          },
+          {
+            foreignKeyName: "estabelecimentos_municipio_id_fkey"
+            columns: ["municipio_id"]
+            isOneToOne: false
+            referencedRelation: "municipios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estabelecimentos_municipio_id_fkey"
+            columns: ["municipio_id"]
+            isOneToOne: false
+            referencedRelation: "v_dash_mapa"
+            referencedColumns: ["municipio_id"]
+          },
+        ]
+      }
       v_base_calculo_trabalhador: {
         Row: {
           cnpj_basico: string | null
@@ -1688,11 +2232,32 @@ export type Database = {
             referencedColumns: ["cnpj_basico"]
           },
           {
+            foreignKeyName: "estabelecimentos_cnpj_basico_fkey"
+            columns: ["cnpj_basico"]
+            isOneToOne: false
+            referencedRelation: "empresas_estabelecimentos"
+            referencedColumns: ["cnpj_basico"]
+          },
+          {
+            foreignKeyName: "vinculos_empregaticios_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_estabelecimentos"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "vinculos_empregaticios_estabelecimento_id_fkey"
             columns: ["estabelecimento_id"]
             isOneToOne: false
             referencedRelation: "estabelecimentos"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vinculos_empregaticios_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["estabelecimento_id"]
           },
           {
             foreignKeyName: "vinculos_empregaticios_estabelecimento_id_fkey"
@@ -1720,6 +2285,16 @@ export type Database = {
           reclassificada_em: string | null
           trabalhador: string | null
           trabalhador_id: string | null
+        }
+        Relationships: []
+      }
+      v_cobertura_contabilidades: {
+        Row: {
+          contabilidade_id: string | null
+          email: string | null
+          estabelecimentos_cobertos: number | null
+          nome: string | null
+          total_estabelecimentos: number | null
         }
         Relationships: []
       }
@@ -1856,6 +2431,13 @@ export type Database = {
             referencedRelation: "empresas"
             referencedColumns: ["cnpj_basico"]
           },
+          {
+            foreignKeyName: "estabelecimentos_cnpj_basico_fkey"
+            columns: ["cnpj_basico"]
+            isOneToOne: false
+            referencedRelation: "empresas_estabelecimentos"
+            referencedColumns: ["cnpj_basico"]
+          },
         ]
       }
       v_relatorio_convencao: {
@@ -1899,6 +2481,13 @@ export type Database = {
             referencedRelation: "empresas"
             referencedColumns: ["cnpj_basico"]
           },
+          {
+            foreignKeyName: "repasses_cnpj_basico_fkey"
+            columns: ["cnpj_basico"]
+            isOneToOne: false
+            referencedRelation: "empresas_estabelecimentos"
+            referencedColumns: ["cnpj_basico"]
+          },
         ]
       }
     }
@@ -1906,6 +2495,17 @@ export type Database = {
       fn_config: {
         Args: { p_chave: string; p_default: string }
         Returns: string
+      }
+      fn_consulta_nivel_bloqueio: {
+        Args: { p_cpf: string }
+        Returns: {
+          bloqueado_contribuicao: boolean
+          bloqueado_mensalidade: boolean
+          encontrado: boolean
+          nivel: Database["public"]["Enums"]["nivel_protecao"]
+          primeiro_nome: string
+          status_cadastro: Database["public"]["Enums"]["status_cadastro"]
+        }[]
       }
       fn_criar_recepcionista: {
         Args: { p_nome: string; p_parceiro_id: string; p_pin: string }

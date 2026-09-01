@@ -30,6 +30,37 @@ export function paraBooleano(v: string | undefined | null, padrao: boolean): boo
 }
 
 /**
+ * O ÚNICO lugar do projeto que traduz "situação sindical" → `recolhe_contribuicao`.
+ *
+ * POR QUE ISTO EXISTE (defeito medido na Subetapa 08.10, 2026-08-26)
+ * O modelo de coleta v1 pede ao contador a palavra **sindicalizado** ou
+ * **oposição** (spec §7). O `paraBooleano` genérico só reconhece
+ * `sim/1/true/verdadeiro` — tudo o mais vira `false`. Resultado medido numa
+ * remessa real: `"sindicalizado"` gravou `recolhe_contribuicao_sindical = false`,
+ * e a pessoa entrou **Bronze**. Em escala, isso classificaria a base coletada
+ * inteira como Bronze — inclusive quem se sindicalizou —, zerando a base de
+ * cálculo da contribuição e o P1 da etapa (converter Prata em Ouro).
+ *
+ * `reconhecido = false` NÃO é detalhe: é o que impede a próxima variação
+ * ("filiado", "contribuinte", "S") de virar Bronze em silêncio. Quem chama
+ * transforma isso em aviso visível na linha, e o padrão legal ("sim") continua
+ * valendo só para célula VAZIA — que é o caso previsto em importacao.md §3.3.
+ */
+const SITUACAO_CONTRIBUI = ["sim", "1", "true", "verdadeiro", "sindicalizado", "sindicalizada", "sindicalizado(a)"];
+const SITUACAO_NAO_CONTRIBUI = ["nao", "não", "0", "false", "falso", "oposicao", "oposição", "oposto", "oposta"];
+
+export function interpretarSituacaoSindical(
+  v: string | undefined | null,
+  padrao: boolean,
+): { valor: boolean; reconhecido: boolean; vazio: boolean } {
+  const s = (v ?? "").trim().toLowerCase();
+  if (!s) return { valor: padrao, reconhecido: true, vazio: true };
+  if (SITUACAO_CONTRIBUI.includes(s)) return { valor: true, reconhecido: true, vazio: false };
+  if (SITUACAO_NAO_CONTRIBUI.includes(s)) return { valor: false, reconhecido: true, vazio: false };
+  return { valor: padrao, reconhecido: false, vazio: false };
+}
+
+/**
  * Normaliza um identificador numérico (CPF/CNPJ) para `tamanho` dígitos.
  * Sinaliza `zeroComido` quando a string tinha 1 dígito a menos que o
  * esperado — indício clássico do Excel convertendo "01234567" em número
