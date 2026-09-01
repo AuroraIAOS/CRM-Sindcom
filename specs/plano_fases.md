@@ -1525,7 +1525,7 @@ Esforço máximo: 3 tentativas.
 Escalonamento de LLM: Opus desde a 1ª — escreve na base cadastral.
 Se esgotar: parar e relatar.
 
-### Subetapa 08.11 — Acompanhamento por cobertura e revogação de token [Goal] [LLM: Sonnet] · Status: ✅ CONCLUÍDA (com um item pendente de revisão)
+### Subetapa 08.11 — Acompanhamento por cobertura e revogação de token [Goal] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
 **Executada em 2026-08-26** (Circuito 3, Sonnet). Tela `/cobertura` (Admin, Presidente e
 Secretaria), em `src/features/cobertura/` (`api.ts`, `CoberturaContabilidadesPage.tsx`): lista as
 951 contabilidades ordenadas da pior para a melhor cobertura, com drill-down nominal dos
