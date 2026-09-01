@@ -683,7 +683,7 @@ LLM no meio. Numeração é endereço; circuito é itinerário.
 | **1 — Preparo externo** ✅ | **08.1** → 08.0 → 08.2 → 08.3 | **Opus** | **CONCLUÍDO em 2026-08-26.** DMARC publicado e `dmarc=pass` medido nos dois receptores; links conferidos; assinaturas instaladas; três textos jurídicos em forma final, revisados por Maxwell e pelo Dr. Adenilson |
 | **2 — Núcleo seguro** ✅ | **08.4** → **08.9** → **08.5** → **08.6** → **08.10** | **Opus** | **CONCLUÍDO em 2026-08-26.** O caminho completo do dado: tabela fechada → contabilidade semeada → recepção → página do contador → cadastro pela Denise |
 | **3 — Superfície do contador** ✅ | 08.7 → 08.8 → 08.11 → 08.13 | **Sonnet** | **CONCLUÍDO em 2026-08-26.** Modelo `.xlsx`, formulário, tela de cobertura (token mascarado pendente de revisão) e os 9.186 tokens reais das 4 listas por caixa |
-| **4 — Portão e disparo** | **08.12** → 08.14 → **08.15** | **Opus** | Relatório adversarial verde, copies aprovadas, onda 1 disparada — a 08.3(b) (nota assinada) já fechou no Circuito 1 |
+| **4 — Portão e copies** ✅ | **08.12** → 08.14 | **Opus** | **CONCLUÍDO em 2026-09-01.** Relatório adversarial verde e aplicado em produção; as 4 copies fechadas e revisadas por Maxwell. **A 08.15 (onda 1) saiu deste circuito e virou a Subetapa 9.2 da ETAPA 09** — disparar não é construir |
 
 **Por que assim:**
 
@@ -1714,11 +1714,21 @@ Esforço máximo: 2 tentativas.
 Escalonamento de LLM: Sonnet; Opus se a conferência de duplicata não fechar.
 Se esgotar: parar e relatar. Lista errada não se corrige depois do disparo.
 
-### Subetapa 08.14 — Copies das trilhas A e B [Manual] [LLM: Opus] · Status: 🟡 REDIGIDA — aguarda aprovação de Maxwell e a página jurídica no ar
-**Redigida em 2026-08-27** (Circuito 4, Opus): [`docs/copies_campanha_08_14.md`](../docs/copies_campanha_08_14.md)
-— as 4 copies (trilha A: 1 e-mail · trilha B: estrutural, informativo, requisição), com assunto,
-pré-cabeçalho, corpo, assinatura e descadastro. **Não marcada como concluída**: o critério do plano
-é aprovação de Maxwell, e o da Requisição exige a página jurídica respondendo 200.
+### Subetapa 08.14 — Copies das trilhas A e B [Manual] [LLM: Opus] · Status: ✅ CONCLUÍDA
+**Redigida em 2026-08-27 e revisada por Maxwell em 2026-09-01**:
+[`docs/copies_campanha_08_14.md`](../docs/copies_campanha_08_14.md) — as 4 copies (trilha A: 1 e-mail ·
+trilha B: estrutural, informativo, requisição), com assunto, pré-cabeçalho, corpo, assinatura e
+descadastro. **Arquivo único**: a revisão de Maxwell veio em `copies_campanha_corrigida.md`, e os
+dois foram fundidos — copy com duas versões vivas é copy que se dispara errada. O que a fusão
+acrescentou está listado em §9 do próprio arquivo.
+
+**Prazo decidido por onda:** 20 dias (onda 01) · 15 (02) · 10 (03) · 10 (04).
+
+**O critério "página jurídica respondendo 200" migrou para a Subetapa 9.0**, e o motivo é que ele
+nunca foi um critério de TEXTO: o material jurídico está final e assinado (`01_nota_tecnica.pdf`,
+`02_nota_resumida.pdf`, `03_pagina_dados.json` — Adenilson Antônio Silva, OAB/MG 96.522, 28/08/2026),
+e a URL final é **`/dados/`**, não `/base-legal-dados/`. O que falta é publicar e conferir, e isso é
+pré-voo de disparo, não redação de copy.
 
 **Duas medições mudaram a copy antes de ela ser escrita:**
 - **`{{ contact.NOME }}` não é usável em nenhuma das 4.** Em A/B/C o campo `nome` **é o próprio
@@ -1751,9 +1761,135 @@ Esforço máximo: 2 rodadas de revisão por copy.
 Escalonamento de LLM: Opus — a copy de Requisição carrega o argumento jurídico.
 Se esgotar: entregar as 3 copies não bloqueadas e relatar que a de Requisição aguarda a 08.3.
 
-### Subetapa 08.15 — Onda 1: as 89 contabilidades grandes [Manual] [LLM: Opus] · Status: ⬜
+### Subetapa 08.15 — Onda 1 · **MOVIDA PARA A ETAPA 09 (Subetapa 9.2)** em 2026-09-01
+
+**Esta subetapa não pertence mais à Etapa 08.** Decisão de Maxwell, e o motivo é o certo:
+
+> A onda 1 é, de fato, a melhor prova de que a estrutura inteira funciona — Brevo, copy, jurídico,
+> página pública, token, importação e telas do CRM. **Mas usá-la como primeira prova significa
+> testar em 89 contabilidades e 3.758 estabelecimentos, 24% da base.** Uma base de e-mail é finita
+> e não se recompra: se a copy, o link ou a página estiverem errados, o custo do aprendizado é
+> permanente e recai sobre quem não tem nada a ver com o erro.
+
+A prova ponta a ponta passa a ser feita **antes**, contra caixas do próprio Maxwell — a **Onda 00**,
+Subetapa 9.1. Só depois dela a onda 1 real sai, como Subetapa 9.2.
+
+**O que a Etapa 08 entrega, portanto, é a estrutura pronta e provada por teste; quem a coloca em
+produção é a Etapa 09.** Ver "ETAPA 09 — EXECUÇÃO DAS CAMPANHAS" abaixo.
+
+---
+
+**Aceite da Etapa 08** (revisto em 2026-09-01, quando a onda 1 saiu para a Etapa 09): (1) DMARC
+publicado e um e-mail de teste passando `spf/dkim/dmarc=pass` nas duas caixas; (2) as seis tabelas
+novas com RLS, policy explícita e zero grant de fábrica sobrando; (3) um contador envia `.xlsx` pelo
+token e a remessa aparece em `remessas_dados` com status `validada`, **sem tocar `trabalhadores`**;
+(4) a Denise revisa e importa, e o reenvio do mesmo arquivo não duplica ninguém; (5) portão
+adversarial verde, com relatório; (6) **as 4 copies fechadas e o material jurídico assinado**;
+(7) a métrica que decide tudo — **estabelecimentos com ao menos um trabalhador vinculado — saiu de
+zero**.
+
+> **O item (6) mudou.** Ele era "onda 1 disparada com rejeição abaixo de 2%". Disparo é agora
+> critério de aceite da **Etapa 09**, não da 08 — a 08 constrói e prova a estrutura, a 09 a usa.
+> E a métrica (7) continua sendo a que decide a etapa: ela saiu de 0 e está em 2 estabelecimentos
+> cobertos, com 4 trabalhadores vinculados.
+
+**Riscos (spec §14):** domínio marcado como spam (mitigado por D1 + aquecimento + regra dos 2%) ·
+contador recusa por LGPD (nota técnica pública e assinada) · contador não responde (tela de
+cobertura + telefone nas 89 maiores) · planilha volta com CPF corrompido pelo Excel (coluna texto +
+DV validado antes do envio) · um contador recebe N e-mails iguais (lista por caixa) · dado pessoal
+exposto no canal público (bucket privado, token com validade, rate limit, sem leitura pela página,
+revisão humana antes de qualquer escrita).
+
+---
+
+## ETAPA 09 — EXECUÇÃO DAS CAMPANHAS · Complexidade: MÉDIA · Status: ⬜
+
+Objetivo geral: **usar** a estrutura que a ETAPA 08 construiu. Uma subetapa por onda, cada uma
+organizando, disparando e acompanhando o seu público. A ETAPA 08 termina com tudo pronto e provado
+por teste automatizado; esta etapa é a que põe e-mail na caixa de gente real.
+
+**Por que ela existe como etapa separada** (decisão de Maxwell, 2026-09-01): a 08.15 original
+faria do primeiro disparo real, em 24% da base, também o primeiro teste humano da estrutura inteira.
+Construir e validar são atividades de natureza diferente e com riscos diferentes — **construção
+errada se corrige, base de e-mail queimada não se recompra.** Separá-las permite intercalar a
+Onda 00, que valida sem custo nenhum de reputação.
+
+**Regra que governa a etapa inteira:** cada onda só sai depois que a anterior fechou no verde.
+Rejeição acima de **2%** ou queda em spam **interrompe** — nunca "tenta de novo com mais volume".
+
+**Ritmo de aquecimento (spec §8), que não se atropela:**
+
+| Onda | Volume/dia | Público | Alcance acumulado |
+|---|---|---|---|
+| 00 | punhado | caixas do próprio Maxwell | — (é prova, não alcance) |
+| 01 | 20 → 40 | 89 contabilidades grandes | 3.758 estabs (24%) |
+| 02 | 50 → 80 | 248 médias | 5.947 (38%) |
+| 03 | 100 → 150 | 613 pequenas | 7.438 (47%) |
+| 04 | 200 → 300 | 8.236 empresas isoladas | 15.679 (100%) |
+
+**Copies:** `docs/copies_campanha_08_14.md` — arquivo único, texto fechado, prazo decidido por onda
+(20 / 15 / 10 / 10). **Segurança:** o portão adversarial da 08.12 já está verde e aplicado em
+produção (`docs/RELATORIO_08_ADVERSARIAL.md`).
+
+### Subetapa 9.0 — Pré-voo: o que tem de estar de pé antes de qualquer disparo [Manual] [LLM: Sonnet] · Status: ⬜
+Objetivo: fechar as pendências de infraestrutura que a Etapa 08 identificou e não podia resolver
+sozinha, porque nenhuma delas mora no repositório.
+Conclusão: **(a) ✅ site institucional respondendo 200** — feito em 2026-09-01. O `.htaccess` tinha
+perdido as ~7 primeiras linhas e começava no meio de um `RewriteCond` (`commerce_session_) [NC]`),
+o que faz o Apache recusar o diretório inteiro — até arquivo estático dava 500. Restaurado do
+backup versionado; método de diagnóstico em `orientacoes.md` §1.6. **(b) ✅
+`https://sindcompassos.org/dados/` no ar, respondendo 200**, com o conteúdo conferido na página
+servida (assinatura de Adenilson Antônio Silva, OAB/MG 96.522, e a citação do art. 11, II) — 200 em
+WordPress também é o que uma página vazia devolve, então conferir o conteúdo não é preciosismo.
+**(c) ⬜ redirecionamento HTTP → HTTPS**, **acima** do bloco de cache (§1.5): `http://` ainda
+responde 200 sem redirecionar. **Reintroduzir separadamente, e provar** — foi mexer nesse arquivo
+que derrubou o site. **(d) ⬜ `Reply-To`** da Brevo apontando para `secretaria@sindcompassos.org`.
+**(e) ⬜ os 4 CSVs** importados na Brevo, contagens conferidas (89 / 248 / 613 / 8.236).
+**(f) ⬜ `campanhas.eixo` e `campanhas.assunto`** preenchidos no CRM.
+Qualidade: **cada item se prova por requisição ou por resposta que chega, nunca por tela de
+configuração.** Ler "Reply-To: secretaria@" no painel da Brevo não prova que a resposta chega —
+responder ao e-mail e ver a mensagem em `secretaria@` prova.
+Evidência: as 6 conferências, cada uma com o resultado medido.
+Esforço máximo: sem teto — é pré-requisito, não entrega.
+Se esgotar: **nenhuma onda sai.** Onda que depende de link quebrado queima base sem aprender nada.
+
+### Subetapa 9.1 — Onda 00: prova ponta a ponta em caixas do próprio Maxwell [Manual] [LLM: Opus] · Status: ⬜
+Objetivo: **provar a estrutura inteira com dado real e destinatário controlado, antes de tocar em
+uma única contabilidade de verdade.** É a subetapa que a decisão de 2026-09-01 criou, e é ela que
+transforma a onda 1 de experimento em execução.
+Conclusão: as **4 copies disparadas de verdade pela Brevo** (trilha A + B1 + B2 + B3) para
+contabilidades e empresas **fictícias**, semeadas para este fim, com `envios_campanha` e token
+reais, e endereçadas a caixas de e-mail às quais Maxwell tem acesso. Para cada uma:
+
+1. **chegou** — e chegou na caixa de entrada, não em spam, no Gmail **e** no Outlook;
+2. **está legível** — sem imagem quebrada, sem campo de mesclagem à mostra, sem texto cortado, no
+   desktop e no celular;
+3. **autenticou** — `spf=pass`, `dkim=pass`, `dmarc=pass` no cabeçalho original da mensagem;
+4. **o `Reply-To` funciona** — responder ao e-mail e a resposta chegar em `secretaria@`;
+5. **o link do token abre**, mostra a carteira certa da contabilidade fictícia e aceita uma planilha;
+6. **a remessa aparece** em `/remessas` e o estabelecimento aparece coberto em `/cobertura`;
+7. **o descadastro funciona** e remove o contato da lista na Brevo;
+8. **o link de `/dados/` abre** a partir do corpo da B3, no cliente de e-mail real.
+
+Qualidade: **dados fictícios claramente nomeados** (prefixo `DEMO —`, CNPJ da faixa 999999…), para
+nunca serem confundidos com cadastro real — e eles **ficam gravados** ao final, como todo dado de
+demonstração deste projeto. A Onda 00 é a única em que **errar é barato**: qualquer defeito
+encontrado aqui é defeito que não alcançou contabilidade nenhuma. **Ler as 4 copies na caixa de
+entrada é parte do teste, não formalidade** — texto que se lê bem no Markdown pode quebrar no
+cliente de e-mail.
+Evidência: um print por copy por cliente (8), o cabeçalho de autenticação de uma delas, a resposta
+recebida em `secretaria@`, a remessa em `remessas_dados` e a leitura de `/cobertura`.
+Esforço máximo: sem teto — é a prova que autoriza tudo o que vem depois.
+Escalonamento de LLM: Opus — é aqui que um defeito sutil de copy ou de token tem de ser percebido.
+Se esgotar / se qualquer um dos 8 falhar: **corrigir e repetir a Onda 00.** A onda 1 não sai com
+qualquer item no vermelho, e repetir a Onda 00 não custa reputação nenhuma.
+
+### Subetapa 9.2 — Onda 01: as 89 contabilidades grandes [Manual] [LLM: Opus] · Status: ⬜
+*(era a Subetapa 08.15; movida para cá em 2026-09-01, com o conteúdo preservado)*
+
 Objetivo: o primeiro disparo real — 89 envios que alcançam **3.758 estabelecimentos, 24% da base**.
-Se a copy estiver ruim, descobre-se com 89 e não com 9.000 (D8).
+Se a copy estiver ruim, descobre-se com 89 e não com 9.000 (D8) — **e agora, com a Onda 00 no
+verde, a copy já foi lida em caixa real antes de chegar aqui.**
 Conclusão: os 89 e-mails enviados no ritmo de aquecimento (**20 → 40 por dia**), com
 `envios_campanha.enviado_em` preenchido nos 89, **taxa de rejeição medida abaixo de 2%** no painel
 do ESP, e a tela de cobertura (08.11) mostrando as primeiras remessas chegando.
@@ -1762,29 +1898,58 @@ spam** em vez de insistir — insistir com volume maior só queima a base, e a b
 recompra. O disparo é **ordenado por Maxwell**, nunca iniciado pelo CODE. Os links são reconferidos
 imediatamente antes (08.0). As 89 maiores caixas valem contato telefônico direto no follow-up:
 são 24% da base em 89 ligações.
+Pré-requisito duro: **9.0 e 9.1 fechadas**.
 Evidência: print do painel do ESP com entregues/rejeitados/spam + `select count(*) from
 envios_campanha where enviado_em is not null` = 89 + a primeira leitura de cobertura.
 Esforço máximo: 1 disparo; qualquer anomalia interrompe em vez de reenviar.
-Escalonamento de LLM: já nasce em Opus — não por complexidade própria, mas por **circuito**: roda
-colada à 08.12, e anomalia de entregabilidade precisa de diagnóstico na hora, não numa sessão nova.
 Se esgotar: parar o agendamento no ESP e relatar. **Onda 2 não sai com a onda 1 no vermelho.**
+
+### Subetapa 9.3 — Onda 02: as 248 contabilidades médias [Manual] [LLM: Sonnet] · Status: ⬜
+Objetivo: 248 envios, 2.189 estabelecimentos, levando o alcance acumulado a 38%.
+Conclusão: 248 enviados a 50 → 80/dia, rejeição abaixo de 2%, `enviado_em` preenchido, cobertura
+subindo. Prazo da copy: **15 dias**.
+Pré-requisito duro: **onda 01 fechada no verde**, com a taxa de resposta medida — se a onda 01
+converteu mal, o que se ajusta é a copy, não o volume.
+Se esgotar: parar e relatar.
+
+### Subetapa 9.4 — Onda 03: as 613 contabilidades pequenas [Manual] [LLM: Sonnet] · Status: ⬜
+Objetivo: 613 envios, 1.491 estabelecimentos, alcance acumulado 47%. Prazo da copy: **10 dias**.
+Conclusão: idem 9.3, a 100 → 150/dia.
+Pré-requisito duro: onda 02 fechada no verde.
+
+### Subetapa 9.5 — Onda 04: as 8.236 empresas isoladas (trilha B, três e-mails) [Manual] [LLM: Opus] · Status: ⬜
+Objetivo: o maior público e o único com **sequência de três e-mails** — estrutural, informativo e
+requisição, com no mínimo 5 dias entre eles. 8.236 caixas, 8.236 estabelecimentos, alcance
+acumulado 100%.
+Conclusão: as três copies disparadas na ordem e no intervalo, a 200 → 300/dia, rejeição abaixo de
+2% **em cada uma das três**, e `enviado_em` preenchido. Prazo da copy: **10 dias**, contado do
+disparo da B3.
+Qualidade: é a onda com maior risco de spam — público que nunca ouviu falar do sindicato, três
+mensagens seguidas, volume alto. **A taxa de descadastro depois da B1 é o termômetro**: se ela vier
+alta, a B2 sai menor, não maior. Os **5 e-mails malformados na RFB** descartados na 08.13 continuam
+fora e precisam de correção manual da Denise se quiserem ser alcançados.
+Pré-requisito duro: onda 03 fechada no verde.
+Escalonamento de LLM: Opus — sequência de três, público frio e volume alto é onde a decisão de
+"seguir ou parar" precisa de julgamento, não de regra.
+
+### Subetapa 9.6 — Follow-up e telefone [Manual] [LLM: Sonnet] · Status: ⬜
+Objetivo: converter quem não respondeu. A tela `/cobertura` (08.11) já mostra, nominalmente, quem
+falta.
+Conclusão: as contabilidades da onda 01 sem remessa após o prazo, contatadas por telefone; um
+segundo e-mail para quem abriu e não enviou.
+Qualidade: **as 89 maiores caixas valem ligação, não e-mail** — são 24% da base em 89 ligações, e
+ligação não queima reputação de domínio.
 
 ---
 
-**Aceite da Etapa 08:** (1) DMARC publicado e um e-mail de teste passando `spf/dkim/dmarc=pass` nas
-duas caixas; (2) as seis tabelas novas com RLS, policy explícita e zero grant de fábrica sobrando;
-(3) um contador envia `.xlsx` pelo token e a remessa aparece em `remessas_dados` com status
-`validada`, **sem tocar `trabalhadores`**; (4) a Denise revisa e importa, e o reenvio do mesmo
-arquivo não duplica ninguém; (5) portão adversarial verde, com relatório; (6) onda 1 disparada com
-rejeição abaixo de 2%; (7) a métrica que decide tudo — **estabelecimentos com ao menos um
-trabalhador vinculado — saiu de zero.**
+**Aceite da Etapa 09:** (1) Onda 00 verde nos 8 pontos, com evidência; (2) as 4 ondas reais
+disparadas, cada uma com rejeição abaixo de 2%; (3) `envios_campanha.enviado_em` preenchido em
+9.186 linhas; (4) a métrica que decide tudo — **estabelecimentos com ao menos um trabalhador
+vinculado** — medida antes e depois de cada onda, e crescendo.
 
-**Riscos (spec §14):** domínio marcado como spam (mitigado por D1 + aquecimento + regra dos 2%) ·
-contador recusa por LGPD (nota técnica pública e assinada) · contador não responde (tela de
-cobertura + telefone nas 89 maiores) · planilha volta com CPF corrompido pelo Excel (coluna texto +
-DV validado antes do envio) · um contador recebe N e-mails iguais (lista por caixa) · dado pessoal
-exposto no canal público (bucket privado, token com validade, rate limit, sem leitura pela página,
-revisão humana antes de qualquer escrita).
+**Riscos:** domínio marcado como spam (mitigado pelo aquecimento, pela regra dos 2% e pela Onda 00,
+que agora testa antes) · contador não responde (cobertura + telefone) · a onda 04 é o público mais
+frio e o maior volume, e é onde a reputação construída nas três primeiras pode ser perdida de uma vez.
 
 ---
 

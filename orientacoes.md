@@ -233,6 +233,72 @@ nossa — o plugin de cache reescreve o próprio bloco sozinho. Se um dia o redi
 sumir, a causa é essa, e a saída passa a ser um plugin de SSL em vez do arquivo. Reconferir
 alguns dias depois de aplicar.
 
+### 1.6 Erro 500 no site inteiro: o teste que separa `.htaccess` de PHP custa UMA requisição
+
+**(a) Problema.** Em 2026-09-01 o site institucional inteiro devolvia **500** — home, subpáginas e
+`/wp-admin/`. O CRM (`crm.sindcompassos.org`, outro docroot) respondia 200, então a hospedagem
+estava de pé. A suspeita natural num site WordPress é plugin, tema ou banco, e é aí que se perde a
+tarde: são dezenas de candidatos e nenhum se descarta rápido.
+
+**O teste que decide em uma requisição:** peça um arquivo **estático**, que nunca passa pelo PHP.
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" https://SEU-SITE/wp-includes/js/jquery/jquery.min.js
+```
+
+- **500 num arquivo estático** ⇒ **não é PHP.** É o Apache recusando o diretório inteiro, e a causa
+  quase sempre é `.htaccess` inválido. Nenhum plugin consegue produzir esse sintoma.
+- **200 no estático e 500 no PHP** ⇒ aí sim é aplicação: plugin, tema, memória, banco.
+
+E **o `error_log` da conta não ajuda neste caso** — o dele estava com data de dias antes. Erro de
+sintaxe de `.htaccess` vai para o log de erro do *servidor*, não para o da conta; log velho não
+significa "nada aconteceu".
+
+**(b) Solução — e o defeito real, que não era o esperado.** O arquivo não tinha diretiva errada: ele
+tinha **perdido o começo**. A linha 1 era
+
+```
+commerce_session_) [NC]
+```
+
+isto é, o **rabo de um `RewriteCond`** cuja primeira metade sumiu junto com as ~7 linhas anteriores
+(`# BEGIN NFD EPC`, `<IfModule mod_rewrite.c>`, `RewriteEngine On`, `RewriteBase /`…). O Apache lê
+`commerce_session_)` como comando desconhecido e derruba o diretório. Do restante do arquivo, o
+bloco de cache aparecia **duas vezes**: um truncado no topo e um íntegro logo abaixo — assinatura de
+escrita concorrente, com o plugin de cache reescrevendo o próprio bloco enquanto o arquivo era
+salvo por outra via.
+
+O gatilho foi editar uma página no WP Admin (renomear o slug de `/servicos-sindicais/` para
+`/servicos/`) e **fechar o WP Admin antes de a alteração propagar** — o plugin de cache ficou
+reescrevendo o bloco no meio do caminho.
+
+**(c) Como implantar.**
+
+1. **Tenha o backup ANTES de precisar dele.** Este projeto tinha:
+   `docs/htaccess_site_institucional_backup_2026-08-25.txt`, com o conteúdo íntegro e a explicação
+   de qual bloco é gerenciado por qual software. Sem ele, a recuperação vira adivinhação.
+2. Restaure pelo cPanel → Gerenciador de arquivos → o docroot do site → `.htaccess` → **Editar**.
+   O caminho direto para o editor, sem depender de clique em tabela, é:
+   `…/frontend/jupiter/filemanager/editit.html?file=.htaccess&dir=%2Fhome2%2FCONTA%2FSITE`
+3. **Leia o arquivo quebrado antes de sobrescrever.** Foi o que revelou que a causa era truncamento,
+   e não uma diretiva errada — diagnósticos diferentes, prevenções diferentes.
+4. **Uma mudança por vez.** O redirecionamento HTTP→HTTPS (§1.5) **não** foi reintroduzido no mesmo
+   salvamento: primeiro restaurar e provar que voltou, depois acrescentar. Empilhar as duas deixaria
+   sem resposta a pergunta "qual delas quebrou?" caso continuasse 500.
+5. **Confirme por requisição, nos dois níveis** — estático e PHP:
+   ```bash
+   for u in / /wp-includes/js/jquery/jquery.min.js /wp-admin/ /alguma-subpagina/; do
+     curl -s -o /dev/null -w "$u -> %{http_code}\n" -L "https://SEU-SITE$u"; sleep 5
+   done
+   ```
+   **Espace as requisições.** Logo depois de o site voltar, uma rajada devolveu **503** nas
+   subpáginas — proteção de excesso, não defeito. Com 5s entre elas, todas deram 200. Confundir
+   esse 503 com "ainda quebrado" leva a mexer de novo num arquivo que já estava certo.
+
+**Regra geral:** quando um site inteiro cai, a primeira pergunta não é "qual plugin?", é **"o
+servidor web ainda serve um byte estático?"**. A resposta separa dois mundos de investigação, e ela
+custa uma requisição.
+
 ---
 ## 2. Banco de dados (Postgres/Supabase)
 
@@ -2385,3 +2451,49 @@ expect(texto).not.toContain('"ok":true');         // o desfecho, não o formato
 repositório descreve (CDN, WAF, gateway). Camada que você não sabia que existia
 aparece primeiro como um teste quebrando de um jeito estranho — e o reflexo
 certo é medir de novo, não registrar achado.
+
+### 7.9 Teste vermelho "por um motivo conhecido" para de avisar sobre um motivo novo
+
+**(a) Problema.** Três casos de `cartas.spec.ts` estavam vermelhos desde a ETAPA 07, e todo
+relatório desde então os classificou da mesma forma: *"falhas de dados, não de segurança,
+anteriores a esta etapa"*. A classificação estava certa e, exatamente por isso, ninguém foi ver.
+
+Quando finalmente se olhou, havia **duas** causas empilhadas, e só uma era a conhecida:
+
+1. **A conhecida (§7.1b):** o caso dos "4 baldes" fixava os números do cenário DEMO Kabum
+   (17/68/12/3, 100 pessoas). Esse cenário foi apagado da base em algum momento — a tabela
+   `auditoria` registra **519 DELETEs** em `trabalhadores`. O teste cobrava um cenário inexistente.
+2. **A que ninguém procurou, e era um defeito de verdade:** `v_relatorio_convencao` devolvia **zero
+   linhas em produção**. Não por falta de gente — havia 4 trabalhadores aprovados com vínculo ativo
+   —, mas porque a view faz `join estabelecimentos e on e.convencao_id = c.id`, e **os dois únicos
+   estabelecimentos com trabalhador vinculado eram justamente os 2 (de 17.302) sem `convencao_id`**.
+   Resultado: 100% da base de pessoas ficava fora de todo relatório por convenção, e a tela
+   `/cartas` aparecia vazia sem dizer por quê.
+
+O segundo defeito estava **escondido atrás do primeiro**: o vermelho que já se esperava absorveu o
+vermelho novo, e por semanas.
+
+**(b) Solução.** Duas, e a segunda é a que evita a repetição:
+
+- **No dado:** atribuir a convenção aos estabelecimentos DEMO. As duas views saíram de 0 para 4
+  linhas na mesma medição.
+- **No teste:** parar de depender de dado ambiente. Cada caso passou a **criar as pessoas de que
+  precisa** — com vínculo a um estabelecimento que tem convenção — e a afirmar o **invariante** em
+  vez da contagem: "uma pessoa em cada um dos 4 baldes", não "17/68/12/3". O `beforeAll` ainda
+  confere explicitamente que o estabelecimento DEMO tem convenção, com mensagem dizendo o que
+  significa se não tiver.
+
+**(c) Como implantar.** A regra de método, que vale além deste caso:
+
+> **Falha "conhecida" tem prazo de validade.** Toda vez que um relatório for escrever *"as N falhas
+> restantes são as mesmas de sempre"*, **abra uma delas e confirme que a mensagem de erro ainda é a
+> mesma de sempre.** Custa um comando; a alternativa é o que aconteceu aqui.
+
+```bash
+npx vitest run tests/rls/AQUELE_ARQUIVO.spec.ts   # e LEIA a mensagem, não só a contagem
+```
+
+E, ao escrever teste sobre view com `join` por chave opcional (`convencao_id`, `municipio_id`,
+qualquer FK anulável), lembre que **`join` interno some com a linha em silêncio**. Se o número
+esperado for zero, o teste não distingue "não há dado" de "o join derrubou tudo" — a não ser que a
+fixture do próprio teste esteja garantidamente do lado certo do join.
