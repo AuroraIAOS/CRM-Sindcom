@@ -498,7 +498,7 @@ que é exatamente o que a regra prevê. A distinção que ela protege ficou pres
 ## 11. Aplicação em produção — 2026-08-27, por ordem do Maxwell
 
 De posse do relatório, **Maxwell ordenou aplicar o `sql/23_hardening_08_12.sql` inteiro em
-produção**. Executado em seguida. **O merge para `main` continua não executado.**
+produção**. Executado em seguida. O merge veio depois, e está registrado na §12.
 
 ### O que foi aplicado
 
@@ -528,8 +528,43 @@ de `cartas`, causadas por dados do cenário DEMO (§7.1b), anteriores à ETAPA 0
 
 ### O que continua valendo depois desta aplicação
 
-- **O merge é do Maxwell.** A branch é `feature/comunicacao-externa`; `main` não foi tocada.
+- **O merge é do Maxwell** — e foi ordenado por ele em 2026-09-01, depois de a Etapa 08 fechar. Ver §12.
 - **O disparo da onda 1 (08.15) não aconteceu** e não acontece sem ordem explícita — as copies ainda
   precisam de aprovação e a página jurídica ainda responde 404 (`docs/copies_campanha_08_14.md` §7).
 - **As recomendações da §8 continuam abertas**, em especial as 43 relações com GRANT herdado para
   `anon`. A correção da raiz garante que a lista **não cresce mais**; encolhê-la é decisão à parte.
+
+---
+
+## 12. Desfecho — merge para `main` em 2026-09-01, por ordem do Maxwell
+
+O parecer da §9 foi entregue com `main` intocada. Em **2026-09-01**, depois de a ETAPA 08 fechar
+por completo, **Maxwell ordenou o merge**, que foi executado em seguida — nunca por iniciativa
+própria, que é o que a regra prevê.
+
+| Passo | Resultado |
+|---|---|
+| Suíte na árvore a ser fundida | **272 testes, 0 falhas** |
+| `npm run build` (inclui typecheck) | limpo — PWA, 22 entradas |
+| Push da branch `feature/comunicacao-externa` | `98ff033..f990f16` — backup antes de qualquer coisa |
+| Merge `--no-ff` para `main` | **`89c4c24`** — 35 commits |
+| **Suíte no RESULTADO do merge** | **272 testes, 0 falhas** — verde antes de enviar, não depois |
+| Push de `main` | `adc204d..89c4c24` |
+| Branch mantida | sim, como registro auditável (mesmo critério da ETAPA 07) |
+
+**Deploy: nenhum foi necessário, e isso foi medido, não suposto.** Os assets do build de `main`
+(`index-Bte-2BWp.js`, `index-uhvJNgie.css`) são **idênticos** aos que
+`https://crm.sindcompassos.org/` serve — o frontend já havia subido subetapa a subetapa, pela
+autorização permanente do `CLAUDE.md`. O merge alinhou o repositório ao que já estava no ar.
+
+**Verificação pós-merge, medida ao vivo:**
+
+| Alvo | Resultado |
+|---|---|
+| `crm.sindcompassos.org` — `/`, `/dashboard`, `/cobertura`, `/remessas` | **200** nas quatro |
+| `sindcompassos.org` — `/` e `/dados/` | **200** nas duas |
+| `sql/20`, `21`, `22`, `23` em produção | aplicados |
+| Disparos de e-mail | **nenhum** — os 9.186 tokens seguem com `enviado_em` nulo |
+
+O que continua sendo decisão do Maxwell, e não mudou: **ordenar o disparo da onda 1** (agora
+Subetapa 9.2), que só sai depois da 9.0 e da 9.1.

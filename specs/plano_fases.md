@@ -547,7 +547,12 @@ porque só a função `SECURITY DEFINER` e a `service_role` escrevem ali.
 
 ---
 
-## ETAPA 08 — COMUNICAÇÃO EXTERNA E COLETA DE DADOS · Complexidade: ALTA · Status: ✅ CONCLUÍDA (2026-09-01)
+## ETAPA 08 — COMUNICAÇÃO EXTERNA E COLETA DE DADOS · Complexidade: ALTA · Status: ✅ CONCLUÍDA (no ar em `crm.sindcompassos.org`)
+
+> **Fundida em `main` em 2026-09-01**, por ordem de Maxwell — merge `--no-ff` `89c4c24`, 35 commits,
+> com a suíte verde ANTES e DEPOIS do merge (272 testes, 0 falhas). Nenhum deploy foi necessário: os
+> assets do build de `main` são idênticos aos que o site já servia, porque o frontend subiu subetapa
+> a subetapa. Desfecho completo em `docs/RELATORIO_08_ADVERSARIAL.md` §12.
 
 Objetivo geral: converter a base de **empresas** em base de **pessoas**. O CRM está em produção
 com 17.300 estabelecimentos e 16.671 empresas vinculados às suas CCTs, e com **1 trabalhador e
