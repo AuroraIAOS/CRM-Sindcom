@@ -237,4 +237,28 @@ describe("9.00 · a página pública não lê o banco", () => {
     // §2.20: teste que escolhe ambiente por variável precisa PROVAR em qual está.
     expect(typeof ehProducao()).toBe("boolean");
   });
+
+  it("a rota é PÚBLICA no router: fora do RoleGate e antes do fallback `*`", () => {
+    // §7.5: fallback silencioso de rota transforma "tela não construída" em
+    // "tela vazia". O router termina com `{ path: "*", element: <Navigate to="/" /> }`,
+    // então um GET a `/descadastrar/<token>` devolve **200 de qualquer jeito** —
+    // o 200 do deploy não distingue "a tela abriu" de "o SPA redirecionou para o
+    // login". `tests/routing/navegacao.spec.ts` cobre o NAV por papel e não
+    // enxerga rota pública nenhuma, então esta é a única guarda que existe.
+    const router = readFileSync("src/app/router.tsx", "utf-8");
+    const linha = router
+      .split("\n")
+      .find((l) => l.includes('path: "/descadastrar/:token"'));
+    expect(linha).toBeDefined();
+    expect(linha).toContain("<DescadastrarPage />");
+
+    // Fora do RoleGate: a rota tem de estar na lista de topo, junto de
+    // `/guia/:token` e `/enviar-dados/:token`, e ANTES do bloco autenticado.
+    const posRota = router.indexOf('path: "/descadastrar/:token"');
+    const posGate = router.indexOf("<RoleGate>");
+    const posCoringa = router.indexOf('path: "*"');
+    expect(posRota).toBeGreaterThan(0);
+    expect(posRota).toBeLessThan(posGate);
+    expect(posRota).toBeLessThan(posCoringa);
+  });
 });
