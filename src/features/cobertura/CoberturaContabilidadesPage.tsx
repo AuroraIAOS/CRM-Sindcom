@@ -10,9 +10,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { ChevronDown, ChevronUp, Download, Loader2, ShieldAlert } from "lucide-react";
+import { BellOff, ChevronDown, ChevronUp, Download, Loader2, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { mensagemErro } from "@/lib/mensagens";
+import { formatarDataBR } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { exportarCsv, type ColunaCsv } from "@/lib/csv";
 import {
@@ -42,6 +43,23 @@ const COLUNAS_CSV_PENDENTES: ColunaCsv<EstabelecimentoPendente>[] = [
   { titulo: "Nome fantasia", valor: (l) => l.nomeFantasia ?? "" },
 ];
 
+/**
+ * A exportação da listagem, com o descadastro entre as colunas (Subetapa 9.00,
+ * item 6). Ela existe para o follow-up sair da tela: quem vai ligar precisa da
+ * lista no papel, e precisa saber, ANTES de discar, quem pediu para não ser mais
+ * contatado por e-mail — porque essa pessoa é justamente a que se contata por
+ * telefone, e não com mais uma mensagem.
+ */
+const COLUNAS_CSV_COBERTURA: ColunaCsv<LinhaCobertura>[] = [
+  { titulo: "Contabilidade", valor: (l) => l.nome },
+  { titulo: "E-mail", valor: (l) => l.email },
+  { titulo: "Estabelecimentos", valor: (l) => String(l.totalEstabelecimentos) },
+  { titulo: "Cobertos", valor: (l) => String(l.estabelecimentosCobertos) },
+  { titulo: "Cobertura (%)", valor: (l) => String(percentual(l)) },
+  { titulo: "Descadastrada", valor: (l) => (l.descadastradoEm ? "sim" : "não") },
+  { titulo: "Descadastrada em", valor: (l) => formatarDataBR(l.descadastradoEm) },
+];
+
 function percentual(l: LinhaCobertura): number {
   return l.totalEstabelecimentos > 0
     ? Math.round((l.estabelecimentosCobertos / l.totalEstabelecimentos) * 100)
@@ -57,11 +75,30 @@ export function CoberturaContabilidadesPage() {
 
   const linhas = cobertura.data ?? [];
   const semNenhuma = linhas.filter((l) => l.estabelecimentosCobertos === 0).length;
+  // Quem pediu para sair E não mandou nada é a candidata mais forte à via
+  // formal — há registro de que foi contatada, de que optou por interromper o
+  // canal e de que não cumpriu (copies §10). Por isso o número aparece separado
+  // do "ainda sem nenhum coberto", em vez de diluído nele.
+  const descadastradas = linhas.filter((l) => l.descadastradoEm !== null).length;
+  const descadastradasSemNada = linhas.filter(
+    (l) => l.descadastradoEm !== null && l.estabelecimentosCobertos === 0,
+  ).length;
 
   return (
     <div className="flex flex-col gap-4">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold text-texto-1">Cobertura por contabilidade</h1>
+      <header className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <h1 className="text-2xl font-semibold text-texto-1">Cobertura por contabilidade</h1>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={linhas.length === 0}
+            onClick={() => exportarCsv("cobertura-contabilidades", linhas, COLUNAS_CSV_COBERTURA)}
+          >
+            <Download className="h-4 w-4" />
+            Exportar CSV
+          </Button>
+        </div>
         <p className="text-sm text-texto-2">
           {linhas.length > 0 && (
             <>
@@ -71,6 +108,18 @@ export function CoberturaContabilidadesPage() {
           )}
           Ordenado da pior para a melhor cobertura — é quem precisa de follow-up primeiro.
         </p>
+        {descadastradas > 0 && (
+          <p className="text-sm text-texto-2">
+            <strong>{descadastradas}</strong>{" "}
+            {descadastradas === 1 ? "pediu" : "pediram"} para não receber mais e-mails desta campanha
+            {descadastradasSemNada > 0 && (
+              <>
+                {" "}— <strong>{descadastradasSemNada}</strong> sem ter enviado nenhum dado. Estas se
+                contatam por telefone, nunca com outra mensagem.
+              </>
+            )}
+          </p>
+        )}
       </header>
 
       <Card className="p-0">
@@ -103,7 +152,20 @@ export function CoberturaContabilidadesPage() {
               return (
                 <Fragment key={l.contabilidadeId}>
                   <TableRow>
-                    <TableCell>{l.nome}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span>{l.nome}</span>
+                        {l.descadastradoEm && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded bg-estado-alerta/15 px-1.5 py-0.5 text-xs text-estado-alerta"
+                            title={`Pediu para não receber mais e-mails desta campanha em ${formatarDataBR(l.descadastradoEm)}`}
+                          >
+                            <BellOff className="h-3 w-3" />
+                            descadastrada
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="text-texto-2">{l.email}</TableCell>
                     <TableCell className="text-right">
                       <span

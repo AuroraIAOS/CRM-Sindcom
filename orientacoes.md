@@ -1453,6 +1453,97 @@ revoke usage, select, update on sequence public.<sequencia> from anon, authentic
 o que está fora dele só aparece cruzando o catálogo à mão. E, ao provar um achado que **consome**
 algo (numeração, cota, crédito), procure primeiro a medição que não consome.
 
+### 2.27 Edge Function nova nasce com `verify_jwt: true` — e o endpoint público responde 401 antes de existir
+
+**(a) Problema.** Medido na Subetapa 9.00, ao publicar a Edge Function `descadastrar` pelo MCP do
+Supabase. A função subiu com `status: ACTIVE`, o deploy respondeu sucesso, e a primeira chamada
+devolveu:
+
+```
+GET .../functions/v1/descadastrar?token=... com header apikey
+→ HTTP 401 {"code":"UNAUTHORIZED_NO_AUTH_HEADER","message":"Missing authorization header"}
+```
+
+O código da função nunca rodou. O gateway barrou antes, porque `verify_jwt` é **`true` por padrão**
+e exige `Authorization: Bearer <jwt>` — e uma página pública não tem sessão para produzir um. O
+header `apikey`, que é o que `features/coleta/api.ts` e `features/descadastro/api.ts` mandam, **não
+satisfaz essa checagem**. É irmão do §3.2: lá o `apikey` sozinho executava como `anon`; aqui ele nem
+chega a executar.
+
+O sintoma engana porque parece erro de credencial ou de RLS, e as duas primeiras coisas que se vai
+conferir — a anon key e as policies — estão certas.
+
+**(b) Solução.** Publicar com `verify_jwt: false`, que é o que as outras funções públicas deste
+projeto já tinham (`receber-remessa` e `formulario-filiacao`, ambas `false` desde sempre). Não é
+afrouxamento: **a autorização destes endpoints é o TOKEN no corpo/URL**, validado dentro da função,
+mais os freios em `tentativas_remessa`. O JWT do gateway não teria como autorizar quem, por
+definição, não faz login.
+
+**(c) Como implantar.** No MCP, o parâmetro é obrigatório e o default é o errado para este caso:
+
+```
+deploy_edge_function(project_id, name, entrypoint_path, verify_jwt: false, files: [...])
+```
+
+E **confirme por requisição, nunca pelo retorno do deploy** — o retorno diz `ACTIVE` das duas
+formas. O que separa é uma chamada:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}
+" -H "apikey: $ANON" "$URL/functions/v1/<funcao>?token=lixo"
+# 200 (com {"ok":false}) = público de verdade · 401 = o gateway está barrando antes da função
+```
+
+Confira também o `verify_jwt` das funções que já existem antes de copiar o padrão de uma delas:
+`list_edge_functions` traz o campo. E o `ezbr_sha256` do retorno é útil por outro motivo — publicar
+o mesmo arquivo em bench e produção e comparar o hash **prova** que os dois rodam o mesmo código, o
+que nenhuma leitura de código prova.
+
+### 2.28 Endpoint público que grava no ramo de ERRO precisa do freio ali também
+
+**(a) Problema.** Achado no portão adversarial da própria Subetapa 9.00, atacando o desenho antes de
+ele ir ao ar. A função `descadastrar` tem um ramo deliberado: token que não resolve envio nenhum
+**grava mesmo assim** uma linha em `descadastros_campanha`, sem vínculo, porque o pedido de saída
+existiu e alguém pode reconciliá-lo depois. A regra da subetapa é dura e está certa — *o formulário
+nunca pode virar obstáculo à saída*.
+
+Mas o freio de varredura só valia na CONSULTA. No POST, um laço de token inventado gravava **uma
+linha por chamada, sem teto**: escrita não autenticada e ilimitada num projeto no plano Free. A
+generosidade do caminho de erro é o que o torna atacável, e é justamente o caminho que ninguém
+revisa, porque "é só o caso de falha".
+
+**(b) Solução.** Frear **onde não há saída a proteger**. A fronteira não é GET × POST; é *resolveu
+um envio* × *não resolveu*:
+
+- **token válido → nunca freado.** Quem tem envio de verdade está exercendo a saída.
+- **token que não resolve nada → freado, inclusive no POST.** Quem não tem token válido não tem
+  envio de que sair, então frear ali não custa saída nenhuma.
+
+E a **resposta é idêntica** freado ou não. Dizer "você foi freado" devolveria ao varredor a
+confirmação de que está sendo contado, e assustaria sem motivo quem só tem um link velho.
+
+**(c) Como implantar.** O freio entra DEPOIS de tentar resolver, nunca antes:
+
+```ts
+const envio = await buscarEnvio(token);
+if (!envio) {
+  await registrarTentativa(token, false, motivo, ip);   // sempre conta
+  if (!(await estaFreado(token))) {                     // mas só grava se não estourou
+    await registrarDescadastro({ envioId: null, tokenInformado: token, ... });
+  }
+  return json(req, { ok: true, mensagem: "..." });      // MESMA resposta nos dois casos
+}
+```
+
+Medido depois do conserto, com 14 chamadas seguidas do mesmo token inválido: **9 linhas gravadas**
+(o freio é 10) em vez de 14. O teste de regressão vive em `tests/adversarial/06_descadastro.spec.ts`
+e afirma `gravadas > 0 && gravadas < 14` — o primeiro pedido É registrado, e o laço não escreve à
+vontade.
+
+**Regra transferível:** em endpoint público, **liste os caminhos que ESCREVEM e confira se cada um
+passa por um freio** — inclusive os de erro. O caminho feliz costuma estar protegido porque foi o
+mais pensado; o de recusa grava tão bem quanto ele.
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo

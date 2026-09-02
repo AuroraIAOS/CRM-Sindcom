@@ -27,6 +27,17 @@ export type LinhaCobertura = {
   email: string;
   totalEstabelecimentos: number;
   estabelecimentosCobertos: number;
+  /**
+   * Quando a contabilidade pediu para sair da campanha (Subetapa 9.00), ou
+   * `null`. Separa "não respondeu" de "pediu para não ser mais contatada E não
+   * respondeu" — situações diferentes, encaminhamentos diferentes: a primeira
+   * pede novo e-mail, a segunda pede telefone ou via formal.
+   *
+   * Vem da view por subconsulta escalar sobre `envios_campanha`, que é
+   * `security_invoker`: quem não tem policy de SELECT lá (o Jurídico) lê `null`
+   * aqui, sem erro e sem ganhar coluna nova.
+   */
+  descadastradoEm: string | null;
 };
 
 export function useCoberturaContabilidades() {
@@ -35,7 +46,9 @@ export function useCoberturaContabilidades() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("v_cobertura_contabilidades")
-        .select("contabilidade_id, nome, email, total_estabelecimentos, estabelecimentos_cobertos");
+        .select(
+          "contabilidade_id, nome, email, total_estabelecimentos, estabelecimentos_cobertos, descadastrado_em",
+        );
       if (error) throw error;
       const linhas = (data ?? []).map((r) => ({
         contabilidadeId: r.contabilidade_id as string,
@@ -43,6 +56,7 @@ export function useCoberturaContabilidades() {
         email: r.email as string,
         totalEstabelecimentos: r.total_estabelecimentos as number,
         estabelecimentosCobertos: r.estabelecimentos_cobertos as number,
+        descadastradoEm: (r.descadastrado_em as string | null) ?? null,
       }));
       // Pior cobertura primeiro — é quem precisa de follow-up com mais urgência.
       return linhas.sort((a, b) => {

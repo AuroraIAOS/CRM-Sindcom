@@ -1843,7 +1843,26 @@ produção (`docs/RELATORIO_08_ADVERSARIAL.md`).
 > 2026-09-01, e é a única subetapa de CONSTRUÇÃO desta etapa — as demais são operação. Manteve-se a
 > numeração das outras para não invalidar as referências já escritas nos documentos e nos commits.
 
-### Subetapa 9.00 — Tela de descadastramento e coleta de dados [Goal] [LLM: Sonnet] · Status: ⬜
+### Subetapa 9.00 — Tela de descadastramento e coleta de dados [Goal] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
+
+> **Concluída em 2026-09-02.** `sql/24_descadastro_09_00.sql` aplicado em bench e produção;
+> Edge Function `descadastrar` publicada nos dois (mesmo `ezbr_sha256`, o que prova código idêntico);
+> `/descadastrar/:token` no ar; a marcação e a exportação em `/cobertura`. Suíte: **280 verdes, 0
+> falhas** (46 casos novos, 21 funcionais + 25 adversariais). Ciclo provado em produção com dado
+> DEMO, que **fica gravado**: `DEMO — Contabilidade Modelo` sai com motivo `nao_sou_mais_contador`,
+> `descadastrado_em` carimbado e o selo aparecendo em `/cobertura`.
+>
+> **Um achado adversarial do próprio desenho, corrigido antes de ir ao ar:** o freio de varredura só
+> valia na consulta, e o POST com token inválido gravava uma linha por chamada, sem teto. Corrigido
+> e medido — 14 chamadas passaram a gravar 9 linhas. Ver `orientacoes.md` §2.28; a armadilha do
+> `verify_jwt` está em §2.27.
+>
+> **DUAS PENDÊNCIAS QUE NÃO MORAM NO REPOSITÓRIO** e que a Onda 00 (9.1) verifica:
+> `BREVO_API_KEY` e `DESCADASTRO_WEBHOOK_SEGREDO` nos *secrets* da Edge Function. Sem a primeira, o
+> motivo é gravado e `descadastrado_em` é carimbado, mas **a remoção no ESP não acontece** — a linha
+> fica com `brevo_erro` preenchido, que é a fila de repetição. Sem a segunda, o webhook do caminho de
+> UM CLIQUE responde 401 a todo mundo (fechado por omissão, deliberadamente) e o Sindcom não fica
+> sabendo de quem saiu pelo botão do Gmail. Detalhamento em `docs/copies_campanha_08_14.md` §11.
 
 Objetivo: transformar o descadastro de **perda** em **sinal**. Hoje quem sai da lista some dentro da
 Brevo e o Sindcom não fica sabendo nem quem saiu, nem por quê. Esta subetapa constrói a página que
@@ -1940,11 +1959,25 @@ backup versionado; método de diagnóstico em `orientacoes.md` §1.6. **(b) ✅
 `https://sindcompassos.org/dados/` no ar, respondendo 200**, com o conteúdo conferido na página
 servida (assinatura de Adenilson Antônio Silva, OAB/MG 96.522, e a citação do art. 11, II) — 200 em
 WordPress também é o que uma página vazia devolve, então conferir o conteúdo não é preciosismo.
-**(c) ⬜ redirecionamento HTTP → HTTPS**, **acima** do bloco de cache (§1.5): `http://` ainda
-responde 200 sem redirecionar. **Reintroduzir separadamente, e provar** — foi mexer nesse arquivo
-que derrubou o site. **(d) ⬜ `Reply-To`** da Brevo apontando para `secretaria@sindcompassos.org`.
-**(e) ⬜ os 4 CSVs** importados na Brevo, contagens conferidas (89 / 248 / 613 / 8.236).
-**(f) ⬜ `campanhas.eixo` e `campanhas.assunto`** preenchidos no CRM.
+**(c) ⬜ redirecionamento HTTP → HTTPS**, **acima** do bloco de cache (§1.5), **e só falta no site
+institucional.** Medido em 2026-09-02: `http://crm.sindcompassos.org/` → **301 para HTTPS** (o CRM
+já está resolvido; o registro anterior, que dava os dois como abertos, estava desatualizado);
+`http://sindcompassos.org/` → **200 sem redirecionar**. **Reintroduzir separadamente, e provar** —
+foi mexer nesse arquivo que derrubou o site. **(d) ⬜ `Reply-To`** da Brevo apontando para
+`secretaria@sindcompassos.org` — reconfirmado por DNS em 2026-09-02: `envios.sindcompassos.org`
+**continua sem MX**, `sindcompassos.org` tem `mx1/mx2.titan.email`, e o `_dmarc.envios` está com o
+**nosso** `rua` (a lição do §3.8 seguiu aplicada). **(e) ⬜ os 4 CSVs** importados na Brevo,
+contagens conferidas (89 / 248 / 613 / 8.236) — **os arquivos foram reexportados em 2026-09-02 com
+uma quarta coluna, `saida`** (o link do formulário de descadastro da 9.00), por
+`scripts/reexportar_csvs_09_00.mjs`; contagens batendo, nenhum envio criado ou alterado. É preciso
+que o atributo `SAIDA` exista na lista, ou `{{ contact.SAIDA }}` sai vazio no rodapé.
+**(g) ⬜ dois *secrets* da Edge Function `descadastrar`** (nasceram com a 9.00): `BREVO_API_KEY` e
+`DESCADASTRO_WEBHOOK_SEGREDO` — ver `docs/copies_campanha_08_14.md` §11.
+**(f) ✅ `campanhas.eixo`, `campanhas.onda` e `campanhas.assunto`** preenchidos em 2026-09-02 nas 4
+campanhas reais. A trilha B é sequência de três com eixos diferentes e a tabela guarda um eixo só:
+gravou-se o do **primeiro a sair** (`estrutural`, B1), e os três assuntos seguem em
+`docs/copies_campanha_08_14.md` §4, que é a fonte de verdade do texto — desdobrar em três campanhas
+exigiria reassociar 8.236 envios, com ganho nenhum, já que token e destinatário são os mesmos.
 Qualidade: **cada item se prova por requisição ou por resposta que chega, nunca por tela de
 configuração.** Ler "Reply-To: secretaria@" no painel da Brevo não prova que a resposta chega —
 responder ao e-mail e ver a mensagem em `secretaria@` prova.

@@ -10,6 +10,7 @@ import { LoginPage } from "@/features/auth/LoginPage";
 import { RecuperarSenhaPage } from "@/features/auth/RecuperarSenhaPage";
 import { GuiaPublicaPage } from "@/features/servicos/GuiaPublicaPage";
 import { EnviarDadosPage } from "@/features/coleta/EnviarDadosPage";
+import { DescadastrarPage } from "@/features/descadastro/DescadastrarPage";
 import { ListaTrabalhadoresPage } from "@/features/trabalhadores/ListaTrabalhadoresPage";
 import { FichaTrabalhadorPage } from "@/features/trabalhadores/FichaTrabalhadorPage";
 import { ListaEmpresasPage } from "@/features/empresas/ListaEmpresasPage";
@@ -116,6 +117,11 @@ export const router = createBrowserRouter(
     // Rota pública da coleta externa (ETAPA 08): fora do AppShell e fora do
     // RoleGate, como a guia do QR. O token é a credencial; não há sessão.
     { path: "/enviar-dados/:token", element: <EnviarDadosPage /> },
+    // Saída da campanha (ETAPA 09 · 9.00), pelo link do CORPO do e-mail. O
+    // botão de UM CLIQUE do Gmail/Outlook (RFC 8058) NÃO passa por aqui — é o
+    // cabeçalho `List-Unsubscribe` da Brevo, e obrigá-lo a abrir esta tela seria
+    // descumprimento com custo em entregabilidade, não em teste.
+    { path: "/descadastrar/:token", element: <DescadastrarPage /> },
     {
       // Área interna: exige sessão + perfil ativo (RoleGate sem roles).
       element: (
