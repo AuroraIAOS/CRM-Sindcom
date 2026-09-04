@@ -299,6 +299,61 @@ reescrevendo o bloco no meio do caminho.
 servidor web ainda serve um byte estático?"**. A resposta separa dois mundos de investigação, e ela
 custa uma requisição.
 
+### 1.7 Redirecionamento HTTPS "não funcionou" na home — mas era só o cache de borda servindo uma resposta 200 de três dias atrás
+
+**(a) Problema.** Aplicado o mesmo bloco de redirecionamento do §1.5 (acima do bloco de cache,
+provado no CRM) ao `.htaccess` do site institucional (item (c) da Subetapa 9.0, 2026-09-04).
+Confirmado por reabertura do arquivo que a gravação persistiu. Mas a medição por requisição deu
+um resultado contraditório:
+
+```
+GET http://sindcompassos.org/                                    → 200  (sem redirecionar!)
+GET http://sindcompassos.org/wp-includes/js/jquery/jquery.min.js → 301  (redireciona certo)
+GET http://sindcompassos.org/wp-admin/                            → 301 → 200 em https (certo)
+```
+
+Um arquivo estático e o `/wp-admin/` obedeciam à regra nova; só a **home nua** continuava
+respondendo 200 em HTTP puro — o mesmo sintoma que pareceria "a regra não pegou a rota mais
+importante", justo depois de confirmar que o arquivo estava certo.
+
+**(b) Solução.** Não era a regra. Os cabeçalhos da resposta da home mostravam:
+
+```
+Server: nginx/1.29.8
+Last-Modified: Tue, 01 Sep 2026 18:16:00 GMT
+Cache-Control: max-age=7200
+X-Proxy-Cache: HIT
+```
+
+`nginx` na frente do Apache (proxy reverso da própria hospedagem, não é o CRM nem WordPress) e
+`X-Proxy-Cache: HIT` com `Last-Modified` de **três dias antes** da mudança de hoje: a home estava
+sendo servida do **cache de borda**, de uma resposta gravada antes de o `.htaccess` mudar — a
+requisição nem chegava a re-executar o Apache. Um cache-buster na query string prova a diferença:
+
+```bash
+curl -sD - -o /dev/null "http://sindcompassos.org/?bypass=$(date +%s)"
+# HTTP/1.1 301 Moved Permanently
+# Location: https://sindcompassos.org/?bypass=...
+# X-Proxy-Cache: MISS
+```
+
+Com o parâmetro forçando `MISS`, a requisição atravessa o cache, chega ao Apache de verdade, e o
+redirecionamento acontece. **A regra sempre esteve certa** — só a home sem parâmetro nenhum ficava
+presa no cache até o `max-age` (2h) expirar sozinho.
+
+**(c) Como implantar.** Ao medir um redirecionamento (ou qualquer mudança de `.htaccess`) num site
+atrás de cache de borda: teste primeiro com `?<algo>=$(date +%s)` na URL, e SÓ SE isso também
+falhar é que a regra está errada. Teste a rota nua (sem parâmetro) depois, sabendo que ela pode
+ficar presa no `Cache-Control: max-age` declarado no cabeçalho — não é preciso mexer no arquivo de
+novo, é esperar o TTL vencer.
+
+**Regra geral:** medir por requisição prova o Apache, não necessariamente o que o visitante recebe —
+uma camada de cache entre o cliente e a origem (nginx, Cloudflare, proxy da hospedagem) responde
+sem repassar a requisição, e o cabeçalho `X-Proxy-Cache` (ou equivalente do provedor) é o que
+distingue "a regra não pegou" de "a regra pegou, mas essa resposta específica é mais velha que a
+mudança". Ver também §2.6e, sobre o Cloudflare do Supabase "sumir" sem 429/503 — mesma classe de
+armadilha, camada diferente.
+
 ---
 ## 2. Banco de dados (Postgres/Supabase)
 

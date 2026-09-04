@@ -1,0 +1,48 @@
+# BACKUP — /home2/davide59/sindcompassos.org/.htaccess
+# Estado ao vivo, capturado em 2026-09-04 IMEDIATAMENTE ANTES de acrescentar o
+# redirecionamento HTTP → HTTPS (item (c) da 9.0). Lido letra por letra do
+# editor do cPanel (não copiado do backup anterior) — ver a diferença abaixo.
+#
+# DIFERENÇA MEDIDA CONTRA O BACKUP DE 2026-08-25
+# (docs/htaccess_site_institucional_backup_2026-08-25.txt): o bloco
+# "# BEGIN WordPress ... # END WordPress" NÃO EXISTE MAIS neste arquivo — o
+# arquivo termina em "# END NFD EPC" (27 linhas). Não foi este trabalho que o
+# removeu; ele já não estava presente quando o arquivo foi aberto para o item
+# (c). O site segue respondendo 200 em /dados/ e nas demais rotas mesmo sem
+# esse bloco, então o WordPress está resolvendo permalinks por outro caminho
+# (plausível: reescrita nativa do LiteSpeed, comum na Hostgator, que não
+# depende do bloco físico no .htaccess). Registrado aqui para Maxwell decidir
+# se investiga — não é assunto deste item, e mexer nisso agora violaria a
+# regra "uma mudança por vez" que o próprio incidente de 2026-09-01 ensinou.
+#
+# Para restaurar: cPanel > Gerenciador de arquivos > /sindcompassos.org >
+# .htaccess > Editar, e colar o conteúdo abaixo da linha de corte, sem esta
+# cabeça.
+#
+# ----------------------------------------------------------------------------
+
+# BEGIN NFD EPC
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteBase /
+RewriteRule ^wp-content/endurance-page-cache/ - [L]
+RewriteCond %{REQUEST_METHOD} !POST
+RewriteCond %{QUERY_STRING} !.*=.*
+RewriteCond %{HTTP_COOKIE} !(wordpress_test_cookie|comment_author|wp\-postpass|wordpress_logged_in|wptouch_switch_toggle|wp_woocommerce_session_) [NC]
+RewriteCond %{DOCUMENT_ROOT}/wp-content/endurance-page-cache/$1/_index.html -f
+RewriteRule ^(.*)$ /wp-content/endurance-page-cache/$1/_index.html [L]
+</IfModule>
+<IfModule mod_expires.c>
+ExpiresActive On
+ExpiresByType image/jpg "access plus 24 hours"
+ExpiresByType image/jpeg "access plus 24 hours"
+ExpiresByType image/gif "access plus 24 hours"
+ExpiresByType image/png "access plus 24 hours"
+ExpiresByType text/css "access plus 24 hours"
+ExpiresByType application/pdf "access plus 1 week"
+ExpiresByType text/javascript "access plus 24 hours"
+ExpiresByType text/html "access plus 2 hours"
+ExpiresByType image/x-icon "access plus 1 year"
+ExpiresDefault "access plus 24 hours"
+</IfModule>
+# END NFD EPC

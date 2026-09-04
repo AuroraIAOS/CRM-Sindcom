@@ -1959,20 +1959,39 @@ backup versionado; método de diagnóstico em `orientacoes.md` §1.6. **(b) ✅
 `https://sindcompassos.org/dados/` no ar, respondendo 200**, com o conteúdo conferido na página
 servida (assinatura de Adenilson Antônio Silva, OAB/MG 96.522, e a citação do art. 11, II) — 200 em
 WordPress também é o que uma página vazia devolve, então conferir o conteúdo não é preciosismo.
-**(c) ⬜ redirecionamento HTTP → HTTPS**, **acima** do bloco de cache (§1.5), **e só falta no site
-institucional.** Medido em 2026-09-02: `http://crm.sindcompassos.org/` → **301 para HTTPS** (o CRM
-já está resolvido; o registro anterior, que dava os dois como abertos, estava desatualizado);
-`http://sindcompassos.org/` → **200 sem redirecionar**. **Reintroduzir separadamente, e provar** —
-foi mexer nesse arquivo que derrubou o site. **(d) ⬜ `Reply-To`** da Brevo apontando para
-`secretaria@sindcompassos.org` — reconfirmado por DNS em 2026-09-02: `envios.sindcompassos.org`
-**continua sem MX**, `sindcompassos.org` tem `mx1/mx2.titan.email`, e o `_dmarc.envios` está com o
-**nosso** `rua` (a lição do §3.8 seguiu aplicada). **(e) ⬜ os 4 CSVs** importados na Brevo,
-contagens conferidas (89 / 248 / 613 / 8.236) — **os arquivos foram reexportados em 2026-09-02 com
-uma quarta coluna, `saida`** (o link do formulário de descadastro da 9.00), por
-`scripts/reexportar_csvs_09_00.mjs`; contagens batendo, nenhum envio criado ou alterado. É preciso
-que o atributo `SAIDA` exista na lista, ou `{{ contact.SAIDA }}` sai vazio no rodapé.
-**(g) ⬜ dois *secrets* da Edge Function `descadastrar`** (nasceram com a 9.00): `BREVO_API_KEY` e
-`DESCADASTRO_WEBHOOK_SEGREDO` — ver `docs/copies_campanha_08_14.md` §11.
+**(c) ✅ redirecionamento HTTP → HTTPS**, **acima** do bloco de cache (§1.5), nos dois domínios.
+`crm.sindcompassos.org` já estava resolvido (301, medido em 2026-09-02). O site institucional foi
+feito em 2026-09-04: bloco adicionado ao `.htaccess` acima de `# BEGIN NFD EPC`, sem tocar nos
+blocos geridos por software; backup do estado anterior à mudança em
+`docs/htaccess_site_institucional_backup_2026-09-04.txt` (que registrou também um achado à parte —
+o bloco `# BEGIN WordPress` não existe mais no arquivo ao vivo, e o site segue funcionando sem ele;
+não investigado agora, não é assunto deste item). Medido com cache-buster na query
+(`?bypass=$(date +%s)`), porque a home nua ficou presa num cache de borda (`nginx`,
+`X-Proxy-Cache: HIT`) por até 2h — método de diagnóstico e a distinção "regra errada" vs. "cache
+mais velho que a mudança" documentados em `orientacoes.md` §1.7. Confirmado: JS estático e
+`/wp-admin/` já redirecionavam sem cache-buster nenhum; só a home pura ficou presa no TTL.
+**(d) ✅ `Reply-To`** — configurado em 2026-09-04 no rascunho de campanha que existe hoje na Brevo
+(`TESTE — verificação de autenticação`, em Configurações adicionais → "Use um endereço de resposta
+diferente" → `secretaria@sindcompassos.org`). **As 4 campanhas reais (A/B/C/D) ainda não existem
+como rascunho na Brevo** — só como linhas em `campanhas` no CRM —, então este campo terá de ser
+reconferido quando cada rascunho real for criado (a começar pelo da Onda 00, Subetapa 9.1). DNS
+reconfirmado em 2026-09-02: `envios.sindcompassos.org` continua sem MX, `sindcompassos.org` tem
+`mx1/mx2.titan.email`, `_dmarc.envios` com o **nosso** `rua` (§3.8).
+**(e) ⬜ os 4 CSVs** importados na Brevo, contagens conferidas (89 / 248 / 613 / 8.236) —
+reexportados em 2026-09-02 com a coluna `saida` (link do formulário de descadastro da 9.00), por
+`scripts/reexportar_csvs_09_00.mjs`. **Não bloqueia a Onda 00**: são as listas das ondas reais
+(9.2–9.5); a 9.1 usa uma lista à parte, pequena, com caixas do próprio Maxwell — a montar quando
+chegar lá.
+**(g) ✅ os dois *secrets* da Edge Function `descadastrar`** — `BREVO_API_KEY` e
+`DESCADASTRO_WEBHOOK_SEGREDO` colados no Supabase em 2026-09-04; webhook `sindcom-descadastro-crm`
+criado na Brevo (evento `Inscrição cancelada` — **os demais vinham ligados por padrão** e foram
+desligados um a um, porque qualquer clique/abertura teria disparado o endpoint como se fosse
+descadastro). Provado por efeito observável: um descadastro de teste gravou
+`brevo_removido_em` preenchido (antes, sem a chave, ficava `brevo_erro = "BREVO_API_KEY ausente"`).
+**Uma lacuna real e assumida:** o e-mail de teste nunca existiu como contato na Brevo, então a prova
+não cobre o bloqueio de um contato de verdade — só confirma que a chave passa da autenticação (não
+deu 401). A prova completa, com endereço real, fica para a Onda 00, por decisão do Maxwell.
+Ver `docs/copies_campanha_08_14.md` §11.
 **(f) ✅ `campanhas.eixo`, `campanhas.onda` e `campanhas.assunto`** preenchidos em 2026-09-02 nas 4
 campanhas reais. A trilha B é sequência de três com eixos diferentes e a tabela guarda um eixo só:
 gravou-se o do **primeiro a sair** (`estrutural`, B1), e os três assuntos seguem em
