@@ -1899,6 +1899,57 @@ _dmarc.envios   TXT   v=DMARC1; p=none; rua=mailto:deploycrm@sindcompassos.org; 
 ser lido antes de colado. O que ele otimiza é a operação dele, não a nossa observabilidade.
 
 ---
+### 3.9 Responsividade de e-mail só existe enquanto o `<style>` sobrevive — teste com ele removido
+
+**(a) Problema.** Na Onda 00, o relato foi que as copies da trilha B "não se adaptam ao celular". A
+primeira medição contrariou o relato: os quatro HTML (`copy_A`, `copy_B1..B3`) têm `viewport`, têm
+`@media only screen and (max-width:620px)` e, renderizados a 320/360/390 px, davam **zero transbordo
+horizontal**. Pela leitura do arquivo, estava tudo certo.
+
+O que estava errado só aparece quando se testa o cenário que o navegador nunca reproduz sozinho: **o
+cliente de e-mail que descarta o bloco `<style>`**. Isso não é hipótese exótica — o app do Gmail em
+conta não-Gmail (GANGA) faz isso, e o editor arrasta-e-solta da Brevo reescreve o markup e pode
+descartar o `<head>`. Removido o `<style>`, a media query some e sobra só o inline:
+
+```
+                 com <style>      sem <style>
+copy_B1 @390       375 px            454 px   ← transborda 64 px
+copy_B2 @390       375 px            375 px
+copy_B3 @390       375 px            375 px
+```
+
+O B1 quebrava porque tem uma tabela de duas colunas (setores × e-mail) que **só empilha pela media
+query**; sem ela, `secretaria@sindcompassos.org` não cabe em meia tela, a tabela estica e o e-mail
+inteiro passa a exigir rolagem lateral — exatamente o sintoma relatado. B2 e B3 não têm tabela de
+duas colunas e por isso sobreviveram.
+
+**(b) Solução.** Duas linhas, e nenhuma delas mexe no desktop:
+
+- **`word-break:break-word` INLINE** na célula do e-mail (não só dentro da media query, que é onde
+  estava). Com a media query viva não muda nada — o valor é o mesmo; sem ela, o endereço quebra em
+  vez de esticar a tabela. Medido: **454 → 375 px**, sem transbordo, e a célula do desktop continua
+  com os mesmos 238 px.
+- **`<meta name="x-apple-disable-message-reformatting">`** no `<head>`, que impede o iOS Mail de
+  reescalar a mensagem por conta própria.
+
+A variante que também dava certo — fixar `width="44%"/"56%"` nas colunas — foi **descartada por
+medição**: conserta o celular mas alarga a célula do desktop de 238 para 298 px. Corrigir o pior
+caso não justifica mudar o caso comum.
+
+**(c) Como implantar.** Antes de aprovar qualquer HTML de e-mail, meça **os dois** cenários. O
+segundo é o que ninguém testa:
+
+```js
+// no navegador, iframe de largura fixa (flex encolhe o iframe e falseia a medida: use flex:0 0 auto)
+const sem = html.replace(/<style[\s\S]*?<\/style>/gi, '');   // simula o cliente que descarta
+// para cada um, a 320/360/390 px:
+Math.max(doc.documentElement.scrollWidth, doc.body.scrollWidth) > largura   // true = transborda
+```
+
+**Regra transferível:** em e-mail, `<style>` é uma **melhoria**, nunca uma dependência. Tudo o que a
+mensagem precisa para ser legível tem de estar no inline; a media query só refina. E o teste que
+prova isso é o de remover o `<style>` — não o de abrir no navegador, onde ele sempre sobrevive.
+
 ## 4. Frontend e React
 
 ### 4.1 Falta de `key` faz o estado grudar entre entidades
