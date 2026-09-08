@@ -2355,6 +2355,25 @@ export type Database = {
         }
         Relationships: []
       }
+      v_cobertura_empresas: {
+        Row: {
+          campanha_id: string | null
+          cnpj_completo: string | null
+          coberta: boolean | null
+          created_at: string | null
+          descadastrado_em: string | null
+          email: string | null
+          envio_id: string | null
+          estabelecimento_id: string | null
+          link_revogado: boolean | null
+          municipio_id: number | null
+          nome_fantasia: string | null
+          primeira_remessa_em: string | null
+          razao_social: string | null
+          ultima_remessa_em: string | null
+        }
+        Relationships: []
+      }
       v_dash_conversoes_mensais: {
         Row: {
           bronze_para_ouro: number | null

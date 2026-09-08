@@ -1599,6 +1599,70 @@ vontade.
 passa por um freio** — inclusive os de erro. O caminho feliz costuma estar protegido porque foi o
 mais pensado; o de recusa grava tão bem quanto ele.
 
+### 2.29 Sessão do painel Supabase expirando no meio de um DDL: a aba trava, e "travou" parece "aplicou"
+
+**(a) Problema.** Na Subetapa 9.1, ao aplicar as quatro `alter policy` de
+`sql/27_rls_initplan_09_01.sql` pelo editor SQL do painel, a aba **congelou** — nem screenshot nem
+leitura de DOM respondiam, por minutos. Nenhuma mensagem de erro, nenhum "failed": só uma aba muda.
+Uma segunda aba revelou a causa: **`Session expired — Please sign in again to continue`**.
+
+O risco não é a sessão expirar; é o que se conclui depois. Sem resposta do painel, as duas leituras
+possíveis são igualmente plausíveis — "aplicou e a UI travou depois" ou "não aplicou" —, e as duas
+são perigosas: a primeira leva a seguir para os testes sobre um banco que não mudou; a segunda, a
+reaplicar um DDL que talvez tenha ido pela metade. Em policy de RLS, nenhuma das duas é aceitável
+como palpite.
+
+**(b) Solução.** Duas medições, e nenhuma delas depende do painel.
+
+**Pelo catálogo, quando houver sessão** — a prova direta, que também serve de conferência do que
+mudou. O truque é o **hash das policies que NÃO deviam mudar**: ele responde de uma vez "aplicou?" e
+"mexeu em mais alguma coisa?".
+
+```sql
+select
+  (select count(*) from pg_policies where schemaname='public') as total,
+  (select md5(string_agg(tablename||'|'||policyname||'|'||coalesce(qual,'')||'|'||coalesce(with_check,''),
+                         chr(10) order by tablename, policyname))
+     from pg_policies where schemaname='public'
+      and policyname not in ('pol_estab_select','pol_empresas_select','pol_envios_select','pol_vinc_select')) as hash_demais,
+  (select count(*) from pg_policies where schemaname='public'
+     and policyname in ('pol_estab_select','pol_empresas_select','pol_envios_select','pol_vinc_select')
+     and qual like '%SELECT%') as com_subconsulta;
+```
+
+Rodado ANTES: `111 · 3004e7ae… · 0`. Rodado DEPOIS do travamento: **exatamente igual** — nada tinha
+sido aplicado. Rodado depois de reaplicar: `111 · 3004e7ae… · 4` — as quatro mudaram, o total é o
+mesmo (nenhuma criada nem removida) e o hash idêntico prova que **as outras 107 não foram tocadas**.
+
+**Pelo efeito, quando não houver sessão nenhuma** — o app não lê `pg_policies`, mas lê a tela. Um
+script Node com a anon key e o login do Admin (`.env.test`) mede o tempo da mesma consulta:
+2.987/2.879/3.067 ms, contra os ~500 ms que a mudança produziria. É indireto, mas quando a diferença
+esperada é de uma ordem de grandeza ele decide.
+
+**(c) Como implantar.** Ao aplicar DDL pelo painel:
+
+1. **Meça o estado antes** (a query acima) e guarde o hash. Sem o "antes", o "depois" não prova nada.
+2. Se a aba travar, **não reaplique no escuro**: abra uma aba NOVA (a travada não volta, nem para
+   fechar) e rode a mesma query. Se o hash e a contagem estiverem iguais aos de antes, nada foi
+   aplicado e reaplicar é seguro.
+3. Sem sessão, meça pelo efeito antes de pedir novo login — assim a conversa já começa com o estado
+   do banco conhecido.
+
+**Duas notas de automação do painel**, medidas no mesmo dia:
+
+- **O grid de resultados não sai em extração de texto de página.** `get_page_text` devolve a sidebar
+  e o editor, e o resultado vem vazio. O conteúdo está no DOM: `document.querySelectorAll('[role="row"]')`
+  e **`textContent`** (não `innerText`, que devolve string vazia ali). O grid é virtualizado em
+  linhas *e* colunas — só o que está visível existe —, então para ler um resultado grande use
+  `string_agg` e traga tudo em **uma célula**, ou `format json` no `explain`.
+- **`Ctrl+Enter` só dispara com o editor focado**; depois de trocar o texto do modelo Monaco por
+  script, clicar no botão **Run** é o caminho que não falha.
+
+**Regra transferível:** *ausência de resposta não é ausência de efeito.* Toda vez que uma ferramenta
+gráfica sumir no meio de uma escrita, o próximo passo é **medir o estado do destino**, nunca repetir
+a escrita nem seguir adiante — é o §7.2 ("passou" ≠ "funcionou") no seu caso mais difícil, o de nem
+sequer haver um "passou".
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo

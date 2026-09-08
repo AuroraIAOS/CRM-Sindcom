@@ -35,6 +35,7 @@ import { ListaAtendimentosPage } from "@/features/juridico/ListaAtendimentosPage
 import { ListaCartasPage } from "@/features/cartas/ListaCartasPage";
 import { ListaRemessasPage } from "@/features/remessas/ListaRemessasPage";
 import { CoberturaContabilidadesPage } from "@/features/cobertura/CoberturaContabilidadesPage";
+import { CoberturaEmpresasPage } from "@/features/cobertura/CoberturaEmpresasPage";
 import type { PapelUsuario } from "@/lib/supabase";
 
 /**
@@ -85,6 +86,7 @@ const PAGINAS: Partial<Record<string, ReactNode>> = {
   "/cartas": <ListaCartasPage />,
   "/remessas": <ListaRemessasPage />,
   "/cobertura": <CoberturaContabilidadesPage />,
+  "/cobertura-empresas": <CoberturaEmpresasPage />,
 };
 const PAGINAS_DETALHE: Partial<Record<string, ReactNode>> = {
   "/trabalhadores/:id": <FichaTrabalhadorPage />,

@@ -2020,6 +2020,19 @@ Se esgotar: **nenhuma onda sai.** Onda que depende de link quebrado queima base 
 > reescritos para afirmar o invariante em vez do registro específico (§7.1b/§7.1d/§7.9): o de
 > cobertura sorteava "o primeiro estabelecimento `999999%`" e passou a cair nos 9 novos da Onda 00; os
 > de `remessas` cravavam três CPFs de uma planilha de agosto que não estão mais na base.
+>
+> **Segundo achado da Onda 00, corrigido em 2026-09-08 — a tela de cobertura de empresas abria em ~6
+> segundos.** A causa não era a view: `fn_eh()`, embora `stable`, é avaliada **uma vez por linha**
+> quando usada como filtro de policy, e a tela varre 8.238 estabelecimentos. Embrulhá-la em
+> subconsulta escalar a promove a `InitPlan`, avaliada uma vez por consulta — mesma expressão
+> booleana, mesmos papéis, nenhuma linha nova visível para ninguém. Aplicado em produção como
+> `sql/27_rls_initplan_09_01.sql` (4 policies: `estabelecimentos`, `empresas`, `envios_campanha`,
+> `vinculos_empregaticios`). Medido: `explain analyze` **2.330 ms → ~39 ms**; pelo caminho do app,
+> **~6.000 ms → 130 ms** com contagem exata. O `count` continuou 8.238 e a suíte fechou **291
+> passando, 0 falha** — as duas evidências de que o recorte por papel não mudou. Conferido também por
+> catálogo: total de policies igual (111) e hash das outras 107 idêntico ao de antes. Lição de método
+> em `orientacoes.md` §2.29 (a sessão do painel expirou no meio do `alter`, a aba travou e o DDL não
+> chegou ao banco — sem nenhuma mensagem de erro).
 
 Objetivo: **provar a estrutura inteira com dado real e destinatário controlado, antes de tocar em
 uma única contabilidade de verdade.** É a subetapa que a decisão de 2026-09-01 criou, e é ela que

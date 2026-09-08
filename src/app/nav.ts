@@ -26,7 +26,7 @@ export type NavItem = {
   label: string;
   roles: PapelUsuario[];
   icon: LucideIcon;
-  grupo: "principal" | "financeiro" | "administracao" | "portal";
+  grupo: "principal" | "financeiro" | "campanhas" | "administracao" | "portal";
 };
 
 const TODOS_INTERNOS: PapelUsuario[] = ["admin", "presidente", "secretaria", "juridico"];
@@ -50,16 +50,22 @@ export const NAV: NavItem[] = [
   { path: "/financeiro/faturas", label: "Faturas", roles: ["admin", "presidente", "secretaria"], icon: Receipt, grupo: "financeiro" },
   { path: "/financeiro/guias", label: "Guias de pagamento", roles: ["admin", "presidente", "secretaria"], icon: Banknote, grupo: "financeiro" },
 
+  // ETAPA 09 (9.1): as três telas da campanha de coleta passaram a viver
+  // juntas. Elas se leem em sequência — quem falta (cobertura), quem falta do
+  // outro lado (empresas) e o que chegou (remessas) — e estavam espalhadas
+  // dentro de "Administração", onde a relação entre elas não aparecia.
+  //
+  // Presidente entra só nas duas de cobertura, como leitura (mesmo recorte de
+  // quem lê `envios_campanha` hoje); a revisão de remessa continua sendo ato de
+  // Admin e Secretaria, que é a Denise. Revogar token segue restrito ao Admin,
+  // controlado dentro da própria tela.
+  { path: "/cobertura", label: "Cobertura por contabilidade", roles: ["admin", "presidente", "secretaria"], icon: BarChart3, grupo: "campanhas" },
+  { path: "/cobertura-empresas", label: "Cobertura por empresa", roles: ["admin", "presidente", "secretaria"], icon: Building2, grupo: "campanhas" },
+  { path: "/remessas", label: "Remessas recebidas", roles: ["admin", "secretaria"], icon: FileSpreadsheet, grupo: "campanhas" },
+
   { path: "/aprovacoes", label: "Aprovações", roles: ["admin", "secretaria"], icon: ClipboardCheck, grupo: "administracao" },
   { path: "/fila-admin", label: "Fila do Admin", roles: ["admin", "presidente", "secretaria", "juridico", "parceiro"], icon: Inbox, grupo: "administracao" },
   { path: "/importacao", label: "Importação", roles: ["admin"], icon: Upload, grupo: "administracao" },
-  // ETAPA 08: a fila de revisão da coleta externa. Secretaria entra porque é
-  // a Denise quem revisa — Admin também, mas a tela é do dia a dia dela.
-  { path: "/remessas", label: "Remessas recebidas", roles: ["admin", "secretaria"], icon: FileSpreadsheet, grupo: "administracao" },
-  // ETAPA 08 (08.11): quais contabilidades ainda não mandaram, e o que falta
-  // em cada uma. Presidente entra como leitura (mesmo recorte de quem lê
-  // `envios_campanha` hoje); só Admin revoga token, controlado na própria tela.
-  { path: "/cobertura", label: "Cobertura da coleta", roles: ["admin", "presidente", "secretaria"], icon: BarChart3, grupo: "administracao" },
   { path: "/notificacoes", label: "Notificações", roles: ["admin", "presidente", "secretaria", "juridico", "parceiro"], icon: Bell, grupo: "administracao" },
   { path: "/configuracoes", label: "Configurações", roles: ["admin"], icon: Settings, grupo: "administracao" },
 

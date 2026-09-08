@@ -354,3 +354,94 @@ describe("9.1 · revogar emite um substituto, e o Admin consegue entregá-lo", (
     expect(r.status).toBe(401);
   });
 });
+
+/**
+ * Subetapa 9.1 — cobertura por EMPRESA isolada (`v_cobertura_empresas`).
+ *
+ * São 8.238 empresas contra 953 contabilidades, e é esse número que faz a tela
+ * paginar no servidor: o PostgREST trunca em 1000 sem avisar (§2.4). Aqui a
+ * suíte cobre o que a tela não consegue provar sozinha — a granularidade da
+ * view, o universo que ela cobre e o recorte de papéis.
+ */
+describe("9.1 · v_cobertura_empresas: uma linha por empresa, e o mesmo recorte da origem", () => {
+  it("UMA linha por estabelecimento — revogar+reemitir não pode duplicar a empresa na tela", async () => {
+    // A armadilha do §2.2 aplicada a esta view: um `join` simples com
+    // `envios_campanha` devolveria uma linha por envio, e cada revogação cria um
+    // envio novo. O `distinct on` é o que impede a tela de contar duas vezes a
+    // mesma empresa — e a Onda 00 já tem casos com dois envios.
+    const { data, error } = await clientes.admin
+      .from("v_cobertura_empresas")
+      .select("estabelecimento_id")
+      .limit(1000);
+    expect(error).toBeNull();
+    const ids = (data ?? []).map((l) => l.estabelecimento_id as string);
+    expect(ids.length).toBeGreaterThan(0);
+    expect(new Set(ids).size, "a view devolveu a mesma empresa mais de uma vez").toBe(ids.length);
+  });
+
+  it("o universo é o dos envios de empresa isolada, contado de forma independente", async () => {
+    const { count: naView } = await clientes.admin
+      .from("v_cobertura_empresas")
+      .select("estabelecimento_id", { count: "exact", head: true });
+
+    // Contagem por outro caminho: os envios cujo alvo é estabelecimento. Como
+    // pode haver mais de um envio por empresa (revogação), o esperado é que a
+    // view tenha no MÁXIMO esse número — e ao menos uma linha.
+    const { count: enviosIsolados } = await clientes.admin
+      .from("envios_campanha")
+      .select("id", { count: "exact", head: true })
+      .not("estabelecimento_id", "is", null);
+
+    expect(naView ?? 0).toBeGreaterThan(0);
+    expect(naView ?? 0).toBeLessThanOrEqual(enviosIsolados ?? 0);
+  });
+
+  it("a credencial não entra nesta view — nem para o Admin", async () => {
+    // O link em claro tem UM caminho só (`v_envios_campanha_mascarada`). Se a
+    // coluna aparecesse também aqui, a regra de exposição passaria a ter dois
+    // lugares para ser conferida — e um deles seria esquecido.
+    const { error } = await clientes.admin.from("v_cobertura_empresas").select("token").limit(1);
+    expect(error, "v_cobertura_empresas não deveria expor o token").not.toBeNull();
+  });
+
+  it("admin, presidente e secretaria leem; jurídico e parceiro veem zero", async () => {
+    for (const p of ["admin", "presidente", "secretaria"] as const) {
+      const { data, error } = await clientes[p].from("v_cobertura_empresas").select("estabelecimento_id").limit(5);
+      expect(error, `select/${p}`).toBeNull();
+      expect((data ?? []).length, `linhas/${p}`).toBeGreaterThan(0);
+    }
+    for (const p of ["juridico", "parceiro"] as const) {
+      const { data, error } = await clientes[p].from("v_cobertura_empresas").select("estabelecimento_id").limit(5);
+      // §2.6b: a RLS de origem zera as linhas, não levanta exceção.
+      expect(error, `select/${p}`).toBeNull();
+      expect((data ?? []).length, `${p} não deveria enxergar envios`).toBe(0);
+    }
+  });
+
+  it("anon não alcança a view", async () => {
+    const r = await fetch(`${process.env.VITE_SUPABASE_URL}/rest/v1/v_cobertura_empresas?select=estabelecimento_id`, {
+      headers: { apikey: process.env.VITE_SUPABASE_ANON_KEY as string },
+    });
+    expect(r.status).toBe(401);
+  });
+
+  it("os filtros da tela funcionam no servidor — cobertura e descadastro", async () => {
+    // A tela filtra no banco porque 8.238 linhas não cabem numa resposta. Se
+    // esses filtros não recortarem de verdade, a lista fica errada sem avisar.
+    const { data: semEnvio, error: e1 } = await clientes.admin
+      .from("v_cobertura_empresas")
+      .select("estabelecimento_id, coberta")
+      .eq("coberta", false)
+      .limit(20);
+    expect(e1).toBeNull();
+    for (const l of semEnvio ?? []) expect(l.coberta).toBe(false);
+
+    const { data: descadastradas, error: e2 } = await clientes.admin
+      .from("v_cobertura_empresas")
+      .select("estabelecimento_id, descadastrado_em")
+      .not("descadastrado_em", "is", null)
+      .limit(20);
+    expect(e2).toBeNull();
+    for (const l of descadastradas ?? []) expect(l.descadastrado_em).not.toBeNull();
+  });
+});
