@@ -11,14 +11,18 @@ import { supabase } from "@/lib/supabase";
  * faz a agregação no banco: 950 contabilidades cabem numa única página do
  * PostgREST (orientacoes.md §2.4), então nada aqui precisa paginar.
  *
- * O TOKEN NUNCA É LIDO NESTA FEATURE. `envios_campanha.token` é lido em claro
- * por Presidente e Secretaria via RLS hoje (RLS restringe LINHAS, nunca
- * COLUNAS — sql/20_comunicacao_externa.sql linhas 384-403); fechar essa
- * brecha é decisão de segurança que aguarda revisão de Maxwell
- * (sql/22_cobertura_08_11.sql, Parte 2 — não aplicada). `useRevogarToken`
- * abaixo só ESCREVE (marca revogado, insere um novo — que recebe token por
- * DEFAULT do banco): em nenhum passo o valor do token entra numa resposta
- * que este código leia.
+ * O TOKEN NUNCA É LIDO DA TABELA CRUA NESTA FEATURE — e desde a Subetapa 9.1
+ * ele É lido, para o Admin, através de `v_envios_campanha_mascarada`
+ * (sql/25_reemissao_token_09_01.sql), onde o próprio Postgres devolve `null`
+ * para quem não é Admin. A diferença importa: a regra de quem enxerga a
+ * credencial mora no banco, não numa condição de UI que um bug de renderização
+ * poderia contornar.
+ *
+ * POR QUE A LEITURA PASSOU A EXISTIR. Até a 9.1, revogar era uma ação sem
+ * saída: o link antigo morria, um novo nascia (por DEFAULT do banco) e ninguém
+ * conseguia vê-lo — nenhuma tela mostrava, o CSV não trazia e o CRM não dispara
+ * e-mail. Quem pedia a troca do link ficava sem link. Reemitir sem entregar não
+ * é reemitir.
  */
 
 export type LinhaCobertura = {
@@ -112,25 +116,89 @@ export function usePendentesDaContabilidade(contabilidadeId: string | null) {
   });
 }
 
+/** O endereço público do link de coleta, montado a partir da origem servida —
+ *  em produção `https://crm.sindcompassos.org`, em desenvolvimento o localhost.
+ *  Nunca cravado, para o link copiado nunca apontar para o ambiente errado. */
+function montarLink(token: string): string {
+  return `${window.location.origin}/enviar-dados/${token}`;
+}
+
+export type LinkAtivo = {
+  envioId: string;
+  /** `null` quando quem consulta não é Admin — o banco é que apaga o valor
+   *  (`v_envios_campanha_mascarada`), não a tela. */
+  link: string | null;
+  expiraEm: string | null;
+  criadoEm: string;
+};
+
 /**
- * Revoga o link ativo de uma contabilidade e emite um novo, SEM apagar
- * histórico (spec 08.11): a linha antiga fica com `token_revogado_em`
- * preenchido — é o que faz a página pública recusá-la — e uma linha NOVA
- * nasce para a mesma contabilidade/campanha, com token novo por DEFAULT do
- * banco. Dois passos sequenciais, não uma transação (o projeto não expõe RPC
- * para isto): se o 2º passo falhar depois do 1º ter sucedido, a contabilidade
- * fica sem link ativo até alguém repetir a ação — janela pequena, aceitável
- * para uma ação manual e rara de Admin, e sinalizada aqui em vez de escondida.
+ * O link ATIVO de uma contabilidade, para reenviar sem precisar revogar nada.
+ *
+ * Lê a view mascarada, nunca `envios_campanha`: para Presidente e Secretaria a
+ * consulta funciona e devolve `link: null` — elas continuam vendo QUE existe um
+ * envio ativo, sem receber a credencial. Para o Jurídico e o parceiro, a RLS de
+ * origem já zera a linha (§2.6b: a view não nega, ela some com o dado).
+ */
+export function useLinkAtivo(contabilidadeId: string | null) {
+  return useQuery<LinkAtivo | null>({
+    queryKey: ["cobertura", "link-ativo", contabilidadeId],
+    enabled: !!contabilidadeId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("v_envios_campanha_mascarada")
+        .select("id, token, token_expira_em, created_at")
+        .eq("contabilidade_id", contabilidadeId as string)
+        .is("token_revogado_em", null)
+        // Desempate determinístico: se houver mais de um ativo, o mais recente
+        // é o que vale — e nunca um erro de "múltiplas linhas" (§2.4).
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      const token = (data.token as string | null) ?? null;
+      return {
+        envioId: data.id as string,
+        link: token ? montarLink(token) : null,
+        expiraEm: (data.token_expira_em as string | null) ?? null,
+        criadoEm: data.created_at as string,
+      };
+    },
+  });
+}
+
+/**
+ * Revoga o link ativo de uma contabilidade, emite um novo e DEVOLVE o novo
+ * link — os três passos, não os dois primeiros.
+ *
+ * A parte de reemissão sempre funcionou (medido em produção na 9.1: depois de
+ * duas revogações, a contabilidade tinha exatamente um envio ativo, com token
+ * novo). O que faltava era o terceiro passo: **ler o link recém-criado e
+ * entregá-lo a quem vai reenviá-lo.** Sem ele, revogar quebrava o acesso do
+ * contador sem oferecer o substituto — o link novo existia só no banco.
+ *
+ * Histórico preservado (spec 08.11): a linha antiga fica com
+ * `token_revogado_em` preenchido — é o que faz a página pública recusá-la — e
+ * uma linha NOVA nasce para a mesma contabilidade/campanha. Passos sequenciais,
+ * não transação (o projeto não expõe RPC para isto): se a inserção falhar
+ * depois da revogação, a contabilidade fica sem link ativo até alguém repetir a
+ * ação — janela pequena, aceitável numa ação manual e rara de Admin, e
+ * sinalizada em vez de escondida.
  */
 export function useRevogarToken() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useMutation<LinkAtivo, Error, string>({
     mutationFn: async (contabilidadeId: string) => {
       const { data: ativo, error: erroBusca } = await supabase
         .from("envios_campanha")
         .select("id, campanha_id, contabilidade_id, estabelecimento_id, email")
         .eq("contabilidade_id", contabilidadeId)
         .is("token_revogado_em", null)
+        // Mesmo desempate de `useLinkAtivo`: dois ativos não podem transformar
+        // a revogação num erro obscuro de "múltiplas linhas".
+        .order("created_at", { ascending: false })
+        .limit(1)
         .maybeSingle();
       if (erroBusca) throw erroBusca;
       if (!ativo) throw new Error("Nenhum link ativo encontrado para esta contabilidade.");
@@ -146,13 +214,35 @@ export function useRevogarToken() {
         throw new Error("Sem permissão para revogar este link (restrito ao Admin).");
       }
 
-      const { error: erroNovo } = await supabase.from("envios_campanha").insert({
-        campanha_id: ativo.campanha_id,
-        contabilidade_id: ativo.contabilidade_id,
-        estabelecimento_id: ativo.estabelecimento_id,
-        email: ativo.email,
-      });
+      const { data: novo, error: erroNovo } = await supabase
+        .from("envios_campanha")
+        .insert({
+          campanha_id: ativo.campanha_id,
+          contabilidade_id: ativo.contabilidade_id,
+          estabelecimento_id: ativo.estabelecimento_id,
+          email: ativo.email,
+        })
+        .select("id")
+        .single();
       if (erroNovo) throw erroNovo;
+
+      // O valor do token vem da view mascarada, nunca do `insert().select()` na
+      // tabela crua — assim a regra de quem enxerga a credencial continua sendo
+      // do banco, e a guarda de código desta feature continua valendo.
+      const { data: emitido, error: erroLeitura } = await supabase
+        .from("v_envios_campanha_mascarada")
+        .select("id, token, token_expira_em, created_at")
+        .eq("id", novo.id as string)
+        .maybeSingle();
+      if (erroLeitura) throw erroLeitura;
+
+      const token = (emitido?.token as string | null) ?? null;
+      return {
+        envioId: novo.id as string,
+        link: token ? montarLink(token) : null,
+        expiraEm: (emitido?.token_expira_em as string | null) ?? null,
+        criadoEm: (emitido?.created_at as string) ?? new Date().toISOString(),
+      };
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["cobertura"] });

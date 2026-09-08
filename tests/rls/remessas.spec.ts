@@ -64,6 +64,40 @@ async function contextoReal(c: SupabaseClient): Promise<ContextoTrabalhadores> {
   };
 }
 
+/**
+ * As pessoas que entraram na base POR PLANILHA DEMO: nome com o prefixo do
+ * projeto e vínculo num estabelecimento da faixa fictícia `999999…`.
+ *
+ * Antes isto era uma lista de três CPFs cravados, os da planilha usada em
+ * agosto. Ela envelheceu exatamente como a §7.1d previu: remessas reais novas
+ * chegaram (a Onda 00 já subiu quatro), a base foi crescendo com OUTRAS pessoas
+ * DEMO e os três CPFs originais deixaram de existir — dois casos ficaram
+ * vermelhos sem nada ter piorado no código. A promessa que a 08.10 precisa
+ * provar nunca foi "estes três CPFs"; é "quem veio de planilha entrou com o
+ * vínculo certo e com o nível derivado da situação declarada".
+ */
+async function pessoasDePlanilhaDemo(c: SupabaseClient) {
+  const { data: estabs } = await c.from("estabelecimentos").select("id").like("cnpj_basico", "999999%");
+  const idsEstab = (estabs ?? []).map((e) => e.id as string);
+  if (idsEstab.length === 0) return [];
+
+  const { data: vinculos } = await c
+    .from("vinculos_empregaticios")
+    .select("trabalhador_id, estabelecimento_id")
+    .in("estabelecimento_id", idsEstab);
+  const idsTrab = [...new Set((vinculos ?? []).map((v) => v.trabalhador_id as string))];
+  if (idsTrab.length === 0) return [];
+
+  const { data: pessoas } = await c
+    .from("trabalhadores")
+    .select(
+      "id, cpf, nome, recolhe_contribuicao_sindical, recolhe_mensalidade_convenio, forma_pagamento_preferida, nivel",
+    )
+    .in("id", idsTrab)
+    .like("nome", "DEMO —%");
+  return pessoas ?? [];
+}
+
 function apenasGravaveis(preview: ReturnType<typeof validarTrabalhadores>) {
   const validas = preview
     .map((l) => l.dados)
@@ -166,29 +200,28 @@ describe("08.10 · importar a remessa, e reimportar sem duplicar", () => {
     expect(depois1T).toBeGreaterThan(0);
   });
 
-  it("os CPFs da planilha DEMO estão na base, e o vínculo saiu com o estabelecimento certo", async () => {
-    const { data: pessoas } = await clientes.admin
-      .from("trabalhadores")
-      .select("id, cpf, nome, recolhe_contribuicao_sindical, nivel")
-      .in("cpf", ["00123456797", "11144477735", "52998224725"]);
-    expect((pessoas ?? []).length).toBe(3);
-    for (const p of pessoas ?? []) expect(p.nome as string).toMatch(/^DEMO —/);
+  it("quem veio de planilha DEMO está na base, com vínculo certo e nível derivado da situação", async () => {
+    const pessoas = await pessoasDePlanilhaDemo(clientes.admin);
+    expect(pessoas.length, "nenhuma pessoa de planilha DEMO na base — rode a importação antes").toBeGreaterThan(0);
 
-    // O mapeamento do modelo v1: oposição → recolhe_contribuicao = false → Bronze.
-    const oposicao = (pessoas ?? []).find((p) => p.cpf === "11144477735");
-    expect(oposicao!.recolhe_contribuicao_sindical).toBe(false);
-    expect(oposicao!.nivel).toBe("bronze");
-
-    const sindicalizado = (pessoas ?? []).find((p) => p.cpf === "00123456797");
-    expect(sindicalizado!.recolhe_contribuicao_sindical).toBe(true);
-    expect(sindicalizado!.nivel).toBe("prata");
+    // O mapeamento do modelo v1, afirmado como INVARIANTE e não como nível
+    // exato: oposição → recolhe_contribuicao = false → Bronze, sempre; quem
+    // contribui é pelo menos Prata (pode ser Ouro se também paga o convênio, e
+    // fixar "prata" quebraria no dia em que alguém virasse Ouro legitimamente).
+    for (const p of pessoas) {
+      if (p.recolhe_contribuicao_sindical === false) {
+        expect(p.nivel, `nível de ${p.cpf} (oposição)`).toBe("bronze");
+      } else {
+        expect(p.nivel, `nível de ${p.cpf} (contribui)`).not.toBe("bronze");
+      }
+    }
 
     const { data: vinculos } = await clientes.admin
       .from("vinculos_empregaticios")
       .select("estabelecimento_id, estabelecimentos(cnpj_completo)")
       .in(
         "trabalhador_id",
-        (pessoas ?? []).map((p) => p.id as string),
+        pessoas.map((p) => p.id as string),
       );
     expect((vinculos ?? []).length).toBeGreaterThan(0);
     for (const v of vinculos ?? []) {
@@ -201,11 +234,11 @@ describe("08.10 · importar a remessa, e reimportar sem duplicar", () => {
 
 describe("08.10 · a regra inviolável: planilha não reclassifica ninguém", () => {
   it("mesmo pedindo o contrário, as três flags de nível não mudam em quem já existe", async () => {
-    const { data: antes } = await clientes.admin
-      .from("trabalhadores")
-      .select("cpf, nome, recolhe_contribuicao_sindical, recolhe_mensalidade_convenio, forma_pagamento_preferida")
-      .in("cpf", ["00123456797", "11144477735", "52998224725"]);
-    expect((antes ?? []).length).toBe(3);
+    // Os alvos vêm da base, não de CPFs cravados (§7.1d — ver
+    // `pessoasDePlanilhaDemo`). Limitados a 5 para o ataque não reescrever a
+    // base DEMO inteira: a proteção ou vale para todos, ou falha no primeiro.
+    const antes = (await pessoasDePlanilhaDemo(clientes.admin)).slice(0, 5);
+    expect(antes.length, "nenhuma pessoa de planilha DEMO para atacar").toBeGreaterThan(0);
 
     // Uma planilha hostil: mesmos CPFs, TODAS as flags invertidas. É o pior
     // acidente possível do sistema — uma planilha reclassificando gente em
@@ -239,10 +272,13 @@ describe("08.10 · a regra inviolável: planilha não reclassifica ninguém", ()
     const { data: depois } = await clientes.admin
       .from("trabalhadores")
       .select("cpf, recolhe_contribuicao_sindical, recolhe_mensalidade_convenio, forma_pagamento_preferida")
-      .in("cpf", ["00123456797", "11144477735", "52998224725"]);
+      .in(
+        "cpf",
+        antes.map((t) => t.cpf as string),
+      );
 
     const porCpf = new Map((depois ?? []).map((t) => [t.cpf as string, t]));
-    for (const t of antes ?? []) {
+    for (const t of antes) {
       const agora = porCpf.get(t.cpf as string)!;
       expect(agora.recolhe_contribuicao_sindical, `contribuição de ${t.cpf}`).toBe(
         t.recolhe_contribuicao_sindical,

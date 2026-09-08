@@ -10,7 +10,25 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { BellOff, ChevronDown, ChevronUp, Download, Loader2, ShieldAlert } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  BellOff,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Download,
+  Link2,
+  Loader2,
+  ShieldAlert,
+} from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { mensagemErro } from "@/lib/mensagens";
 import { formatarDataBR } from "@/lib/formatters";
@@ -18,10 +36,12 @@ import { cn } from "@/lib/utils";
 import { exportarCsv, type ColunaCsv } from "@/lib/csv";
 import {
   useCoberturaContabilidades,
+  useLinkAtivo,
   usePendentesDaContabilidade,
   useRevogarToken,
   type EstabelecimentoPendente,
   type LinhaCobertura,
+  type LinkAtivo,
 } from "./api";
 
 /**
@@ -29,11 +49,14 @@ import {
  * cada uma (Subetapa 08.11, D4). Substitui o cruzamento manual repetido a
  * cada rodada de cobrança.
  *
- * O TOKEN NUNCA APARECE AQUI — nem para o Admin. "Revogar" só marca a linha
- * antiga e cria uma nova (que recebe token por DEFAULT do banco); ver
- * `api.ts` para o porquê disso ser suficiente para o critério de conclusão
- * sem depender da view de mascaramento (sql/22_cobertura_08_11.sql, Parte 2)
- * que ainda aguarda revisão de Maxwell.
+ * O LINK APARECE AQUI SÓ PARA O ADMIN, E QUEM DECIDE ISSO É O BANCO (Subetapa
+ * 9.1). Até aqui a tela não mostrava o token para ninguém — e o efeito medido
+ * foi que "Revogar" virou uma ação sem saída: o link antigo morria, um novo
+ * nascia por DEFAULT do banco e ninguém conseguia vê-lo para reenviar. Agora a
+ * leitura passa por `v_envios_campanha_mascarada`
+ * (sql/25_reemissao_token_09_01.sql), que devolve `token = null` para quem não
+ * é Admin. A regra mora no Postgres; a condição de papel abaixo só evita
+ * oferecer um botão que não traria valor nenhum.
  */
 const PODE_REVOGAR = ["admin"] as const;
 
@@ -72,6 +95,11 @@ export function CoberturaContabilidadesPage() {
   const cobertura = useCoberturaContabilidades();
   const [aberta, setAberta] = useState<string | null>(null);
   const [paraRevogar, setParaRevogar] = useState<LinhaCobertura | null>(null);
+  const [verLinkDe, setVerLinkDe] = useState<LinhaCobertura | null>(null);
+  // O link recém-emitido, mostrado LOGO DEPOIS de revogar. Sem esta tela, a
+  // revogação deixaria o contador sem link nenhum na prática — o novo existiria
+  // só no banco.
+  const [emitido, setEmitido] = useState<{ contabilidade: LinhaCobertura; link: LinkAtivo } | null>(null);
 
   const linhas = cobertura.data ?? [];
   const semNenhuma = linhas.filter((l) => l.estabelecimentosCobertos === 0).length;
@@ -193,10 +221,16 @@ export function CoberturaContabilidadesPage() {
                         Ver pendentes
                       </Button>
                       {podeRevogar && (
-                        <Button variant="outline" size="sm" onClick={() => setParaRevogar(l)}>
-                          <ShieldAlert className="h-4 w-4" />
-                          Revogar token
-                        </Button>
+                        <>
+                          <Button variant="outline" size="sm" onClick={() => setVerLinkDe(l)}>
+                            <Link2 className="h-4 w-4" />
+                            Link ativo
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setParaRevogar(l)}>
+                            <ShieldAlert className="h-4 w-4" />
+                            Revogar token
+                          </Button>
+                        </>
                       )}
                     </TableCell>
                   </TableRow>
@@ -221,8 +255,159 @@ export function CoberturaContabilidadesPage() {
         </Table>
       </Card>
 
-      <RevogarTokenDialog contabilidade={paraRevogar} onOpenChange={(open) => !open && setParaRevogar(null)} />
+      <RevogarTokenDialog
+        contabilidade={paraRevogar}
+        onOpenChange={(open) => !open && setParaRevogar(null)}
+        onEmitido={(contabilidade, link) => setEmitido({ contabilidade, link })}
+      />
+
+      <LinkAtivoDialog contabilidade={verLinkDe} onOpenChange={(open) => !open && setVerLinkDe(null)} />
+
+      <LinkEmitidoDialog emitido={emitido} onOpenChange={(open) => !open && setEmitido(null)} />
     </div>
+  );
+}
+
+/**
+ * A caixa que mostra o link e o coloca na área de transferência.
+ *
+ * O botão de copiar não é conforto: o token tem 36 caracteres e uma leitura
+ * errada produz um link que abre "Link inválido" na cara do contador — erro que
+ * ninguém consegue diagnosticar do outro lado da linha.
+ */
+function CaixaLink({ link }: { link: string }) {
+  const [copiado, setCopiado] = useState(false);
+
+  async function copiar() {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopiado(true);
+      window.setTimeout(() => setCopiado(false), 2000);
+    } catch {
+      // Navegador sem permissão de área de transferência: o link continua
+      // visível e selecionável na tela, que é o essencial.
+      setCopiado(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="overflow-x-auto rounded-md border bg-fundo-2/50 p-3">
+        <code className="whitespace-nowrap font-mono text-xs text-texto-1">{link}</code>
+      </div>
+      <Button variant="outline" size="sm" className="w-fit" onClick={() => void copiar()}>
+        {copiado ? <Check className="h-4 w-4 text-estado-sucesso" /> : <Copy className="h-4 w-4" />}
+        {copiado ? "Link copiado" : "Copiar link"}
+      </Button>
+    </div>
+  );
+}
+
+/** Corpo comum aos dois diálogos de link: o valor, ou o motivo de não haver. */
+function ConteudoLink({
+  consulta,
+}: {
+  consulta: { link: LinkAtivo | null; carregando: boolean; erro: unknown };
+}) {
+  if (consulta.carregando) {
+    return (
+      <p className="flex items-center gap-2 text-sm text-texto-2">
+        <Loader2 className="h-4 w-4 animate-spin" /> Buscando o link…
+      </p>
+    );
+  }
+  if (consulta.erro) {
+    return <p className="text-sm text-estado-erro">{mensagemErro(consulta.erro)}</p>;
+  }
+  if (!consulta.link) {
+    return (
+      <p className="text-sm text-estado-alerta">
+        Esta contabilidade não tem link ativo. Revogue o token para emitir um novo.
+      </p>
+    );
+  }
+  if (!consulta.link.link) {
+    // O banco devolveu a linha sem o token: quem consulta não é Admin
+    // (v_envios_campanha_mascarada). Dizer isso é melhor do que mostrar vazio.
+    return (
+      <p className="text-sm text-texto-2">
+        Existe um link ativo, mas o endereço só é exibido para o Admin.
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <CaixaLink link={consulta.link.link} />
+      <p className="text-xs text-texto-2">
+        Válido até {formatarDataBR(consulta.link.expiraEm)}. Envie-o por e-mail ou WhatsApp para o
+        contato da contabilidade — o CRM não dispara e-mail; quem envia é a campanha.
+      </p>
+    </div>
+  );
+}
+
+/** "Link ativo": ver e copiar o link em vigor, sem revogar nada. */
+function LinkAtivoDialog({
+  contabilidade,
+  onOpenChange,
+}: {
+  contabilidade: LinhaCobertura | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const consulta = useLinkAtivo(contabilidade?.contabilidadeId ?? null);
+
+  return (
+    <Dialog open={!!contabilidade} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Link de envio ativo</DialogTitle>
+          <DialogDescription>
+            O endereço que <strong>{contabilidade?.nome}</strong> usa para enviar os dados. Continua
+            valendo — reenviá-lo não invalida nada.
+          </DialogDescription>
+        </DialogHeader>
+        <ConteudoLink
+          consulta={{ link: consulta.data ?? null, carregando: consulta.isLoading, erro: consulta.error }}
+        />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Fechar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** O link recém-emitido, logo depois da revogação — o passo que faltava. */
+function LinkEmitidoDialog({
+  emitido,
+  onOpenChange,
+}: {
+  emitido: { contabilidade: LinhaCobertura; link: LinkAtivo } | null;
+  onOpenChange: (open: boolean) => void;
+}) {
+  return (
+    <Dialog open={!!emitido} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Link novo emitido</DialogTitle>
+          <DialogDescription>
+            O link anterior de <strong>{emitido?.contabilidade.nome}</strong> deixou de funcionar
+            agora. Este é o substituto — <strong>envie-o ao contato antes de fechar</strong>, porque
+            sem ele a contabilidade fica sem caminho para enviar os dados.
+          </DialogDescription>
+        </DialogHeader>
+        {emitido && (
+          <ConteudoLink consulta={{ link: emitido.link, carregando: false, erro: null }} />
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Fechar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -275,9 +460,11 @@ function PendentesDaContabilidade({ contabilidade }: { contabilidade: LinhaCober
 function RevogarTokenDialog({
   contabilidade,
   onOpenChange,
+  onEmitido,
 }: {
   contabilidade: LinhaCobertura | null;
   onOpenChange: (open: boolean) => void;
+  onEmitido: (contabilidade: LinhaCobertura, link: LinkAtivo) => void;
 }) {
   const revogar = useRevogarToken();
   const [erro, setErro] = useState<string | null>(null);
@@ -286,8 +473,11 @@ function RevogarTokenDialog({
     if (!contabilidade) return;
     setErro(null);
     try {
-      await revogar.mutateAsync(contabilidade.contabilidadeId);
+      const novo = await revogar.mutateAsync(contabilidade.contabilidadeId);
       onOpenChange(false);
+      // A revogação só termina quando o substituto está na mão de quem vai
+      // enviá-lo — por isso o diálogo do link novo abre em seguida, sempre.
+      onEmitido(contabilidade, novo);
     } catch (e) {
       setErro(mensagemErro(e));
     }
@@ -301,14 +491,14 @@ function RevogarTokenDialog({
       descricao={
         <>
           O link enviado a <strong>{contabilidade?.nome}</strong> deixa de funcionar imediatamente, e um
-          novo link é gerado para a próxima comunicação. O histórico de remessas já recebidas não é
-          apagado.
+          novo link é gerado e mostrado na tela seguinte, para você reenviar ao contato. O histórico de
+          remessas já recebidas não é apagado.
           {erro && <p className="mt-2 text-estado-erro">{erro}</p>}
         </>
       }
       destrutivo
       carregando={revogar.isPending}
-      textoConfirmar="Revogar"
+      textoConfirmar="Revogar e emitir novo"
       onConfirmar={confirmar}
     />
   );

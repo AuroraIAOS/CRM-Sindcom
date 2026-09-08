@@ -2447,6 +2447,24 @@ export type Database = {
         }
         Relationships: []
       }
+      v_envios_campanha_mascarada: {
+        Row: {
+          campanha_id: string | null
+          contabilidade_id: string | null
+          created_at: string | null
+          descadastrado_em: string | null
+          email: string | null
+          enviado_em: string | null
+          estabelecimento_id: string | null
+          id: string | null
+          primeira_remessa_em: string | null
+          token: string | null
+          token_expira_em: string | null
+          token_revogado_em: string | null
+          ultima_remessa_em: string | null
+        }
+        Relationships: []
+      }
       v_fila_parceiro: {
         Row: {
           categoria: string | null

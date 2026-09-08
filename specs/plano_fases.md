@@ -2004,7 +2004,23 @@ Evidência: as 6 conferências, cada uma com o resultado medido.
 Esforço máximo: sem teto — é pré-requisito, não entrega.
 Se esgotar: **nenhuma onda sai.** Onda que depende de link quebrado queima base sem aprender nada.
 
-### Subetapa 9.1 — Onda 00: prova ponta a ponta em caixas do próprio Maxwell [Manual] [LLM: Opus] · Status: ⬜
+### Subetapa 9.1 — Onda 00: prova ponta a ponta em caixas do próprio Maxwell [Manual] [LLM: Opus] · Status: 🟡 EM ANDAMENTO
+
+> **Achado da Onda 00, corrigido em 2026-09-08 — a prova já pagou o seu custo.** Testando a
+> revogação de token, apareceu que a contabilidade "perdia o acesso". A medição mostrou que a
+> **reemissão sempre funcionou** (dois ciclos de revogação deixaram exatamente um envio ativo, com
+> token novo); o que não existia era **entrega**: nenhuma tela mostrava o link, o CSV não o trazia e o
+> CRM não dispara e-mail — o substituto nascia invisível. Corrigido com
+> `sql/25_reemissao_token_09_01.sql` (view `v_envios_campanha_mascarada`, token em claro só para
+> Admin, aplicada em produção), mais o diálogo "Link novo emitido" e o botão "Link ativo" em
+> `/cobertura`. Lição em `orientacoes.md` §4.11. **Lacuna conhecida:** empresa isolada (trilha B) não
+> tem tela de cobertura, então não revoga nem reemite pela interface.
+>
+> Dois testes de outras subetapas quebraram por dado de demonstração, não por regressão, e foram
+> reescritos para afirmar o invariante em vez do registro específico (§7.1b/§7.1d/§7.9): o de
+> cobertura sorteava "o primeiro estabelecimento `999999%`" e passou a cair nos 9 novos da Onda 00; os
+> de `remessas` cravavam três CPFs de uma planilha de agosto que não estão mais na base.
+
 Objetivo: **provar a estrutura inteira com dado real e destinatário controlado, antes de tocar em
 uma única contabilidade de verdade.** É a subetapa que a decisão de 2026-09-01 criou, e é ela que
 transforma a onda 1 de experimento em execução.

@@ -2089,6 +2089,61 @@ duas, o sintoma é o mesmo: ele acusa algo que você sabe estar certo. Quando is
 **suspeite do guarda antes de suspeitar do código** — e leia a lista inteira de achados dele, não só
 o primeiro.
 
+### 4.11 Revogar credencial sem ENTREGAR a substituta é uma ação sem saída — e o sintoma acusa a metade errada
+
+**(a) Problema.** Relatado na Subetapa 9.1: *"quando a contabilidade pede a revogação do token, não
+há geração de um novo token e o solicitante perde o acesso"*. A leitura natural é que faltava a
+reemissão.
+
+**A medição disse o contrário.** Na campanha DEMO da Onda 00, para a mesma contabilidade:
+
+```
+71f68d10…  REVOGADO em 06/09 23:38:22   (criado 05/09)
+c31a75e8…  REVOGADO em 06/09 23:51:41   (criado 06/09 23:38)
+e01ccdf3…  ATIVO                        (criado 06/09 23:51)
+```
+
+Duas revogações, dois tokens novos, exatamente **um** ativo ao final. A reemissão nunca falhou:
+`useRevogarToken` marcava a linha antiga e inseria outra, que recebe token por DEFAULT do banco.
+
+O que não existia era **entrega**. A tela `/cobertura` não mostrava o token (decisão deliberada da
+08.11, com teste de guarda para impedir a leitura), o CSV dela não trazia link, e o CRM não dispara
+e-mail — quem envia é a Brevo, a partir de CSV exportado por script. O link novo nascia **invisível**:
+existia no banco e não havia caminho para chegar a ninguém. Do lado de fora, isso é indistinguível de
+"não gerou".
+
+**(b) Solução.** Tratar a reemissão como um ato de **três** passos, não de dois: revogar → emitir →
+**devolver o valor a quem vai reenviá-lo**. No CRM: `useRevogarToken` passou a ler o token recém-criado
+e a tela abre um diálogo "Link novo emitido" com botão de copiar; e um botão "Link ativo" por linha
+resolve o caso mais comum, que é reenviar sem revogar nada.
+
+Para a leitura não afrouxar a regra da 08.11, ela passa por `v_envios_campanha_mascarada`
+(`sql/25_reemissao_token_09_01.sql`): `case when fn_eh('admin') then e.token else null end`. **Quem
+decide é o Postgres, não a condição de papel na UI** — a tela só evita oferecer um botão que não
+traria valor. Medido depois de aplicar: `security_invoker=on`, `anon` sem acesso, Admin lê o token e a
+Secretaria lê a MESMA linha com `null` (§2.6b: a view não nega, ela apaga o valor).
+
+**(c) Como implantar.** Ao construir qualquer ação que **invalide uma credencial** (token de link,
+PIN de recepcionista, chave de integração), a pergunta que fecha a funcionalidade não é "o substituto
+foi criado?", é **"por qual caminho concreto o substituto chega ao dono?"**. Se a resposta for "está
+no banco", a ação está pela metade. Um teste que ajuda a não repetir:
+
+```ts
+// não basta afirmar que nasceu outro token…
+expect(ativosDepois.length).toBe(1);
+expect(ativosDepois[0].token).not.toBe(tokenAntigo);
+// …é preciso afirmar que alguém CONSEGUE LÊ-LO — e que o papel errado, não.
+expect(typeof comoAdmin?.token).toBe("string");
+expect(comoSecretaria?.token).toBeNull();
+```
+
+**Sinal de alerta transferível:** quando um guarda de código proíbe ler um valor "para sempre" e a
+funcionalidade nova precisa desse valor, a saída não é furar o guarda no frontend nem renomear a
+coluna para escapar do `grep` — é **mover a regra para o banco** e reescrever o guarda para a
+fronteira que continua valendo (aqui: nunca ler a credencial da TABELA CRUA; pela view mascarada,
+pode). Guarda que só sabe negar também precisa de um caso que falhe se a leitura legítima
+desaparecer — senão a regressão seguinte passa verde.
+
 ## 5. Ambiente de desenvolvimento (Windows)
 
 ### 5.1 Backticks e crases quebram scripts no shell
@@ -2643,3 +2698,35 @@ E, ao escrever teste sobre view com `join` por chave opcional (`convencao_id`, `
 qualquer FK anulável), lembre que **`join` interno some com a linha em silêncio**. Se o número
 esperado for zero, o teste não distingue "não há dado" de "o join derrubou tudo" — a não ser que a
 fixture do próprio teste esteja garantidamente do lado certo do join.
+
+### 7.10 Rodar a suíte várias vezes seguidas ACIONA o freio de tentativas — e o vermelho parece defeito
+
+**(a) Problema.** Na Subetapa 9.1, depois de três execuções de `npm run test` em ~20 minutos, dois
+casos de `coleta.spec.ts` ficaram vermelhos:
+
+```
+expected 'Muitas tentativas com este link. Agua…' to match /secretaria/i
+```
+
+Os casos afirmam a mensagem que a Edge Function devolve para token **revogado** e **expirado**. O que
+chegou foi a mensagem do **freio de varredura** (10 falhas por token em janela de 15 minutos,
+`supabase/functions/receber-remessa`). Nada tinha piorado: cada rodada da suíte bate no MESMO token
+revogado, e três rodadas seguidas somam mais de 10 falhas na mesma janela.
+
+**(b) Solução.** Reconhecer a mensagem do freio como o que ela é — a proteção funcionando, medida a
+partir de dentro — e não "consertar" o teste nem a função. A própria mensagem é a evidência: ela só
+existe no ramo `estaFreado()`. A tabela `tentativas_remessa` não ajuda a confirmar de fora, porque é
+`service_role` (`permission denied for table tentativas_remessa` como Admin — e isso está certo).
+
+**(c) Como implantar.** Ao ver um caso de token inválido/revogado/expirado falhar **pela mensagem de
+excesso de tentativas**, espere a janela de 15 minutos e rode só aquele arquivo:
+
+```bash
+npx vitest run tests/rls/coleta.spec.ts
+```
+
+E espace as rodadas da suíte completa em vez de repeti-la "só para conferir" — é a mesma disciplina
+do §7.4 (cota de `signInWithPassword`) e do §2.6e (proteção de borda do Supabase), aplicada ao freio
+que nós mesmos escrevemos. **Regra transferível:** todo teste que exercita um rate limit é
+auto-interferente por construção; o intervalo entre execuções faz parte do procedimento, não é
+detalhe de ambiente.
