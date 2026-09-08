@@ -35,12 +35,17 @@ import { useContextoToken, useEnviarRemessa, type EstabelecimentoDoToken } from 
  *    nossa base" para qualquer visitante com um link. A checagem de duplicata é
  *    da Denise, na 08.10, onde ela é feita por quem tem direito de fazê-la.
  *
- * 4. **Empresa isolada (carteira de 1) nunca vê planilha (Subetapa 08.8).**
- *    Os 8.241 grupos de UM estabelecimento — 53% da base — nunca vão baixar
- *    modelo nenhum. Quando `estabelecimentos.length === 1`, a tela troca o
- *    fluxo de arquivo por `FormularioDireto`, que gera um `.xlsx` de verdade
- *    NO NAVEGADOR e passa pela MESMA `useEnviarRemessa` — nenhum segundo
- *    caminho de escrita.
+ * 4. **Empresa isolada (carteira de 1) começa pelo formulário, e a planilha
+ *    fica logo abaixo (08.8, revisto na Onda 00).** Os 8.241 grupos de UM
+ *    estabelecimento são 53% da base, e para quem tem dois funcionários pedir
+ *    uma planilha é atrito puro — por isso `FormularioDireto` vem primeiro.
+ *    Mas empresa isolada não é sinônimo de empresa pequena: quem tem trinta
+ *    funcionários preencheria trinta blocos à mão, então o mesmo par
+ *    modelo+upload das contabilidades aparece em seguida, como alternativa.
+ *
+ *    Os dois caminhos convergem: o formulário gera um `.xlsx` de verdade NO
+ *    NAVEGADOR e ambos passam pela MESMA `useEnviarRemessa` — nenhum segundo
+ *    caminho de escrita, e nenhuma segunda régua de validação.
  */
 export function EnviarDadosPage() {
   const { token = "" } = useParams();
@@ -191,7 +196,174 @@ export function EnviarDadosPage() {
     );
   }
 
+  /**
+   * O caminho da planilha, escrito UMA vez e usado nos dois públicos.
+   *
+   * Ele nasceu para a carteira do contador (08.7), mas a empresa isolada
+   * também precisa dele: o formulário resolve quem tem dois ou três
+   * funcionários — a maioria —, e é péssimo para quem tem trinta. Duplicar o
+   * bloco produziria duas telas que envelhecem em ritmos diferentes; por isso
+   * a única diferença entre os dois usos é o texto, no parâmetro `variante`.
+   */
+  function secaoPlanilha(variante: "carteira" | "empresa") {
+    const daEmpresa = variante === "empresa";
+    return (
+      <>
+        {/* O modelo vem ANTES do campo de anexo de propósito: quem chega aqui sem
+            planilha pronta precisa encontrar o arquivo antes de encontrar o
+            upload. É também a defesa do zero à esquerda — o modelo já traz as
+            colunas de CPF e CNPJ formatadas como texto (orientacoes.md §2.10), o
+            que uma planilha montada do zero dificilmente teria.
+            Gerado NO NAVEGADOR (Subetapa 08.7), pré-preenchido com o que este
+            token autoriza — nada de arquivo estático em `public/` a manter. */}
+        <section className="flex flex-col gap-3 rounded-lg border border-realce/30 bg-realce/5 p-4">
+          <div className="flex flex-col gap-1">
+            <h2 className="font-medium text-texto-1">
+              {daEmpresa ? "Baixe a planilha modelo" : "1. Baixe o modelo"}
+            </h2>
+            <p className="text-sm text-texto-2">
+              {daEmpresa ? (
+                <>
+                  Ela já vem com o CNPJ da sua empresa preenchido e protege o zero à esquerda do
+                  CPF, que o Excel costuma apagar. A aba <strong>Instruções</strong> explica cada
+                  campo.
+                </>
+              ) : (
+                <>
+                  A planilha já vem com o CNPJ e o nome de cada empresa da sua carteira, e protege o
+                  zero à esquerda do CPF, que o Excel costuma apagar. A aba{" "}
+                  <strong>Instruções</strong> explica cada campo.
+                </>
+              )}
+            </p>
+          </div>
+          <Button
+            onClick={() => void baixarModelo()}
+            disabled={gerandoModelo || !contexto.data}
+            className="w-fit gap-2 bg-realce text-white hover:opacity-90"
+          >
+            {gerandoModelo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {gerandoModelo ? "Gerando modelo…" : "Baixar modelo (.xlsx)"}
+          </Button>
+          {erroModelo && <p className="text-sm text-estado-erro">{erroModelo}</p>}
+        </section>
+
+        <section className="flex flex-col gap-3">
+          <h2 className="font-medium text-texto-1">
+            {daEmpresa ? "Envie a planilha preenchida" : "2. Envie a planilha preenchida"}
+          </h2>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-texto-1">Planilha preenchida (.xlsx)</span>
+            <input
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              onChange={(e) => void aoEscolherArquivo(e.target.files?.[0] ?? null)}
+              className="rounded-md border bg-white p-2 text-sm"
+            />
+            <span className="text-texto-2">
+              Colunas esperadas: CNPJ do estabelecimento, nome, CPF, telefone, piso salarial pago e
+              situação (sindicalizado ou oposição).
+            </span>
+          </label>
+
+          {lendo && <p className="text-texto-2">Lendo a planilha no seu navegador…</p>}
+
+          {erroLeitura && (
+            <p className="rounded-md bg-estado-erro/10 p-3 text-sm text-estado-erro">{erroLeitura}</p>
+          )}
+
+          {preview && contagem && (
+            <>
+              {temAvisoZeroComido(preview) && (
+                <p className="rounded-md bg-estado-alerta/10 p-3 text-sm text-estado-alerta">
+                  Vários CPFs vieram com menos dígitos do que deveriam. Isso acontece quando o Excel
+                  trata o CPF como número e come o zero da frente. Restauramos os zeros aqui, mas vale
+                  conferir — no Excel, formate a coluna como <strong>Texto</strong> antes de digitar.
+                </p>
+              )}
+
+              <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
+                <span>Total de linhas: <strong>{contagem.total}</strong></span>
+                <span className="text-estado-sucesso">Prontas: <strong>{aproveitaveis}</strong></span>
+                {contagem.rejeitadas > 0 && (
+                  <span className="text-estado-erro">
+                    Com erro: <strong>{contagem.rejeitadas}</strong>
+                  </span>
+                )}
+                {semVinculo > 0 && (
+                  <span className="text-estado-alerta">
+                    CNPJ fora deste link: <strong>{semVinculo}</strong>
+                  </span>
+                )}
+              </div>
+
+              {semVinculo > 0 && (
+                <p className="rounded-md bg-estado-alerta/10 p-3 text-sm text-estado-alerta">
+                  {semVinculo === 1 ? "Uma linha traz" : `${semVinculo} linhas trazem`} um CNPJ que não
+                  está {daEmpresa ? "entre os desta empresa" : "entre as empresas deste link"}. Elas
+                  serão enviadas mesmo assim, mas o trabalhador entrará sem vínculo com a empresa —
+                  confira os CNPJs antes de enviar.
+                </p>
+              )}
+
+              {contagem.rejeitadas > 0 && (
+                <p className="rounded-md bg-estado-erro/10 p-3 text-sm text-estado-erro">
+                  {contagem.rejeitadas === 1 ? "Uma linha será descartada" : `${contagem.rejeitadas} linhas serão descartadas`}{" "}
+                  por erro bloqueante (CPF inválido ou campo obrigatório vazio). Corrija na planilha e
+                  anexe de novo, ou envie assim mesmo — as demais linhas seguem.
+                </p>
+              )}
+
+              <PreviewTable
+                preview={preview}
+                resumoLinha={(l) => {
+                  const b = l.bruta;
+                  const nome = b["nome"] ?? b["Nome"] ?? "";
+                  const cpf = b["cpf"] ?? b["CPF"] ?? "";
+                  return [nome, cpf].filter(Boolean).join(" · ") || "(linha sem nome e sem CPF)";
+                }}
+              />
+            </>
+          )}
+
+          {enviar.isError && (
+            <p className="rounded-md bg-estado-erro/10 p-3 text-sm text-estado-erro">
+              {(enviar.error as Error).message}
+            </p>
+          )}
+
+          <div className="flex items-center gap-3">
+            <Button onClick={enviarRemessa} disabled={!podeEnviar}>
+              {enviar.isPending ? "Enviando…" : "Enviar planilha"}
+            </Button>
+            {preview && aproveitaveis === 0 && (
+              <span className="text-sm text-texto-2">
+                Nenhuma linha aproveitável — corrija a planilha e anexe de novo.
+              </span>
+            )}
+          </div>
+
+          {/* Na variante `empresa` esta frase já apareceu embaixo do formulário,
+              a poucos centímetros daqui — repeti-la não tranquiliza ninguém. */}
+          {!daEmpresa && (
+            <p className="text-xs text-texto-2">
+              O sindicato confere cada envio antes de cadastrar. Nada é gravado automaticamente.
+            </p>
+          )}
+        </section>
+      </>
+    );
+  }
+
   // ------------------------------------------------------------- empresa isolada (08.8)
+  /**
+   * DOIS caminhos, não um. O formulário continua sendo o principal — 53% da
+   * base tem um estabelecimento só, e a copy B3 promete "você não precisa
+   * construir nenhuma planilha". Mas empresa isolada não quer dizer empresa
+   * pequena: quem tem trinta funcionários preencheria trinta blocos à mão. A
+   * planilha entra abaixo, como alternativa declarada, sem disputar a atenção
+   * de quem chegou para cadastrar duas pessoas.
+   */
   if (empresaIsolada) {
     return (
       <Moldura larga>
@@ -200,6 +372,18 @@ export function EnviarDadosPage() {
           subtitulo={empresaIsolada.nome_fantasia || empresaIsolada.razao_social}
         />
         <FormularioDireto estabelecimento={empresaIsolada} token={token} enviar={enviar} />
+
+        <div className="flex flex-col gap-4 border-t pt-6">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold text-texto-1">Tem muitos funcionários?</h2>
+            <p className="text-sm text-texto-2">
+              Se preencher um a um for trabalhoso, baixe a planilha modelo, preencha de uma vez e
+              envie o arquivo. Vale exatamente o mesmo que o formulário acima — use o que for mais
+              cômodo para você.
+            </p>
+          </div>
+          {secaoPlanilha("empresa")}
+        </div>
       </Moldura>
     );
   }
@@ -245,129 +429,7 @@ export function EnviarDadosPage() {
         </section>
       )}
 
-      {/* O modelo vem ANTES do campo de anexo de propósito: quem chega aqui sem
-          planilha pronta precisa encontrar o arquivo antes de encontrar o
-          upload. É também a defesa do zero à esquerda — o modelo já traz as
-          colunas de CPF e CNPJ formatadas como texto (orientacoes.md §2.10), o
-          que uma planilha montada do zero pelo contador dificilmente teria.
-          Gerado NO NAVEGADOR (Subetapa 08.7), pré-preenchido com a carteira
-          deste token — nada de arquivo estático em `public/` a manter. */}
-      <section className="flex flex-col gap-3 rounded-lg border border-realce/30 bg-realce/5 p-4">
-        <div className="flex flex-col gap-1">
-          <h2 className="font-medium text-texto-1">1. Baixe o modelo</h2>
-          <p className="text-sm text-texto-2">
-            A planilha já vem com o CNPJ e o nome de cada empresa da sua carteira, e protege o zero
-            à esquerda do CPF, que o Excel costuma apagar. A aba <strong>Instruções</strong> explica
-            cada campo.
-          </p>
-        </div>
-        <Button
-          onClick={() => void baixarModelo()}
-          disabled={gerandoModelo || !contexto.data}
-          className="w-fit gap-2 bg-realce text-white hover:opacity-90"
-        >
-          {gerandoModelo ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-          {gerandoModelo ? "Gerando modelo…" : "Baixar modelo (.xlsx)"}
-        </Button>
-        {erroModelo && <p className="text-sm text-estado-erro">{erroModelo}</p>}
-      </section>
-
-      <section className="flex flex-col gap-3">
-        <h2 className="font-medium text-texto-1">2. Envie a planilha preenchida</h2>
-        <label className="flex flex-col gap-1 text-sm">
-          <span className="font-medium text-texto-1">Planilha preenchida (.xlsx)</span>
-          <input
-            type="file"
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            onChange={(e) => void aoEscolherArquivo(e.target.files?.[0] ?? null)}
-            className="rounded-md border bg-white p-2 text-sm"
-          />
-          <span className="text-texto-2">
-            Colunas esperadas: CNPJ do estabelecimento, nome, CPF, telefone, piso salarial pago e
-            situação (sindicalizado ou oposição).
-          </span>
-        </label>
-
-        {lendo && <p className="text-texto-2">Lendo a planilha no seu navegador…</p>}
-
-        {erroLeitura && (
-          <p className="rounded-md bg-estado-erro/10 p-3 text-sm text-estado-erro">{erroLeitura}</p>
-        )}
-
-        {preview && contagem && (
-          <>
-            {temAvisoZeroComido(preview) && (
-              <p className="rounded-md bg-estado-alerta/10 p-3 text-sm text-estado-alerta">
-                Vários CPFs vieram com menos dígitos do que deveriam. Isso acontece quando o Excel
-                trata o CPF como número e come o zero da frente. Restauramos os zeros aqui, mas vale
-                conferir — no Excel, formate a coluna como <strong>Texto</strong> antes de digitar.
-              </p>
-            )}
-
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm">
-              <span>Total de linhas: <strong>{contagem.total}</strong></span>
-              <span className="text-estado-sucesso">Prontas: <strong>{aproveitaveis}</strong></span>
-              {contagem.rejeitadas > 0 && (
-                <span className="text-estado-erro">
-                  Com erro: <strong>{contagem.rejeitadas}</strong>
-                </span>
-              )}
-              {semVinculo > 0 && (
-                <span className="text-estado-alerta">
-                  CNPJ fora deste link: <strong>{semVinculo}</strong>
-                </span>
-              )}
-            </div>
-
-            {semVinculo > 0 && (
-              <p className="rounded-md bg-estado-alerta/10 p-3 text-sm text-estado-alerta">
-                {semVinculo === 1 ? "Uma linha traz" : `${semVinculo} linhas trazem`} um CNPJ que não
-                está entre as empresas deste link. Elas serão enviadas mesmo assim, mas o trabalhador
-                entrará sem vínculo com a empresa — confira os CNPJs antes de enviar.
-              </p>
-            )}
-
-            {contagem.rejeitadas > 0 && (
-              <p className="rounded-md bg-estado-erro/10 p-3 text-sm text-estado-erro">
-                {contagem.rejeitadas === 1 ? "Uma linha será descartada" : `${contagem.rejeitadas} linhas serão descartadas`}{" "}
-                por erro bloqueante (CPF inválido ou campo obrigatório vazio). Corrija na planilha e
-                anexe de novo, ou envie assim mesmo — as demais linhas seguem.
-              </p>
-            )}
-
-            <PreviewTable
-              preview={preview}
-              resumoLinha={(l) => {
-                const b = l.bruta;
-                const nome = b["nome"] ?? b["Nome"] ?? "";
-                const cpf = b["cpf"] ?? b["CPF"] ?? "";
-                return [nome, cpf].filter(Boolean).join(" · ") || "(linha sem nome e sem CPF)";
-              }}
-            />
-          </>
-        )}
-
-        {enviar.isError && (
-          <p className="rounded-md bg-estado-erro/10 p-3 text-sm text-estado-erro">
-            {(enviar.error as Error).message}
-          </p>
-        )}
-
-        <div className="flex items-center gap-3">
-          <Button onClick={enviarRemessa} disabled={!podeEnviar}>
-            {enviar.isPending ? "Enviando…" : "Enviar planilha"}
-          </Button>
-          {preview && aproveitaveis === 0 && (
-            <span className="text-sm text-texto-2">
-              Nenhuma linha aproveitável — corrija a planilha e anexe de novo.
-            </span>
-          )}
-        </div>
-
-        <p className="text-xs text-texto-2">
-          O sindicato confere cada envio antes de cadastrar. Nada é gravado automaticamente.
-        </p>
-      </section>
+      {secaoPlanilha("carteira")}
     </Moldura>
   );
 }

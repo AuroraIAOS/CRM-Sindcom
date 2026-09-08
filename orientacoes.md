@@ -2259,6 +2259,62 @@ fronteira que continua valendo (aqui: nunca ler a credencial da TABELA CRUA; pel
 pode). Guarda que só sabe negar também precisa de um caso que falhe se a leitura legítima
 desaparecer — senão a regressão seguinte passa verde.
 
+### 4.12 `useMemo` sobre o array de `watch()` NUNCA recalcula — o objeto é o mesmo, mutado no lugar
+
+**(a) Problema.** Relatado nos testes finais da Onda 00: na tela pública da empresa
+(`/enviar-dados/:token`), o empreendedor preenchia o primeiro funcionário e o botão **"Enviar
+cadastro" continuava inativo**, com a mensagem "Preencha ao menos um funcionário sem erro". O botão
+só acordava ao clicar em **"Adicionar outro funcionário"** — ou seja, quem tem UM funcionário, que é
+a maioria desta trilha, tinha todo motivo para achar que a ferramenta não funciona e fechar a aba.
+
+Duas hipóteses explicavam o sintoma, e elas pedem correções opostas: (1) o componente não
+re-renderiza ao digitar; (2) ele re-renderiza e o cálculo é que não refaz. Um contador de
+renderização temporário decidiu em um minuto:
+
+```
+[diag] render  7  mesmaRef: true  nome0: "A"
+[diag] render  9  mesmaRef: true  nome0: "An"
+[diag] render 11  mesmaRef: true  nome0: "Ana"
+```
+
+**Re-renderiza a cada tecla** — `watch` faz a sua parte. Mas `form.watch("linhas")` devolve
+**sempre o mesmo objeto de array**, mutado no lugar (`mesmaRef: true`). O preview vinha de um
+`useMemo(..., [linhasObservadas])`, que compara dependência por **referência**: mesma referência,
+resultado em cache — o da primeira renderização, quando os campos estavam vazios. `append()` troca o
+array por um objeto novo, a referência muda, e só então o memo recalcula. Daí o contorno absurdo de
+"adicionar outro funcionário para poder enviar o primeiro".
+
+**(b) Solução.** Tirar o `useMemo`. A conta é uma passada por um punhado de linhas digitadas à mão —
+refazê-la a cada tecla não custa nada mensurável, e memoizar sobre referência mutável custou o envio
+de quem tem um funcionário só.
+
+```ts
+// ERRADO — a referência nunca muda, o memo nunca recalcula
+const linhas = form.watch("linhas");
+const preview = useMemo(() => validar(linhas), [linhas]);
+
+// CERTO — sem memo (ou, se o custo justificasse, com uma chave por VALOR)
+const linhas = form.watch("linhas");
+const preview = validar(linhas);
+```
+
+**(c) Como implantar.** A regra prática: **`useMemo` só é seguro sobre dependências imutáveis.**
+Antes de memoizar sobre algo que vem de uma biblioteca de formulário, de um `ref`, ou de qualquer
+store que mute estado interno, confirme que a referência troca — um `console.log` comparando com a
+referência anterior responde na hora e não exige ferramenta nenhuma.
+
+E o teste que pega isto **não é de unidade**: a suíte estava 100% verde com o botão morto em
+produção. O que pegou foi abrir a tela e digitar. Toda tela cuja habilitação de botão dependa de
+cálculo derivado merece esse minuto de teclado antes de subir.
+
+**Achado de tabela junto:** o mesmo arquivo tinha duas réguas divergentes sobre o mesmo dado — o
+`zod` do formulário exigia `piso` (`min(1)`), enquanto `validarTrabalhadores`, usada no caminho da
+planilha, trata piso vazio como **aviso** e deixa a linha seguir. Com o botão consertado, isso
+produziria um clique morto: liberado pelo `aproveitaveis > 0` e barrado pelo resolver, sem
+explicação visível além de um "Obrigatório" discreto. O zod passou a garantir só FORMATO; quem
+decide o que é obrigatório é a validação compartilhada. **Duas conferências sobre o mesmo campo é
+uma a mais** — vale para CPF, vale para piso, vale para o que vier.
+
 ## 5. Ambiente de desenvolvimento (Windows)
 
 ### 5.1 Backticks e crases quebram scripts no shell
