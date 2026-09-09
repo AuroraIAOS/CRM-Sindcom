@@ -413,6 +413,78 @@ mudança". Ver também §2.6e, sobre o Cloudflare do Supabase "sumir" sem 429/50
 armadilha, camada diferente.
 
 ---
+### 1.8 O site respondia 200 em tudo — mas quem respondia era o CACHE, não o WordPress
+
+**(a) Problema.** Achado em 2026-09-09, logo depois de reparar o `.htaccess` (§1.6 item d). Todas as
+11 páginas do sitemap devolviam **200**. O site parecia saudável, e por qualquer medição normal ele
+estava.
+
+Só que o Diagnóstico do WordPress acusava *"A API REST encontrou um resultado inesperado: (404)"*, e
+esse fio puxou o novelo:
+
+```
+/wp-json/                        -> 404      (rota bonita)
+/?rest_route=/                   -> 200      (rota por query string)
+```
+
+API REST viva pela query string e morta pela rota bonita é assinatura de **`.htaccess` sem o bloco
+`# BEGIN WordPress`** — o bloco que manda tudo que não é arquivo nem diretório para o `index.php`.
+Ele realmente não estava lá (ausência já registrada no backup de 2026-09-04, sem ninguém saber o
+efeito).
+
+**Então por que as páginas respondiam 200?** Porque o bloco do cache vinha ANTES e resolvia:
+
+```apache
+RewriteCond %{DOCUMENT_ROOT}/wp-content/endurance-page-cache/$1/_index.html -f
+RewriteRule ^(.*)$ /wp-content/endurance-page-cache/$1/_index.html [L]
+```
+
+O Apache achava o snapshot em disco e servia. O WordPress **nunca era chamado**. O teste que revela
+isso em uma requisição usa o desvio que a própria regra define — `RewriteCond %{QUERY_STRING} !.*=.*`,
+ou seja, qualquer query string com `=` pula o cache:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://SEU-SITE/alguma-pagina/
+curl -s -o /dev/null -w '%{http_code}\n' https://SEU-SITE/alguma-pagina/?x=1
+```
+
+Medido: **200 sem desvio e 404 com desvio**, nas três páginas testadas. O site inteiro estava de pé
+sobre um snapshot de 01/09.
+
+**Por que isso é grave e não curiosidade:** qualquer coisa que limpe o cache — atualizar plugin,
+salvar uma página, clicar em "Purge Cache" — derruba o site inteiro para 404 **na hora**. E o
+sintoma não teria relação aparente com a causa, porque a última ação seria "atualizei um plugin".
+Uma campanha de 9.186 e-mails apontando para esse site estava a um clique de virar 9.186 links
+quebrados. Também explica um mistério menor: `/servicos/` dava 404 enquanto
+`/servicos-sindicais/` dava 200 — o slug foi renomeado, mas só o antigo tem snapshot.
+
+**(b) Solução.** Restaurar o bloco `# BEGIN WordPress`, e deixar o próprio WordPress escrevê-lo:
+**Configurações → Links permanentes → Salvar alterações**. Ele regenera o bloco na forma correta e
+na posição correta (DEPOIS do bloco de cache — o de cache termina em `[L]` e precisa ter a primeira
+palavra). Escrever à mão é possível, mas é o software fazendo o trabalho do software.
+
+Confirmar que a estrutura está em `/%postname%/` antes, e que a tela **não** mostra o aviso "atualize
+seu .htaccess manualmente" — se mostrar, o arquivo não é gravável e a correção é outra.
+
+**(c) Como implantar — e a ordem importa.**
+
+1. **Primeiro o bloco do WordPress**, com o cache ainda ligado. Se algo der errado, o cache continua
+   segurando o site de pé; é a rede de proteção.
+2. **Provar com o desvio**, que é a única medição que separa cache de roteamento:
+   ```bash
+   for u in / /contato/ /dados/; do
+     curl -s -o /dev/null -w "$u?x=1 -> %{http_code}\n" "https://SEU-SITE$u?x=1"; sleep 5
+   done
+   ```
+   Só quando essas derem **200** o WordPress está roteando de verdade.
+3. **Só então** mexer no nível de cache. Fazer o contrário — desligar o cache primeiro — derruba o
+   site inteiro, e foi exatamente o que este achado impediu: a recomendação anterior era desligar o
+   cache para parar a corrupção do `.htaccess` (§1.6 d), e ela teria produzido 404 em tudo.
+
+**Regra transferível:** **200 não prova que a aplicação está viva** — prova que alguém respondeu.
+Onde há cache de página em disco, a pergunta certa é *"quem respondeu?"*, e ela se responde
+desviando o cache, não olhando o código.
+
 ## 2. Banco de dados (Postgres/Supabase)
 
 ### 2.1 `least()` ignora NULLs — e cobrou o teto de quem não tinha base
