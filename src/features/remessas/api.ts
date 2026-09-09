@@ -88,6 +88,37 @@ export function useRemessas() {
 }
 
 /**
+ * Contagem das remessas AINDA ABERTAS — o marcador da sidebar (Subetapa 9.2).
+ *
+ * "Aberta" é `recebida` ou `validada`, e essa definição não é escolha nova:
+ * é exatamente a que `ListaRemessasPage` já usa para decidir entre os botões
+ * "Revisar" e "Ver". Duas definições de pendência divergindo é como o número
+ * do marcador passa a mentir em relação à tela que ele aponta.
+ *
+ * `head: true` traz só o cabeçalho com a contagem — nenhuma linha viaja. O
+ * marcador não precisa dos dados, e remessa carrega CPF na planilha.
+ *
+ * A chave começa com "remessas" de propósito: `useMarcarRemessa` invalida
+ * `["remessas"]` inteiro, então concluir uma remessa derruba o número na hora,
+ * sem esperar o `refetchInterval`.
+ */
+export function useContagemRemessasAbertas(habilitado: boolean) {
+  return useQuery({
+    queryKey: ["remessas", "contagem-abertas"],
+    enabled: habilitado,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("remessas_dados")
+        .select("id", { count: "exact", head: true })
+        .in("status", ["recebida", "validada"]);
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+}
+
+/**
  * Baixa a planilha da remessa por URL ASSINADA e devolve o `ParseResultado`.
  *
  * A URL assinada é o ponto: o bucket é privado, e a única forma de a tela ler o

@@ -17,6 +17,8 @@ import {
   BarChart3,
   Bell,
   Settings,
+  Gauge,
+  UserMinus,
   type LucideIcon,
 } from "lucide-react";
 import type { PapelUsuario } from "@/lib/supabase";
@@ -59,9 +61,17 @@ export const NAV: NavItem[] = [
   // quem lê `envios_campanha` hoje); a revisão de remessa continua sendo ato de
   // Admin e Secretaria, que é a Denise. Revogar token segue restrito ao Admin,
   // controlado dentro da própria tela.
+  // O painel vem PRIMEIRO no grupo porque é a leitura de cima: quanto saiu,
+  // quanto chegou, quanto voltou. As telas seguintes são o detalhe de cada
+  // pedaço desse número.
+  { path: "/campanhas/dashboard", label: "Dashboard", roles: ["admin", "presidente", "secretaria"], icon: Gauge, grupo: "campanhas" },
   { path: "/cobertura", label: "Cobertura por contabilidade", roles: ["admin", "presidente", "secretaria"], icon: BarChart3, grupo: "campanhas" },
   { path: "/cobertura-empresas", label: "Cobertura por empresa", roles: ["admin", "presidente", "secretaria"], icon: Building2, grupo: "campanhas" },
   { path: "/remessas", label: "Remessas recebidas", roles: ["admin", "secretaria"], icon: FileSpreadsheet, grupo: "campanhas" },
+  // Mesmo recorte de `pol_descadastros_select` (sql/24): Admin, Presidente e
+  // Secretaria. O Presidente entra porque a leitura desta tela é de gestão —
+  // taxa de saída e motivo dirigem decisão de campanha, não operação.
+  { path: "/descadastros", label: "Descadastros", roles: ["admin", "presidente", "secretaria"], icon: UserMinus, grupo: "campanhas" },
 
   { path: "/aprovacoes", label: "Aprovações", roles: ["admin", "secretaria"], icon: ClipboardCheck, grupo: "administracao" },
   { path: "/fila-admin", label: "Fila do Admin", roles: ["admin", "presidente", "secretaria", "juridico", "parceiro"], icon: Inbox, grupo: "administracao" },

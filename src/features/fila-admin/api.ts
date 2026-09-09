@@ -67,6 +67,31 @@ export function useSolicitacoesAdmin(apenasPendentes: boolean) {
   });
 }
 
+/**
+ * Contagem de pendências na fila — o marcador da sidebar (Subetapa 9.2).
+ *
+ * Conta o que a RLS deixar contar, e isso é a coisa certa: a `/fila-admin`
+ * aparece para os cinco papéis, mas cada um enxerga um recorte diferente
+ * (o parceiro só as próprias). Como a contagem passa pela MESMA policy da
+ * listagem, o número no menu bate com o que a pessoa vai encontrar ao clicar —
+ * seria pior mostrar um total global que ela não consegue abrir.
+ */
+export function useContagemFilaAdminPendente(habilitado: boolean) {
+  return useQuery({
+    queryKey: ["fila-admin", "contagem-pendentes"],
+    enabled: habilitado,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("solicitacoes_admin")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pendente");
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+}
+
 /** Tempo médio (horas) entre abertura e análise — insumo para a válvula de
  *  auto-aprovação da Etapa 04 (plano_fases.md). Só o Admin enxerga todas. */
 export function useTempoMedioAprovacao() {
