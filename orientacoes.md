@@ -1793,6 +1793,38 @@ gráfica sumir no meio de uma escrita, o próximo passo é **medir o estado do d
 a escrita nem seguir adiante — é o §7.2 ("passou" ≠ "funcionou") no seu caso mais difícil, o de nem
 sequer haver um "passou".
 
+### 2.30 A RLS do projeto barra o Admin de apagar o que so a Edge Function escreve — e isso esta certo
+
+**(a) Problema.** Na limpeza dos dados DEMO de 2026-09-09, o script autenticado como Admin parou no
+primeiro passo:
+
+```
+permission denied for table descadastros_campanha
+```
+
+A leitura natural e "faltou permissao ao Admin, vamos conceder". Errada. A tabela concede **apenas
+`select`** a `authenticated` (sql/24): a unica escrita prevista e a da Edge Function `descadastrar`,
+com `service_role`. Conceder `delete` ao Admin para desbloquear uma limpeza abriria em definitivo um
+caminho de escrita que a subetapa 9.00 fechou de proposito — trocar seguranca permanente por
+conveniencia de uma tarefa.
+
+**(b) Solucao.** Fazer a limpeza pelo **editor SQL do painel**, que roda como `postgres` e nao passa
+por RLS nem por `grant`. O caminho existe exatamente para isto: manutencao pontual feita por quem
+tem a chave, sem afrouxar o que o app enxerga.
+
+**(c) Como implantar.** Exclusao em massa em producao, em duas passadas:
+
+1. `begin;` … deletes … `select` de conferencia … `rollback;` — mostra os numeros **sem gravar**.
+2. Se baterem, o mesmo bloco com `commit;` e a conferencia **depois** dele, para o que aparece na
+   tela ser o estado real e nao a previsao.
+
+E antes de tudo: **dump do que sera apagado** (77,7 KB no caso), porque `auditoria` registra que a
+linha sumiu, nao o conteudo dela.
+
+**Regra transferivel:** `permission denied` num papel do app raramente e bug de permissao — costuma
+ser a regra funcionando. Antes de conceder privilegio, pergunte **por que aquele papel nao tinha**;
+se a resposta for "porque so o servidor deveria escrever ali", o caminho e outro, nao o `grant`.
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo

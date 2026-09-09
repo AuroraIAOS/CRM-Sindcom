@@ -2084,6 +2084,34 @@ envios_campanha where enviado_em is not null` = 89 + a primeira leitura de cober
 Esforço máximo: 1 disparo; qualquer anomalia interrompe em vez de reenviar.
 Se esgotar: parar o agendamento no ESP e relatar. **Onda 2 não sai com a onda 1 no vermelho.**
 
+> **PROVISIONADO PARA DEPOIS DA ONDA 01 — baixar o nível do cache do site institucional.**
+> Decidido em 2026-09-09, e a razão de esperar é deliberada: hoje o site está estável e trocar o
+> comportamento de cache no dia do disparo é risco sem necessidade.
+>
+> **O que fazer:** `sindcompassos.org` → WP Admin → Configurações → Geral → **Endurance Cache**,
+> baixar de **`Normal (Level 2)`** para **`Assets Only (Level 1)`**.
+>
+> **Por quê:** o nível 2 é o que faz o plugin *must-use* `Endurance Page Cache 2.3.0` reescrever o
+> bloco `# BEGIN NFD EPC` do `.htaccess` — e essa reescrita corrompeu o arquivo **duas vezes em oito
+> dias** (2026-09-01 e 2026-09-09), derrubando o site inteiro com 500 nas duas
+> (`orientacoes.md` §1.6). O nível 1 mantém o cache de NAVEGADOR, que vem do bloco `mod_expires` e é
+> outra coisa; o que se perde é o cache de página em disco.
+>
+> **O que NÃO fazer, e por que isto está escrito:** até 2026-09-09 a recomendação era *desligar* o
+> cache — e ela teria derrubado o site inteiro para 404, porque o `.htaccess` estava sem o bloco
+> `# BEGIN WordPress` e **quem respondia 200 era o cache, não o WordPress** (§1.8). Esse bloco já foi
+> restaurado e o roteamento está provado por medição, então o caminho agora está livre. Ainda assim,
+> **medir antes e depois com o desvio de cache** continua sendo a regra:
+> ```bash
+> for u in / /contato/ /dados/; do
+>   curl -s -o /dev/null -w "$u?x=1 -> %{http_code}\n" "https://sindcompassos.org$u?x=1"; sleep 5
+> done
+> ```
+>
+> Vale reavaliar junto a migração das páginas do Elementor para HTML puro, que o Maxwell provisionou
+> para depois da ETAPA 09: menos peças móveis reescrevendo arquivo de configuração é menos
+> superfície para este mesmo defeito voltar.
+
 ### Subetapa 9.3 — Onda 02: as 248 contabilidades médias [Manual] [LLM: Sonnet] · Status: ⬜
 Objetivo: 248 envios, 2.189 estabelecimentos, levando o alcance acumulado a 38%.
 Conclusão: 248 enviados a 50 → 80/dia, rejeição abaixo de 2%, `enviado_em` preenchido, cobertura
