@@ -299,6 +299,64 @@ reescrevendo o bloco no meio do caminho.
 servidor web ainda serve um byte estático?"**. A resposta separa dois mundos de investigação, e ela
 custa uma requisição.
 
+
+**(d) SEGUNDA OCORRÊNCIA — 2026-09-09, oito dias depois. O mesmo defeito, e agora com o culpado
+nomeado.** O site voltou a devolver 500 em tudo, inclusive no estático. O teste de uma requisição
+decidiu de novo em segundos, e o arquivo ao vivo tinha a mesma forma: 1.324 bytes, começando em
+
+```
+ype application/pdf "access plus 1 week"
+```
+
+— o rabo de um `ExpiresByType`. **A contagem de marcadores é o diagnóstico mais rápido que existe
+aqui, e não depende de ler o arquivo inteiro:**
+
+```
+"# BEGIN NFD EPC" .... 1 ocorrência
+"# END NFD EPC" ...... 2 ocorrências
+```
+
+Um `END` a mais que `BEGIN` prova truncamento: o primeiro bloco perdeu o começo e sobreviveu só o
+fim, com um bloco íntegro logo abaixo. Não é preciso interpretar diretiva nenhuma.
+
+**Quem escreve é o `NFD EPC` — Newfold/Endurance Page Cache**, e isso não é dedução: o bloco leva o
+nome dele e é ele que o regenera. Duas corrupções em oito dias, as duas com a mesma assinatura de
+escrita concorrente. **Enquanto esse plugin estiver ativo, isto volta a acontecer** — a pergunta não
+é "se", é "quando", e a próxima pode cair no meio de um disparo de campanha.
+
+**Um segundo efeito do mesmo plugin, que ninguém tinha medido:** a home era servida do cache como
+ARQUIVO ESTÁTICO, com `Last-Modified: 2026-09-01` — snapshot de oito dias. Os cabeçalhos denunciam
+sem precisar entrar no WordPress:
+
+```bash
+curl -sI https://SEU-SITE/ | grep -iE "Last-Modified|Content-Length"
+# Last-Modified antigo + Accept-Ranges: bytes = está vindo do cache em disco, não do PHP
+```
+
+E o desvio para comparar com o PHP já está escrito na própria regra do `.htaccess`
+(`RewriteCond %{QUERY_STRING} !.*=.*`): basta uma query string com `=`.
+
+```bash
+curl -sI "https://SEU-SITE/?x=1" | grep -i Last-Modified   # sem Last-Modified = veio do PHP
+```
+
+Medido: 205.129 bytes pelo cache contra 205.146 pelo PHP — conteúdo equivalente, mas a página que o
+visitante recebe é a de oito dias atrás. Qualquer edição feita nesse intervalo **não estava no ar**.
+
+**Prevenção, na ordem de força:**
+
+1. **Desligar o cache de página do Newfold** (nível de cache = desativado). Remove de uma vez o
+   componente que reescreve o `.htaccess` E o que serve HTML velho. O cache de NAVEGADOR não se
+   perde: ele vem do bloco `mod_expires`, que é outra coisa e continua no arquivo.
+2. Se ele precisar continuar ligado: **nunca salvar página no WP Admin e fechar a aba em seguida** —
+   foi o gatilho medido em 2026-09-01 —, e **guardar backup do `.htaccess` a cada mudança**, porque
+   a recuperação depende dele.
+3. **Monitorar por requisição, não por sensação.** Um `curl` no estático custa nada e distingue os
+   dois mundos:
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' https://SEU-SITE/wp-includes/js/jquery/jquery.min.js
+   ```
+
 ### 1.7 Redirecionamento HTTPS "não funcionou" na home — mas era só o cache de borda servindo uma resposta 200 de três dias atrás
 
 **(a) Problema.** Aplicado o mesmo bloco de redirecionamento do §1.5 (acima do bloco de cache,

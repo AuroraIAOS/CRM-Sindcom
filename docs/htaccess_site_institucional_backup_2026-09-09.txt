@@ -1,0 +1,68 @@
+# BACKUP — /home2/davide59/sindcompassos.org/.htaccess
+# Conteúdo RESTAURADO em 2026-09-09, depois do segundo incidente de ERRO 500
+# por truncamento do arquivo (o primeiro foi em 2026-09-01, orientacoes §1.6).
+#
+# O QUE ESTAVA QUEBRADO, MEDIDO E NÃO SUPOSTO
+# O arquivo ao vivo tinha 1.324 bytes e 35 linhas, e começava assim:
+#
+#   linha 1:  ype application/pdf "access plus 1 week"
+#
+# — o RABO de uma linha `ExpiresByType`. A contagem de marcadores prova o
+# truncamento sem margem para dúvida:
+#
+#   "# BEGIN NFD EPC" ....... 1 ocorrência
+#   "# END NFD EPC" ......... 2 ocorrências
+#
+# Ou seja: o primeiro bloco perdeu o começo (os ~257 bytes iniciais) e ficou
+# só com o fim, e logo abaixo veio um bloco ÍNTEGRO. Bloco truncado no topo +
+# bloco íntegro embaixo é a assinatura de ESCRITA CONCORRENTE — o plugin de
+# cache (Endurance Page Cache / Newfold) reescrevendo o próprio bloco enquanto
+# o arquivo era salvo por outra via. Exatamente o mesmo padrão de 2026-09-01.
+#
+# O Apache lê `ype application/pdf ...` como diretiva desconhecida e derruba o
+# diretório inteiro — por isso o 500 aparecia até em arquivo ESTÁTICO
+# (`/wp-includes/js/jquery/jquery.min.js` → 500), que é o teste de uma
+# requisição que separa `.htaccess` de PHP (orientacoes §1.6).
+#
+# O arquivo quebrado, na íntegra, está em
+# docs/htaccess_site_QUEBRADO_2026-09-09.txt — guardado ANTES de sobrescrever,
+# porque foi ele que provou que a causa era truncamento e não diretiva errada.
+#
+# A CORREÇÃO foi remover os 257 bytes de lixo do topo e manter o bloco íntegro
+# que o próprio plugin escreveu — 1.067 bytes. Nada foi inventado: o conteúdo
+# abaixo é o que já estava no servidor, sem a parte corrompida.
+#
+# CONTINUA SEM: o bloco "# BEGIN WordPress" (ausente desde antes de 2026-09-04,
+# ver o backup daquela data) e o redirecionamento HTTP→HTTPS. Não reintroduzir
+# nada no mesmo salvamento é a regra do §1.6 passo 4: primeiro restaurar e
+# provar que voltou; empilhar duas mudanças deixa sem resposta "qual delas
+# quebrou?" se continuar 500.
+#
+# ----------------------------------------------------------------------------
+
+# BEGIN NFD EPC
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+	RewriteBase /
+	RewriteRule ^wp-content/endurance-page-cache/ - [L]
+	RewriteCond %{REQUEST_METHOD} !POST
+	RewriteCond %{QUERY_STRING} !.*=.*
+	RewriteCond %{HTTP_COOKIE} !(wordpress_test_cookie|comment_author|wp\-postpass|wordpress_logged_in|wptouch_switch_toggle|wp_woocommerce_session_) [NC]
+	RewriteCond %{DOCUMENT_ROOT}/wp-content/endurance-page-cache/$1/_index.html -f
+	RewriteRule ^(.*)$ /wp-content/endurance-page-cache/$1/_index.html [L]
+</IfModule>
+
+<IfModule mod_expires.c>
+	ExpiresActive On
+	ExpiresByType image/jpg "access plus 24 hours"
+	ExpiresByType image/jpeg "access plus 24 hours"
+	ExpiresByType image/gif "access plus 24 hours"
+	ExpiresByType image/png "access plus 24 hours"
+	ExpiresByType text/css "access plus 24 hours"
+	ExpiresByType application/pdf "access plus 1 week"
+	ExpiresByType text/javascript "access plus 24 hours"
+	ExpiresByType text/html "access plus 2 hours"
+	ExpiresByType image/x-icon "access plus 1 year"
+	ExpiresDefault "access plus 24 hours"
+</IfModule>
+# END NFD EPC
