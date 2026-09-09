@@ -119,6 +119,15 @@ export type CampanhaBrevo = {
   rejeicoesLeves: number;
   spam: number;
   descadastros: number;
+  /**
+   * As estatísticas CRUAS da Brevo, como ela devolveu. Existem porque o
+   * vocabulário dela é ambíguo e já custou uma leitura errada: medido na
+   * Trilha A da Onda 00, com **2 entregues**, vieram `uniqueClicks: 10` e
+   * `clickers: 20` — os dois maiores que o número de destinatários, logo
+   * nenhum deles é "pessoas que clicaram". A tela lê daqui em vez de confiar
+   * no campo já interpretado.
+   */
+  bruto?: Record<string, number>;
 };
 
 export type RespostaBrevo =

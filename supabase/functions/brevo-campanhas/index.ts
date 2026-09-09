@@ -166,12 +166,26 @@ Deno.serve(async (req) => {
         entregues,
         aberturasUnicas: s.uniqueViews ?? 0,
         aberturas: s.viewed ?? 0,
-        cliquesUnicos: s.uniqueClicks ?? 0,
-        cliques: s.clickers ?? 0,
+        // OS DOIS CONTADORES DE CLIQUE DA BREVO SÃO DE EVENTO, NÃO DE PESSOA —
+        // e isso foi MEDIDO, não lido na documentação. Na Trilha A da Onda 00,
+        // com **2 entregues**, a Brevo devolveu `uniqueClicks: 10` e
+        // `clickers: 20`. Os dois são muito maiores que o número de
+        // destinatários, então nenhum deles responde "quantas pessoas
+        // clicaram". Por isso a tela mostra clique como CONTAGEM ABSOLUTA e
+        // não como percentual de entregues: qualquer taxa aqui passaria de
+        // 100% e pareceria defeito.
+        //
+        // A abertura é diferente: `uniqueViews` veio 2 para 2 entregues, ou
+        // seja, ali o "único" é por pessoa e a taxa faz sentido.
+        cliquesUnicos: s.clickers ?? 0,
+        cliques: s.uniqueClicks ?? 0,
         rejeicoesDuras: s.hardBounces ?? 0,
         rejeicoesLeves: s.softBounces ?? 0,
         spam: s.complaints ?? 0,
         descadastros: s.unsubscriptions ?? 0,
+        // O bruto segue junto porque foi ele que resolveu a ambiguidade acima —
+        // e continuará resolvendo a próxima. A tela lê o clique daqui.
+        bruto: s,
       };
     });
 

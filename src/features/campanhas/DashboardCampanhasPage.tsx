@@ -244,8 +244,7 @@ export function DashboardCampanhasPage() {
                           <Percentual valor={taxa(c.aberturasUnicas, c.entregues)} />
                         </TableCell>
                         <TableCell className="text-right">
-                          {c.cliquesUnicos.toLocaleString("pt-BR")}
-                          <Percentual valor={taxa(c.cliquesUnicos, c.entregues)} />
+                          {cliquesDe(c).toLocaleString("pt-BR")}
                         </TableCell>
                         <TableCell
                           className={cn(
@@ -264,11 +263,14 @@ export function DashboardCampanhasPage() {
               </Table>
             </Card>
             <p className="text-xs text-texto-2">
-              Aberturas e cliques são <strong>únicos</strong> (uma pessoa conta uma vez) e calculados
-              sobre os <strong>entregues</strong>, não sobre os enviados — é a base que o mercado usa,
-              e a que torna a comparação entre ondas honesta. A rejeição, essa sim, é sobre os
-              enviados: acima de <strong>2%</strong> a regra da campanha é parar e investigar, nunca
-              subir volume.
+              A <strong>abertura</strong> é única por pessoa e calculada sobre os
+              <strong> entregues</strong> — é a base que o mercado usa e a que torna a comparação
+              entre ondas honesta. O <strong>clique</strong> aparece só como contagem, sem
+              percentual, e isso foi medido: na Trilha A da Onda 00, com 2 entregues, a Brevo
+              devolveu 10 e 20 nos seus dois contadores de clique. Os dois são de EVENTO, não de
+              pessoa — qualquer taxa ali passaria de 100%. A <strong>rejeição</strong>, essa sim, é
+              sobre os enviados: acima de <strong>2%</strong> a regra da campanha é parar e
+              investigar, nunca subir volume.
             </p>
           </>
         )}
@@ -284,7 +286,7 @@ function ResumoBrevo({ campanhas }: { campanhas: CampanhaBrevo[] }) {
       enviados: a.enviados + c.enviados,
       entregues: a.entregues + c.entregues,
       aberturas: a.aberturas + c.aberturasUnicas,
-      cliques: a.cliques + c.cliquesUnicos,
+      cliques: a.cliques + cliquesDe(c),
       rejeicoes: a.rejeicoes + c.rejeicoesDuras + c.rejeicoesLeves,
       spam: a.spam + c.spam,
     }),
@@ -306,10 +308,10 @@ function ResumoBrevo({ campanhas }: { campanhas: CampanhaBrevo[] }) {
         rodape={pct(taxa(soma.aberturas, soma.entregues), "dos entregues")}
       />
       <Tile
-        titulo="Clicaram"
+        titulo="Cliques"
         valor={soma.cliques}
         destaque="sucesso"
-        rodape={pct(taxa(soma.cliques, soma.entregues), "dos entregues")}
+        rodape="eventos, não pessoas"
       />
       <Tile
         titulo="Rejeições"
@@ -323,6 +325,18 @@ function ResumoBrevo({ campanhas }: { campanhas: CampanhaBrevo[] }) {
       />
     </div>
   );
+}
+
+/**
+ * O clique, lido do número CRU da Brevo.
+ *
+ * `uniqueClicks` é o mais conservador dos dois contadores dela (medido:
+ * 10 contra 20 de `clickers`, numa campanha de 2 entregues). Nenhum dos
+ * dois é "pessoas", então a tela mostra contagem e nunca taxa — e lê do bruto
+ * para não depender do nome que demos ao campo interpretado.
+ */
+function cliquesDe(c: CampanhaBrevo): number {
+  return c.bruto?.uniqueClicks ?? c.cliquesUnicos;
 }
 
 function pct(v: number | null, sufixo = ""): string {
