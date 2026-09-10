@@ -3155,6 +3155,46 @@ contagem de itens processados, valor gravado no banco, tamanho do arquivo,
 carimbo de data. Nos testes, asserte **números esperados**, não só
 `expect(error).toBeNull()`.
 
+### 7.2b Guarda dentro de uma transação cujo resultado você NÃO VÊ não é guarda
+
+**(a) Problema.** Em 2026-09-10, corrigindo 18 e-mails com domínio digitado errado, o bloco foi
+escrito com todo o cuidado aparente: `begin`, tabela temporária, **duas guardas** (uma contando os
+alvos, outra procurando colisão com endereços já existentes), o `update`, a conferência e `commit`.
+
+O bloco voltou com **uma linha só**: `corrigidos_confirmados: 24`. Esperado: 18.
+
+**A causa não foi o SQL — foi o CANAL.** A ferramenta de execução devolve o resultado do **último**
+comando do lote. As duas guardas rodaram, produziram os números certos e **foram descartadas antes
+de chegar aos meus olhos**, dentro de uma transação que já tinha commitado quando o desvio apareceu.
+Seis dos endereços "corrigidos" já existiam na base para outro estabelecimento (o contador era o
+mesmo, e a versão com typo era uma duplicata dele), e o `commit` criou 6 e-mails repetidos numa base
+cujo invariante era "um e-mail, um envio".
+
+**Por que isso era pior do que parecia:** a Brevo **deduplica contato por endereço na importação**.
+Duas linhas com o mesmo e-mail viram UM contato, e o `link` de uma delas desaparece — sem erro, sem
+aviso, e o estabelecimento correspondente fica sem caminho de envio sem ninguém perceber.
+
+**(b) Solução.** Duas mudanças, e a primeira é de método:
+
+1. **Guarda que decide roda ANTES, sozinha, e o resultado é lido.** Se a guarda vive no mesmo lote
+   do `commit`, ela não protege nada — apenas produz um número que ninguém leu.
+2. **A guarda que sobrevive é a que mora no código, não no turno.** A verificação de e-mail repetido
+   passou para `reexportar_csvs_09_00.mjs`, onde roda em toda exportação futura e aborta com a lista
+   dos repetidos.
+
+A reversão das 6 foi gravada em `auditoria` com o motivo — e aí apareceu um segundo achado:
+**`envios_campanha` não tem trigger de auditoria**, então o endereço original só sobrevive se for
+gravado de propósito. Corrigir e-mail sem isso apaga a evidência de qual era o endereço de origem.
+
+**(c) Como implantar.**
+
+- Em qualquer lote SQL, pergunte: *"se esta guarda falhar, eu vou ver?"*. Se a resposta depender de
+  a ferramenta devolver um resultado intermediário, **quebre em duas chamadas**.
+- Alternativa quando não dá para quebrar: faça a guarda **levantar exceção** em vez de devolver
+  linha (`raise exception when ... `). Erro atravessa qualquer canal; `select` não.
+- Ao alterar dado que outro sistema usa como CHAVE (e-mail é chave na Brevo, CPF no CRM), verifique
+  colisão **antes**, e trate "já existe" como caso normal, não como exceção improvável.
+
 ### 7.3 Dado de verificação sai ao fim da subetapa — a regra VIROU em 2026-09-09
 
 > **Esta entrada dizia o oposto até 2026-09-09** ("dados de demonstração ficam

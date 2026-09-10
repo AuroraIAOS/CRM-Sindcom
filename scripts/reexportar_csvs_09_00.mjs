@@ -361,6 +361,33 @@ const dias = [...porLote.keys()].sort((a, b) => a - b);
 
 // §7.2: o efeito observável, não a ausência de erro. Três invariantes que, se
 // quebrarem, quebram o calendário inteiro — e em silêncio.
+/**
+ * E-MAIL REPETIDO É PERDA SILENCIOSA DE LINK, não duplicidade inofensiva.
+ *
+ * A Brevo deduplica contato por endereço na importação: duas linhas com o mesmo
+ * e-mail viram UM contato, e o `link` de uma delas simplesmente desaparece —
+ * sem erro, sem aviso, e o estabelecimento correspondente fica sem caminho de
+ * envio sem ninguém perceber.
+ *
+ * A guarda nasceu de um erro real (2026-09-10): ao corrigir 18 domínios com erro
+ * de digitação, 6 dos endereços corrigidos JÁ EXISTIAM na base para outro
+ * estabelecimento — o contador era o mesmo, e a versão com typo era uma entrada
+ * duplicada dele. As 6 foram revertidas; esta verificação existe para que a
+ * próxima vez pare aqui, e não na Brevo.
+ */
+const vistos = new Map();
+const repetidos = [];
+for (const l of listaUnica) {
+  const chave = String(l.email).trim().toLowerCase();
+  if (vistos.has(chave)) repetidos.push(chave);
+  else vistos.set(chave, l);
+}
+if (repetidos.length > 0) {
+  console.error(`  ✗ ${repetidos.length} e-mail(s) repetido(s) — a Brevo fundiria os contatos e perderia link:`);
+  for (const r of [...new Set(repetidos)].slice(0, 10)) console.error(`      ${r}`);
+  divergencias += 1;
+}
+
 const semLote = listaUnica.filter((l) => !l.lote).length;
 const acimaDoTeto = dias.filter((d) => porLote.get(d) > TETO_DIARIO);
 const ondasPorLote = new Map();
