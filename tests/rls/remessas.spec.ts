@@ -123,8 +123,45 @@ beforeAll(async () => {
   }));
 });
 
+/**
+ * ─────────────────────────────────────────────────────────────────────────────
+ * POR QUE ESTE ARQUIVO PULA EM VEZ DE SEMEAR (decidido em 2026-09-10)
+ *
+ * Os outros arquivos que dependiam de dado DEMO removido na limpeza de
+ * 2026-09-09 foram convertidos para SEMEAR o que usam
+ * (`tests/rls/fixtures/campanhaDemo.ts`). Aqui não dá, e o motivo é de desenho,
+ * não de esforço:
+ *
+ *  1. `remessas_dados` **não tem policy de INSERT para papel autenticado
+ *     nenhum** — só a Edge Function `receber-remessa`, com `service_role`,
+ *     escreve ali. É deliberado: um segundo caminho de entrada de dado externo
+ *     seria uma porta sem token, sem freio e sem rastro de IP.
+ *  2. Semear pelo endpoint real criaria a remessa, mas o **arquivo ficaria no
+ *     bucket para sempre**: `storage.objects` só tem policy de SELECT para o
+ *     bucket `remessas` — ninguém apaga. Isso também é deliberado (a evidência
+ *     da remessa é imutável), e afrouxar a imutabilidade da evidência para
+ *     acomodar um teste é trocar segurança permanente por conveniência (§2.30).
+ *  3. O próprio projeto já havia rejeitado esse caminho por escrito, em
+ *     `coleta.spec.ts`: "uma remessa por execução de suíte encheria a fila de
+ *     revisão da Denise de arquivo de teste".
+ *
+ * Então estes casos seguem a doutrina que `tests/adversarial/05_comunicacao.spec.ts`
+ * já enuncia: **o que ESCREVE roda no bench; contra produção, mede-se negação.**
+ * Sem fixture, cada caso PULA com motivo — nunca passa vazio, que seria o falso
+ * verde do §7.2.
+ *
+ * Para recuperar a cobertura: rodar a suíte apontada para o bench (`.env.bench`),
+ * ou semear uma remessa DEMO de propósito em produção — decisão do Maxwell,
+ * porque é dado que passa a contar nos indicadores de campanha.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+function exigirRemessaDemo(ctx: { skip: () => void }) {
+  if (remessas.length === 0) ctx.skip();
+}
+
 describe("08.10 · a planilha só sai do bucket por URL assinada", () => {
-  it("Admin e Secretaria assinam e baixam; Jurídico, Parceiro e anon não", async () => {
+  it("Admin e Secretaria assinam e baixam; Jurídico, Parceiro e anon não", async (ctx) => {
+    exigirRemessaDemo(ctx);
     expect(remessas.length, "sem remessa DEMO — rode a 08.5 antes").toBeGreaterThan(0);
     const caminho = remessas[0].arquivo_path;
 
@@ -144,7 +181,8 @@ describe("08.10 · a planilha só sai do bucket por URL assinada", () => {
     }
   });
 
-  it("o arquivo baixado abre como planilha e traz as colunas de identidade do modelo", async () => {
+  it("o arquivo baixado abre como planilha e traz as colunas de identidade do modelo", async (ctx) => {
+    exigirRemessaDemo(ctx);
     // `remessas[0]` é a mais RECENTE da campanha DEMO — e o rótulo da coluna
     // de situação sindical muda entre versões do modelo (o arquivo manual
     // original da 08.5 usava `recolhe_contribuicao`; a partir da 08.6 o
@@ -167,7 +205,8 @@ describe("08.10 · a planilha só sai do bucket por URL assinada", () => {
 });
 
 describe("08.10 · importar a remessa, e reimportar sem duplicar", () => {
-  it("a primeira importação cria trabalhadores e vínculos; a segunda não cria nada", async () => {
+  it("a primeira importação cria trabalhadores e vínculos; a segunda não cria nada", async (ctx) => {
+    exigirRemessaDemo(ctx);
     const { data } = await clientes.admin.storage
       .from("remessas")
       .createSignedUrl(remessas[0].arquivo_path, 60);
@@ -200,7 +239,8 @@ describe("08.10 · importar a remessa, e reimportar sem duplicar", () => {
     expect(depois1T).toBeGreaterThan(0);
   });
 
-  it("quem veio de planilha DEMO está na base, com vínculo certo e nível derivado da situação", async () => {
+  it("quem veio de planilha DEMO está na base, com vínculo certo e nível derivado da situação", async (ctx) => {
+    exigirRemessaDemo(ctx);
     const pessoas = await pessoasDePlanilhaDemo(clientes.admin);
     expect(pessoas.length, "nenhuma pessoa de planilha DEMO na base — rode a importação antes").toBeGreaterThan(0);
 
@@ -233,7 +273,8 @@ describe("08.10 · importar a remessa, e reimportar sem duplicar", () => {
 });
 
 describe("08.10 · a regra inviolável: planilha não reclassifica ninguém", () => {
-  it("mesmo pedindo o contrário, as três flags de nível não mudam em quem já existe", async () => {
+  it("mesmo pedindo o contrário, as três flags de nível não mudam em quem já existe", async (ctx) => {
+    exigirRemessaDemo(ctx);
     // Os alvos vêm da base, não de CPFs cravados (§7.1d — ver
     // `pessoasDePlanilhaDemo`). Limitados a 5 para o ataque não reescrever a
     // base DEMO inteira: a proteção ou vale para todos, ou falha no primeiro.
@@ -294,7 +335,8 @@ describe("08.10 · a regra inviolável: planilha não reclassifica ninguém", ()
 });
 
 describe("08.10 · concluir a remessa é ato de quem tem permissão, e ela segue imutável", () => {
-  it("Jurídico e Parceiro não concluem remessa — e o UPDATE barrado não dá erro (§2.6d)", async () => {
+  it("Jurídico e Parceiro não concluem remessa — e o UPDATE barrado não dá erro (§2.6d)", async (ctx) => {
+    exigirRemessaDemo(ctx);
     const alvo = remessas[0];
     for (const papel of ["juridico", "parceiro"] as const) {
       const { data, error } = await clientes[papel]
@@ -307,7 +349,8 @@ describe("08.10 · concluir a remessa é ato de quem tem permissão, e ela segue
     }
   });
 
-  it("a Secretaria conclui, e o carimbo de quem processou fica gravado", async () => {
+  it("a Secretaria conclui, e o carimbo de quem processou fica gravado", async (ctx) => {
+    exigirRemessaDemo(ctx);
     const alvo = remessas[0];
     const { uid } = await loginComo("secretaria");
     const { data, error } = await clientes.secretaria
@@ -321,7 +364,8 @@ describe("08.10 · concluir a remessa é ato de quem tem permissão, e ela segue
     expect(data?.[0]?.processada_em).toBeTruthy();
   });
 
-  it("alterar a EVIDÊNCIA da remessa é recusado pelo trigger de imutabilidade", async () => {
+  it("alterar a EVIDÊNCIA da remessa é recusado pelo trigger de imutabilidade", async (ctx) => {
+    exigirRemessaDemo(ctx);
     const { error } = await clientes.admin
       .from("remessas_dados")
       .update({ arquivo_path: "trocado.xlsx" })

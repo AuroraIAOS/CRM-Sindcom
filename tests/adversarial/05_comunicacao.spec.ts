@@ -26,6 +26,12 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { clienteAnon, clienteServico, loginComo, ehProducao, type Role } from "../rls/helpers";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  semearCampanhaDemo,
+  limparCampanhaDemo,
+  type CampanhaDemoSemeada,
+} from "../rls/fixtures/campanhaDemo";
 import { gerarPlanilhaDoFormulario } from "../../src/features/coleta/gerarPlanilhaFormulario";
 import { lerPlanilhaXlsx } from "../../src/features/coleta/lerPlanilha";
 import { validarTrabalhadores, type ContextoTrabalhadores } from "../../src/features/importacao/validarTrabalhadores";
@@ -170,25 +176,26 @@ describe("V6 — quem enxerga o token do link público", () => {
 // caminho de SUCESSO e a força bruta ficam no bench, mais abaixo.
 // ============================================================================
 producao("V6 — token expirado, revogado e inexistente (produção, tokens DEMO)", () => {
-  const tokens: Record<string, string> = {};
+  let tokens: Record<string, string> = {};
+  let admin: SupabaseClient;
+  let semeado: CampanhaDemoSemeada;
 
+  /**
+   * Os tokens são SEMEADOS aqui, não procurados na base. Até 2026-09-09 estes
+   * dois casos liam uma campanha DEMO gravada em produção; a limpeza a removeu
+   * e os dois ficaram vermelhos — e, o que é pior num arquivo adversarial, um
+   * ataque que não encontra alvo não prova defesa nenhuma. Semear é o que
+   * garante que a recusa está sendo mesmo exercitada (§7.2, §7.3).
+   */
   beforeAll(async () => {
-    const { client } = await loginComo("admin");
-    const { data } = await client
-      .from("envios_campanha")
-      .select("token, token_expira_em, token_revogado_em, campanhas!inner(nome)")
-      .eq("campanhas.nome", "DEMO — Campanha de coleta 2026");
-    for (const e of data ?? []) {
-      const linha = e as { token: string; token_expira_em: string; token_revogado_em: string | null };
-      const situacao =
-        linha.token_revogado_em !== null
-          ? "revogado"
-          : new Date(linha.token_expira_em).getTime() <= Date.now()
-            ? "expirado"
-            : "valido";
-      tokens[situacao] = linha.token;
-    }
-  });
+    admin = (await loginComo("admin")).client;
+    semeado = await semearCampanhaDemo(admin);
+    tokens = semeado.tokens;
+  }, 60_000);
+
+  afterAll(async () => {
+    if (semeado) await limparCampanhaDemo(admin, semeado);
+  }, 60_000);
 
   for (const situacao of ["expirado", "revogado"] as const) {
     it(`token ${situacao} não devolve carteira nenhuma — e recusa como RESULTADO, não exceção`, async () => {

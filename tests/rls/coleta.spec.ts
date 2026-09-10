@@ -1,7 +1,13 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { loginComo, ehProducao } from "./helpers";
+import {
+  semearCampanhaDemo,
+  limparCampanhaDemo,
+  type CampanhaDemoSemeada,
+} from "./fixtures/campanhaDemo";
 import { lerPlanilhaXlsx, PlanilhaInvalida } from "../../src/features/coleta/lerPlanilha";
 import { gerarModeloColeta } from "../../src/features/coleta/gerarModelo";
 import { gerarPlanilhaDoFormulario } from "../../src/features/coleta/gerarPlanilhaFormulario";
@@ -350,23 +356,25 @@ describe.skipIf(!ehProducao())("08.6 · o link recusado não oferece envio (Edge
   const FN = `${process.env.VITE_SUPABASE_URL}/functions/v1/receber-remessa`;
   const ANON = process.env.VITE_SUPABASE_ANON_KEY as string;
   let tokens: Record<string, string> = {};
+  let admin: SupabaseClient;
+  let semeado: CampanhaDemoSemeada;
 
+  /**
+   * A fixture SEMEIA os três estados de token em vez de procurá-los na base.
+   * Até 2026-09-09 estes casos liam uma campanha DEMO que estava gravada em
+   * produção; a limpeza a removeu e os três ficaram vermelhos sem defeito
+   * nenhum no código. Semear e remover no mesmo arquivo é o que a regra de
+   * dados passou a exigir (`orientacoes.md` §7.3).
+   */
   beforeAll(async () => {
-    const { client } = await loginComo("admin");
-    const { data } = await client
-      .from("envios_campanha")
-      .select("token, token_expira_em, token_revogado_em, campanhas!inner(nome)")
-      .eq("campanhas.nome", "DEMO — Campanha de coleta 2026");
-    for (const e of data ?? []) {
-      const situacao =
-        e.token_revogado_em !== null
-          ? "revogado"
-          : new Date(e.token_expira_em as string).getTime() <= Date.now()
-            ? "expirado"
-            : "valido";
-      tokens[situacao] = e.token as string;
-    }
-  });
+    admin = (await loginComo("admin")).client;
+    semeado = await semearCampanhaDemo(admin);
+    tokens = semeado.tokens;
+  }, 60_000);
+
+  afterAll(async () => {
+    if (semeado) await limparCampanhaDemo(admin, semeado);
+  }, 60_000);
 
   it("token válido devolve o nome da contabilidade e a carteira dela", async () => {
     const r = await fetch(`${FN}?token=${tokens.valido}`, { headers: { apikey: ANON } });

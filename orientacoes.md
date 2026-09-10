@@ -485,6 +485,107 @@ seu .htaccess manualmente" — se mostrar, o arquivo não é gravável e a corre
 Onde há cache de página em disco, a pergunta certa é *"quem respondeu?"*, e ela se responde
 desviando o cache, não olhando o código.
 
+---
+### 1.9 Citar o marcador de um bloco gerenciado DENTRO de um comentário faz o software reescrever ali — e foi isso que derrubou o HTTPS do site (três vezes)
+
+**(a) Problema.** Medido em 2026-09-10. O redirecionamento HTTP→HTTPS do site institucional
+"não funcionava", mas de um jeito seletivo que não batia com nenhuma explicação pronta:
+
+```
+http://sindcompassos.org/            -> 200   (não redireciona)
+http://sindcompassos.org/contato/    -> 200   (não redireciona)
+http://sindcompassos.org/servicos/   -> 301   (correto)
+http://sindcompassos.org/nao-existe/ -> 301   (correto)
+```
+
+Não era o cache de borda do §1.7: as páginas que falhavam vinham com `X-Proxy-Cache: MISS`, ou
+seja, a requisição **chegou à origem** e a origem respondeu 200. O padrão real era outro: **página
+que tem snapshot no cache de disco não redirecionava; página sem snapshot redirecionava.**
+
+**O teste que separa "a regra não existe" de "a regra não é alcançada" custa uma requisição** — e
+usa a condição que o próprio bloco de cache declara. Aquele bloco só serve o snapshot quando
+**não** há cookie de sessão do WordPress; então mande um:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://SEU-SITE/contato/
+# 200  -> veio do snapshot
+curl -s -o /dev/null -H "Cookie: wordpress_logged_in_abc=teste" \
+     -w "%{http_code}\n" http://SEU-SITE/contato/
+# 301  -> a MESMA URL, pulando o cache, obedece à regra
+```
+
+Duas respostas diferentes para a mesma URL, decididas por um cookie, provam que a regra existe e
+está **abaixo** do bloco de cache. Nenhuma leitura de código diria isso.
+
+**(b) Solução — e a causa, que não é a que se imagina.** Ao abrir o arquivo, o defeito não era
+"alguém moveu a regra". Era isto:
+
+```
+  9| # Fica tambem FORA de "<marcador de abertura do plugin de cache>" e "
+ 10|
+ 11| <marcador de abertura do plugin de cache>
+ ...| ...o bloco inteiro do plugin, 26 linhas...
+ 36| <marcador de fechamento do plugin>
+ 37| <marcador de abertura do WordPress>": os dois sao
+ 38| # regerados pelos respectivos softwares, e o que estiver entre os marcadores...
+```
+
+A frase original do **nosso comentário** era *`Fica tambem FORA de "<abertura do cache>" e
+"<abertura do WordPress>": os dois sao regerados...`*. O plugin de cache, ao se regenerar,
+**procura o marcador dele no arquivo inteiro** — achou a cópia que estava dentro do nosso
+comentário, tratou aquele ponto como o início do próprio bloco e **escreveu 26 linhas no meio da
+nossa frase**, empurrando o redirecionamento para depois do cache.
+
+Ou seja: **o comentário que explicava a regra foi o que destruiu a regra.** Escrever o texto de um
+marcador gerenciado dentro de um comentário transforma o comentário em delimitador.
+
+**E havia uma bomba-relógio que ninguém tinha visto:** a linha 37 passou a **começar** com o
+marcador de abertura do WordPress. No próximo *Configurações → Links permanentes → Salvar*, o
+WordPress substituiria tudo entre a linha 37 e o fim do arquivo — apagando redirecionamento e HSTS
+sem aviso nenhum. **Isso também explica, retroativamente, as duas truncagens do §1.6** (2026-09-01
+e 2026-09-09): as duas tinham a assinatura de "escrita concorrente", e a causa provável é a mesma
+— dois softwares regenerando blocos cujos marcadores apareciam duplicados no arquivo.
+
+**(c) Como implantar.**
+
+1. **Nunca reproduza o texto de um marcador gerenciado em comentário, em nenhum arquivo que o
+   software dono do marcador leia.** Refira-se a ele por descrição ("o bloco de cache", "o bloco do
+   WordPress"). Vale para `.htaccess`, `hosts`, `crontab`, `sshd_config` — qualquer arquivo com
+   seções `BEGIN…/END…` mantidas por terceiros.
+2. **Reconstrua fatiando o conteúdo ao vivo, não redigitando.** Os blocos gerenciados são
+   preservados byte a byte, sem risco de acento, tabulação ou regex alterados:
+   ```js
+   const L = window.ace.edit('codewindow').getValue().split('\n');
+   const novo = cabecalho.concat(L.slice(inicioCache, fimCache + 1))
+                         .concat([''], L.slice(inicioWP, fimWP + 1));
+   ```
+3. **A guarda que decide se pode gravar é a CONTAGEM de marcadores no resultado** — cada um tem de
+   aparecer **exatamente uma vez**. Foi ela que teria impedido o estrago original, e é ela que
+   impede repeti-lo:
+   ```js
+   if (cont(aberturaCache) !== 1 || cont(fechaCache) !== 1) abortar();
+   if (novo.indexOf('R=301') > novo.indexOf(aberturaCache)) abortar(); // ordem
+   ```
+4. **Verifique por requisição, e nos dois mundos** (§1.6): primeiro um arquivo **estático** (200 =
+   o `.htaccess` é válido e o diretório não foi recusado), depois as rotas, **espaçadas em 5s** para
+   não tomar 503 de excesso, e com `num_redirects`:
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' https://SEU-SITE/wp-includes/js/jquery/jquery.min.js
+   curl -sL -o /dev/null -w "final=%{http_code} saltos=%{num_redirects}\n" http://SEU-SITE/contato/?v=$(date +%s)
+   ```
+   Esperado: `final=200 saltos=1`. Medido depois da correção: 1 salto em `/`, `/contato/` e
+   `/dados/`; 2 em `/servicos/`, porque ali o **próprio WordPress** redireciona o slug antigo —
+   cascata legítima, não laço.
+5. **Uma rota nua pode continuar em 200 por até 2h depois de tudo certo** — é o cache de borda do
+   §1.7 segurando uma resposta anterior. Neste caso a entrada tinha sido criada **pela minha própria
+   medição de diagnóstico** meia hora antes. Confirme com `?v=$(date +%s)` antes de concluir que
+   sobrou defeito.
+
+**Regra transferível:** num arquivo com seções mantidas por software, **o texto do marcador é
+código, mesmo dentro de um comentário**. E quando uma regra funciona em algumas rotas e não em
+outras, a pergunta não é "a regra está certa?", é **"o que decide quais requisições chegam até
+ela?"** — a resposta costuma estar na condição declarada pelo bloco que vem antes.
+
 ## 2. Banco de dados (Postgres/Supabase)
 
 ### 2.1 `least()` ignora NULLs — e cobrou o teto de quem não tinha base
@@ -744,6 +845,82 @@ git show --stat HEAD                   # conferir a lista final
 segundos e a correção depois do push custa reescrita de história.
 
 ---
+
+### 2.7c A rede de `.gitignore` por palavra sensível engoliu uma MIGRAÇÃO — "secretaria" contém "secret"
+
+**(a) Problema.** Em 2026-09-10, a migração `sql/28_cobertura_secretaria_09_02.sql` foi criada,
+aplicada mentalmente ao plano e referenciada em três arquivos de código — e **não apareceu em
+`git status`**. Nenhum erro, nenhum aviso. O `.gitignore` deste projeto tem um bloco de "termos
+sensíveis (qualquer arquivo que contenha estas palavras no nome)" com `*secret*`, e
+**"**secret**aria" casa com ele**.
+
+É a mesma classe do erro que a limpeza de 2026-09-09 já tinha cometido no banco, filtrando por
+"contém": lá, `demo` pegou `contabilida**demo**ntanari` e `diegomara**demo**rais`, que eram reais.
+Aqui, `secret` pegou a palavra portuguesa mais óbvia do domínio. Os outros termos do bloco têm o
+mesmo problema latente: `*chave*` pega qualquer arquivo sobre "chaves de acesso ao sistema",
+`*senha*` pega "resenha".
+
+**Por que é pior do que parece:** uma migração fora do repositório faz o **banco e o código
+divergirem** — exatamente o defeito do §2.7. O SQL roda em produção, o repositório não tem registro
+dele, e a próxima pessoa a ler `sql/` conclui que aquele objeto não existe.
+
+**(b) Solução.** Renomear o arquivo para fora do padrão (`28_cobertura_reemissao_atendimento_09_02.sql`),
+mantendo a rede de proteção intacta. Enfraquecer a rede para acomodar um nome é trocar segurança
+permanente por conveniência de um arquivo — o mesmo raciocínio do §2.30.
+
+**(c) Como implantar.**
+
+1. **Depois de criar arquivo que PRECISA ser versionado, confirme que o git o vê.** Uma linha, e
+   custa nada:
+   ```bash
+   git check-ignore -v caminho/do/arquivo && echo "IGNORADO — renomeie" || echo "ok"
+   ```
+   Vale especialmente para `sql/`, `scripts/` e `docs/`, onde nome descritivo em português tem
+   chance alta de conter `senha`, `chave`, `secret` ou `credencial` por acidente.
+2. **`git status` silencioso não é prova de "nada a commitar".** Compare com a lista de arquivos que
+   você sabe ter criado; foi assim que este caso apareceu.
+3. Se um dia valer relaxar a regra, o desenho é uma **negação estreita** (`!sql/*.sql`) logo abaixo
+   do bloco, com comentário dizendo por quê — e isso é decisão do Maxwell, não do CODE.
+
+### 2.7d `insert` de VÁRIAS linhas no PostgREST manda `null` onde você esperava o DEFAULT
+
+**(a) Problema.** Semeando três envios de campanha numa chamada só — um "válido" (para receber o
+`token_expira_em` DEFAULT do banco), um expirado e um revogado:
+
+```js
+await admin.from("envios_campanha").insert([
+  { ...base },                              // sem token_expira_em: quer o DEFAULT
+  { ...base, token_expira_em: ontem },
+  { ...base, token_revogado_em: ontem },
+]);
+// null value in column "token_expira_em" of relation "envios_campanha"
+//   violates not-null constraint
+```
+
+A leitura natural é "a coluna não tem DEFAULT" — e está errada: ela tem. **O PostgREST monta UMA
+lista de colunas com a UNIÃO das chaves de todas as linhas do array e preenche com `null` o que
+faltar em cada uma.** A primeira linha, que omitia o campo justamente para herdar o DEFAULT, chega
+ao Postgres com `null` explícito — e `null` explícito não aciona DEFAULT, aciona o `not null`.
+
+O sintoma engana duas vezes: aponta para a linha "mais simples" das três, e some se você testar
+aquela linha sozinha.
+
+**(b) Solução.** Um `insert` por linha quando as linhas têm conjuntos de colunas DIFERENTES:
+
+```js
+for (const linha of linhas) {
+  const { error } = await admin.from("envios_campanha").insert(linha).select().single();
+  if (error) throw new Error(error.message);
+}
+```
+
+Alternativa, se o lote importar para o desempenho: preencher explicitamente o valor em todas as
+linhas, em vez de contar com o DEFAULT.
+
+**(c) Como implantar.** Regra prática: **array no `insert` só com linhas homogêneas.** Se alguma
+linha depende de DEFAULT que as outras sobrescrevem, o lote deixa de ser equivalente a N inserts —
+e a diferença só aparece em coluna `not null`, o que faz o erro chegar tarde e mal atribuído. Vale
+também para `upsert`.
 
 ### 2.6e Tráfego automatizado pesado pode fazer o Cloudflare do Supabase "sumir" — sem 429, sem 503, timeout puro
 
@@ -2935,18 +3112,79 @@ contagem de itens processados, valor gravado no banco, tamanho do arquivo,
 carimbo de data. Nos testes, asserte **números esperados**, não só
 `expect(error).toBeNull()`.
 
-### 7.3 Dados de demonstração ficam gravados
+### 7.3 Dado de verificação sai ao fim da subetapa — a regra VIROU em 2026-09-09
 
-**(a) Problema.** Apagar os registros de teste ao fim da sessão faz Maxwell
-perder a visão incremental do sistema funcionando.
+> **Esta entrada dizia o oposto até 2026-09-09** ("dados de demonstração ficam
+> gravados"), e ficou obsoleta com o início da Onda 01. Corrigida em vez de
+> mantida ao lado da nova, para o arquivo não acumular contradição.
 
-**(b) Solução.** Manter os dados de demonstração, claramente nomeados.
+**(a) Problema.** Enquanto o CRM era vitrine, apagar o registro de teste ao fim da sessão fazia
+Maxwell perder a visão incremental do sistema funcionando — e essa foi a regra por meses. Com a
+Onda 01, a base passou a receber cadastro real de 9.186 caixas, e o custo inverteu: dado fictício
+convivendo com dado real deixou de ser demonstração e virou **poluição de indicador**. Cobertura,
+remessas e contagens são o que decide para quem se liga; um estabelecimento DEMO contado como
+coberto muda a lista de ligações.
 
-**(c) Como implantar.** Prefixe com `DEMO —` e um nome que descreva o caso
-coberto (ex.: `DEMO — Ouro com carta (não regride, regra 5.2)`). Fixtures de
-suíte automatizada são outra coisa: use prefixo da subetapa (`02.6 teste —`) e
-remova no `afterAll`. Só apague dado DEMO por reparo técnico ou segurança — e
-avise o que foi removido e por quê.
+**(b) Solução.** Dado de verificação criado numa subetapa é **removido ao final dela, no mesmo
+turno em que foi criado**, e o relatório diz o que foi criado e o que foi removido. Se algum caso
+exigir que fique, é decisão do Maxwell, **pedida explicitamente** — não presumida.
+
+**(c) Como implantar.**
+
+- **O prefixo `DEMO —` continua obrigatório enquanto o registro existir.** Não é decoração: é ele
+  que torna a limpeza possível por **prefixo** (`nome like 'DEMO%'`), e **nunca por "contém"**.
+  Filtrar por conteúdo na limpeza de 2026-09-09 pegava `contabilidademontanari` e
+  `diegomarademorais` — os dois reais, os dois com `demo` no meio da palavra.
+- **Fixture de suíte automatizada tem de semear o que usa.** Prefixo da subetapa (`9.2 teste —`) e
+  remoção no `afterAll`, como sempre — mas o que a limpeza de 2026-09-09 acrescentou é que **não há
+  mais contabilidade `DEMO%`, remessa, token DEMO nem pessoa de planilha na base**. Teste que
+  procurava uma e fazia `if (!achou) return` passou a passar sem medir nada: verde por ausência de
+  dado, que é o falso verde do §7.2. Foi o caso da matriz de escrita em
+  `tests/rls/cobertura.spec.ts`, reescrita na 9.2 para semear o próprio envio.
+
+- **O CUSTO REAL, MEDIDO EM 2026-09-10 — e ele é maior do que parecia quando a regra mudou.** A
+  primeira execução completa da suíte depois da limpeza deu **16 falhas em 6 arquivos**
+  (271 passando, 330 no total). **Quinze delas são baixas da limpeza**, e as mensagens dizem isso
+  sozinhas: *"estabelecimento DEMO 99999901000191 não encontrado"*, *"token DEMO revogado não
+  encontrado em produção"*, *"sem remessa DEMO — rode a 08.5 antes"*, *"nenhuma pessoa de planilha
+  DEMO na base"*, além de `remessas[0].id` estourando porque `remessas_dados` ficou vazia. Arquivos
+  atingidos: `remessas` (8), `coleta` (3), `dashboard` (2), `adversarial/05_comunicacao` (2),
+  `cartas` (1). A décima sexta era legítima — a 9.2 mudou de propósito quem cria envio — e foi
+  corrigida no mesmo turno.
+
+  **Duas consequências que precisam estar escritas:**
+  1. **A regra de deploy do `CLAUDE.md` ("nunca publicar com a suíte quebrada") fica bloqueada até
+     isso ser resolvido.** Não é opinião: 15 vermelhos permanentes travam todo deploy futuro.
+  2. **Apagar dado compartilhado é mudança de infraestrutura de teste, não só de conteúdo** — é o
+     §2.9 outra vez. Quem apaga precisa rodar a suíte **antes e depois** e converter cada fixture
+     órfã em fixture que semeia o que usa. Fazer isso no mesmo turno da limpeza custa uma fração do
+     que custa descobrir depois, com o vermelho já sem dono.
+
+- **COMO FOI RESOLVIDO, e o que a solução ensina (2026-09-10, placar final 284/0/46).** Não existe
+  uma receita só — a fixture órfã se conserta de **três** maneiras, e escolher a errada custa caro:
+
+  1. **SEMEAR o que usa** — quando o dado é criável e apagável pelo papel do teste. Foi o caso de
+     `coleta` e `adversarial/05`, que precisavam de token válido/expirado/revogado: virou a fixture
+     compartilhada `tests/rls/fixtures/campanhaDemo.ts`, com remoção no `afterAll`.
+  2. **AFIRMAR O INVARIANTE em vez do registro** — quando o teste nunca precisou daquele dado
+     específico. `cartas` exigia o CNPJ DEMO `99999901000191`; passou a usar *qualquer*
+     estabelecimento com CCT. `dashboard` exigia `total_trabalhadores > 0`; passou a comparar o
+     recorte de Presidente/Secretaria com o do Admin — que continua valendo com a base vazia OU
+     cheia. **Este é o conserto mais barato e o mais duradouro; tente-o primeiro.**
+  3. **PULAR COM MOTIVO** — quando semear exigiria afrouxar uma regra de segurança. `remessas` (8
+     casos) precisa de uma remessa real, e (a) `remessas_dados` não tem policy de INSERT para papel
+     autenticado nenhum, (b) o bucket não tem policy de DELETE, porque a evidência é imutável por
+     desenho. Semear pelo endpoint deixaria um arquivo órfão no bucket a cada execução. Então os
+     casos chamam `ctx.skip()` com o motivo escrito — **pular declarando é honesto; passar vazio
+     seria o falso verde do §7.2.**
+
+  **E um vazamento que só apareceu porque a base ficou pequena:** `formulario-site.spec.ts` gravava
+  duas pessoas DEMO por execução **de propósito**, seguindo a regra ANTIGA — o comentário do arquivo
+  dizia isso com todas as letras. Numa base de 55 trabalhadores ninguém via; numa base de UM, salta.
+  Quando uma regra de dados muda, **os comentários que citam a regra antiga são a lista de tarefas**:
+  `git grep -n "dados de demonstração permanecem"` acha os que faltam.
+- **Exceção nominal:** `Isac Henrique Machado Rufino` — real, veio do formulário do site, pendente
+  de aprovação. Não apagar, não aprovar sem ordem do Maxwell.
 
 ### 7.8 Resposta não-JSON num teste de endpoint pode ser a BORDA, não o seu código
 

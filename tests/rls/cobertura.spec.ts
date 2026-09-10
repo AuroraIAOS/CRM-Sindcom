@@ -17,8 +17,10 @@ import { loginComo, ehErroRls, type Role } from "./helpers";
  *     `vinculos_empregaticios` não ganha nada por ler a view.
  *  3. `envios_campanha.token` continua fora de qualquer SELECT desta feature
  *     — string literal `.token` não aparece em `src/features/cobertura/`.
- *  4. A escrita de "revogar token" é mesmo restrita ao Admin — UPDATE barrado
- *     por RLS não dá erro, só devolve zero linhas (§2.6d).
+ *  4. A escrita de "revogar token" é restrita a Admin e Secretaria (Subetapa
+ *     9.2 — antes era só Admin) — e UPDATE barrado por RLS não dá erro, só
+ *     devolve zero linhas (§2.6d), então quem não pode é medido pelo NÚMERO de
+ *     linhas afetadas, nunca por `expect(error).not.toBeNull()`.
  */
 
 const PAPEIS: Role[] = ["admin", "presidente", "secretaria", "juridico", "parceiro"];
@@ -173,50 +175,15 @@ describe("08.11 + 9.1 · a credencial só entra nesta feature pela view mascarad
   });
 });
 
-describe("08.11 · revogar token é restrito ao Admin (RLS, não só UI)", () => {
-  let ativoDemo: { id: string } | null = null;
-
-  beforeAll(async () => {
-    const { data: contabDemo } = await clientes.admin
-      .from("contabilidades")
-      .select("id")
-      .ilike("nome", "DEMO%")
-      .limit(1)
-      .maybeSingle();
-    if (!contabDemo) return;
-    const { data } = await clientes.admin
-      .from("envios_campanha")
-      .select("id")
-      .eq("contabilidade_id", contabDemo.id as string)
-      .is("token_revogado_em", null)
-      .limit(1)
-      .maybeSingle();
-    ativoDemo = data ? { id: data.id as string } : null;
-  });
-
-  it("secretaria tentando revogar recebe zero linhas afetadas, sem erro (§2.6d)", async () => {
-    if (!ativoDemo) return; // sem envio DEMO ativo no ambiente — nada a atacar
-    const { data, error } = await clientes.secretaria
-      .from("envios_campanha")
-      .update({ token_revogado_em: new Date().toISOString() })
-      .eq("id", ativoDemo.id)
-      .select("id");
-    expect(error).toBeNull();
-    expect((data ?? []).length).toBe(0);
-  });
-
-  it("juridico e parceiro nem sequer enxergam a linha para tentar", async () => {
-    if (!ativoDemo) return;
-    for (const p of ["juridico", "parceiro"] as const) {
-      const { data, error } = await clientes[p]
-        .from("envios_campanha")
-        .update({ token_revogado_em: new Date().toISOString() })
-        .eq("id", ativoDemo.id)
-        .select("id");
-      expect(ehErroRls(error) || (data ?? []).length === 0).toBe(true);
-    }
-  });
-});
+/**
+ * A matriz de permissão da ESCRITA mudou de lugar na Subetapa 9.2, e o motivo
+ * é de método, não de estilo. Ela ficava aqui apoiada numa contabilidade
+ * `DEMO%` já existente na base — e a limpeza de 2026-09-09 levou as três que
+ * existiam. Sem fixture, os casos caíam no `if (!ativoDemo) return` e passavam
+ * sem medir nada: verde por ausência de dado, que é o falso verde do §7.2.
+ * Agora vivem no describe da 9.1 logo abaixo, que semeia o próprio envio e o
+ * remove no `afterAll`.
+ */
 
 /**
  * Subetapa 9.1 — REEMISSÃO: revogar tem de deixar um link novo NA MÃO de quem
@@ -226,13 +193,13 @@ describe("08.11 · revogar token é restrito ao Admin (RLS, não só UI)", () =>
  * contrário: gerava, sempre. O que não existia era a leitura do link novo, e o
  * efeito prático era o mesmo — a contabilidade ficava sem caminho de envio.
  * Por isso estes casos afirmam as DUAS metades: que nasce um substituto ativo,
- * e que o Admin consegue lê-lo (e a Secretaria, não).
+ * e que quem vai reenviá-lo consegue lê-lo — o Admin desde a 9.1, a Secretaria
+ * desde a 9.2 (sql/28), o Presidente nunca.
  *
- * Fixture própria, com prefixo de subetapa e limpeza no `afterAll`
- * (orientacoes.md §7.3): revogar o envio DEMO da Onda 00 mataria o link que o
- * Maxwell está usando no teste ponta a ponta.
+ * Fixture própria, com prefixo de subetapa e limpeza no `afterAll`: revogar um
+ * envio da campanha viva mataria um link real de contabilidade.
  */
-describe("9.1 · revogar emite um substituto, e o Admin consegue entregá-lo", () => {
+describe("9.1 + 9.2 · revogar emite um substituto, e quem atende consegue entregá-lo", () => {
   const PREFIXO = "9.1 teste —";
   let campanhaId: string | null = null;
   let contabilidadeId: string | null = null;
@@ -322,7 +289,7 @@ describe("9.1 · revogar emite um substituto, e o Admin consegue entregá-lo", (
     expect(revogado?.token_revogado_em).not.toBeNull();
   }, 30_000);
 
-  it("o Admin lê o token na view mascarada; a Secretaria lê a MESMA linha com token nulo", async () => {
+  it("Admin e Secretaria leem o token na view; o Presidente lê a MESMA linha com token nulo", async () => {
     if (!contabilidadeId) return;
 
     const { data: comoAdmin, error: erroAdmin } = await clientes.admin
@@ -334,16 +301,102 @@ describe("9.1 · revogar emite um substituto, e o Admin consegue entregá-lo", (
     expect(erroAdmin).toBeNull();
     expect(typeof comoAdmin?.token).toBe("string");
 
+    // Subetapa 9.2: a Secretaria passou a enxergar o token — é o que torna
+    // "Link ativo" e "Revogar token" úteis para ela.
     const { data: comoSecretaria, error: erroSecretaria } = await clientes.secretaria
+      .from("v_envios_campanha_mascarada")
+      .select("id, token")
+      .eq("id", comoAdmin!.id as string)
+      .maybeSingle();
+    expect(erroSecretaria).toBeNull();
+    expect(comoSecretaria?.id).toBe(comoAdmin!.id);
+    expect(comoSecretaria?.token).toBe(comoAdmin!.token);
+
+    // E o mascaramento continua existindo para quem não é nenhum dos dois —
+    // sem este caso, a view teria virado um espelho sem função.
+    const { data: comoPresidente, error: erroPresidente } = await clientes.presidente
       .from("v_envios_campanha_mascarada")
       .select("id, token")
       .eq("id", comoAdmin!.id as string)
       .maybeSingle();
     // §2.6b: a view não NEGA — ela some com o valor. Esperar erro aqui seria
     // esperar a coisa errada.
-    expect(erroSecretaria).toBeNull();
-    expect(comoSecretaria?.id).toBe(comoAdmin!.id);
-    expect(comoSecretaria?.token).toBeNull();
+    expect(erroPresidente).toBeNull();
+    expect(comoPresidente?.id).toBe(comoAdmin!.id);
+    expect(comoPresidente?.token).toBeNull();
+  }, 30_000);
+
+  /**
+   * A matriz de ESCRITA, medida por linhas afetadas (§2.6d). Roda depois do
+   * caso acima e opera sobre o envio ativo do momento, seja ele o semeado ou o
+   * substituto emitido pelo primeiro caso — por isso relê o ativo em vez de
+   * guardar um id.
+   */
+  async function ativoAtual(): Promise<string | null> {
+    const { data } = await clientes.admin
+      .from("v_envios_campanha_mascarada")
+      .select("id")
+      .eq("contabilidade_id", contabilidadeId as string)
+      .is("token_revogado_em", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    return (data?.id as string) ?? null;
+  }
+
+  it("9.2 · a Secretaria revoga de verdade — uma linha afetada, não zero", async () => {
+    if (!contabilidadeId) return;
+    const alvo = await ativoAtual();
+    expect(alvo, "fixture sem envio ativo para revogar").not.toBeNull();
+
+    const { data, error } = await clientes.secretaria
+      .from("envios_campanha")
+      .update({ token_revogado_em: new Date().toISOString() })
+      .eq("id", alvo as string)
+      .select("id");
+    expect(error).toBeNull();
+    expect((data ?? []).length, "a Secretaria deveria revogar desde a 9.2").toBe(1);
+
+    // A segunda metade da ação: ela também precisa conseguir EMITIR o
+    // substituto, senão revogar volta a ser ação sem saída (§4.11).
+    const { data: novo, error: erroInsert } = await clientes.secretaria
+      .from("envios_campanha")
+      .insert({
+        campanha_id: campanhaId as string,
+        contabilidade_id: contabilidadeId,
+        email: `reemissao.secretaria.${Date.now()}@teste.local`,
+      })
+      .select("id")
+      .single();
+    expect(erroInsert, `a Secretaria não conseguiu emitir o substituto: ${JSON.stringify(erroInsert)}`).toBeNull();
+    if (novo) enviosCriados.push(novo.id as string);
+  }, 30_000);
+
+  it("9.2 · o Presidente lê mas NÃO revoga: zero linhas, sem erro (§2.6d)", async () => {
+    if (!contabilidadeId) return;
+    const alvo = await ativoAtual();
+    if (!alvo) return;
+    const { data, error } = await clientes.presidente
+      .from("envios_campanha")
+      .update({ token_revogado_em: new Date().toISOString() })
+      .eq("id", alvo)
+      .select("id");
+    expect(error).toBeNull();
+    expect((data ?? []).length, "o Presidente não deveria revogar").toBe(0);
+  }, 30_000);
+
+  it("9.2 · jurídico e parceiro nem enxergam a linha para tentar", async () => {
+    if (!contabilidadeId) return;
+    const alvo = await ativoAtual();
+    if (!alvo) return;
+    for (const p of ["juridico", "parceiro"] as const) {
+      const { data, error } = await clientes[p]
+        .from("envios_campanha")
+        .update({ token_revogado_em: new Date().toISOString() })
+        .eq("id", alvo)
+        .select("id");
+      expect(ehErroRls(error) || (data ?? []).length === 0).toBe(true);
+    }
   }, 30_000);
 
   it("anon não alcança a view mascarada", async () => {

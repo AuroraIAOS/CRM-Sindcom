@@ -320,7 +320,7 @@ async function revogarEEmitir(alvo: AlvoEnvio): Promise<LinkAtivo> {
   if (erroRevoga) throw erroRevoga;
   // UPDATE barrado por RLS não dá erro — só afeta zero linhas (orientacoes.md §2.6d).
   if (!revogado || revogado.length === 0) {
-    throw new Error("Sem permissão para revogar este link (restrito ao Admin).");
+    throw new Error("Sem permissão para revogar este link (restrito ao Admin e à Secretaria).");
   }
 
   const { data: novo, error: erroNovo } = await supabase

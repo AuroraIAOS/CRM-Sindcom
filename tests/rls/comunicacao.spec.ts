@@ -195,16 +195,37 @@ describe("08.4 · recorte de escrita", () => {
     }
   });
 
-  it("campanhas e envios são escrita de Admin: a Secretaria lê mas não cria", async () => {
+  /**
+   * ATENÇÃO — este caso MUDOU na Subetapa 9.2, e a mudança é deliberada.
+   *
+   * Até a 9.1 a Secretaria não criava NEM campanha NEM envio. A 9.2 separou as
+   * duas coisas: **campanha continua sendo ato de Admin** (decidir que existe uma
+   * comunicação e para quem ela vai), mas **envio passou a ser dela**, porque é
+   * o que faz "Link ativo" e "Revogar token" funcionarem na tela de cobertura —
+   * reemitir é revogar + inserir. Ver sql/28_cobertura_reemissao_atendimento_09_02.sql,
+   * que registra por que isso não é escalada de privilégio.
+   *
+   * O caso é mantido em vez de removido justamente para que a fronteira fique
+   * afirmada: se alguém devolver o insert de `campanhas` à Secretaria, isto
+   * quebra e obriga a decisão a ser explícita.
+   */
+  it("9.2 · campanha continua sendo escrita de Admin; envio passou a ser da Secretaria", async () => {
     const { error: erroCampanha } = await clientes.secretaria
       .from("campanhas")
       .insert({ nome: `${PREFIXO} campanha da Secretaria`, eixo: "informativo" });
-    expect(ehErroRls(erroCampanha)).toBe(true);
+    expect(ehErroRls(erroCampanha), "a Secretaria não deveria criar campanha").toBe(true);
 
-    const { error: erroEnvio } = await clientes.secretaria
+    const { data: envio, error: erroEnvio } = await clientes.secretaria
       .from("envios_campanha")
-      .insert({ campanha_id: campanhaId, contabilidade_id: contabilidadeId, email: emailFixture });
-    expect(ehErroRls(erroEnvio)).toBe(true);
+      .insert({ campanha_id: campanhaId, contabilidade_id: contabilidadeId, email: emailFixture })
+      .select("id")
+      .single();
+    // Efeito observável, não ausência de erro (§7.2): a linha tem de existir.
+    expect(erroEnvio, `a Secretaria deveria emitir envio desde a 9.2: ${JSON.stringify(erroEnvio)}`).toBeNull();
+    expect(envio?.id, "o envio emitido pela Secretaria não voltou com id").toBeTruthy();
+
+    // Fixture criada aqui é removida aqui (regra de dados de 2026-09-09).
+    if (envio?.id) await clientes.admin.from("envios_campanha").delete().eq("id", envio.id as string);
   });
 
   it("NENHUM papel autenticado insere em remessas_dados — só a Edge Function, com service_role", async () => {

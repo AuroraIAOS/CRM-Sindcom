@@ -228,11 +228,23 @@ describe("03.1 · corte por papel (a RLS zera, não recusa)", () => {
     }
   });
 
-  it("presidente e secretária leem os indicadores de gestão", async () => {
+  it("presidente e secretária leem os indicadores de gestão — o MESMO que o Admin", async () => {
+    // O invariante é o RECORTE POR PAPEL, não o volume da base. Até 2026-09-09
+    // isto exigia `total_trabalhadores > 0`, o que passava só porque havia dado
+    // DEMO; depois da limpeza o KPI legítimo passou a ser 0 (o único
+    // trabalhador da base está pendente de aprovação) e o caso ficou vermelho
+    // sem nada ter piorado no código. Comparar com a leitura do Admin prova a
+    // mesma coisa e continua valendo com a base vazia OU cheia (§7.1b).
+    const { data: comoAdmin, error: erroAdmin } = await clientes.admin
+      .from("v_dash_kpis")
+      .select("*")
+      .single();
+    expect(erroAdmin, "o Admin deveria ler v_dash_kpis").toBeNull();
+
     for (const papel of ["presidente", "secretaria"] as const) {
       const { data, error } = await clientes[papel].from("v_dash_kpis").select("*").single();
       expect(error, `${papel} deveria ler v_dash_kpis`).toBeNull();
-      expect(data!.total_trabalhadores).toBeGreaterThan(0);
+      expect(data, `${papel} enxerga indicadores diferentes do Admin`).toEqual(comoAdmin);
 
       const { error: erroMapa } = await clientes[papel].from("v_dash_mapa").select("*").limit(1);
       expect(erroMapa).toBeNull();
@@ -269,8 +281,22 @@ describe("03.1 · snapshot mensal (G1)", () => {
 
     const porNivel = (fotos ?? []).filter((f) => f.nivel !== null);
     const global = (fotos ?? []).find((f) => f.nivel === null);
-    expect(porNivel.length).toBeGreaterThanOrEqual(1);
-    expect(global).toBeDefined();
+    // A linha GLOBAL é o invariante: `fn_snapshot_dashboard` sempre a grava,
+    // mesmo com a base vazia. As linhas POR NÍVEL dependem de existir gente com
+    // nível — cravar `>= 1` nelas era afirmar o volume da base, e virou vermelho
+    // na limpeza de 2026-09-09 sem defeito nenhum no código (§7.1b).
+    expect(global, "a fotografia global não foi gravada").toBeDefined();
+    // O predicado tem de ser o MESMO da função (`status_cadastro = 'aprovado'`),
+    // senão o teste cobra da fotografia gente que ela nunca contou — foi o que
+    // aconteceu com o Isac, único trabalhador da base e ainda pendente.
+    const { count: comNivel } = await clientes.admin
+      .from("trabalhadores")
+      .select("id", { count: "exact", head: true })
+      .eq("status_cadastro", "aprovado")
+      .not("nivel", "is", null);
+    if ((comNivel ?? 0) > 0) {
+      expect(porNivel.length, "há trabalhadores com nível, mas a fotografia não os recortou").toBeGreaterThanOrEqual(1);
+    }
     expect(Number(global!.mrr_mensalidades)).toBeGreaterThanOrEqual(0);
 
     // Idempotência: repetir no mesmo dia substitui, não duplica.

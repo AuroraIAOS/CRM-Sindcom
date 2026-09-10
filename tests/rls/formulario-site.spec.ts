@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loginComo } from "./helpers";
 
@@ -18,18 +18,41 @@ import { loginComo } from "./helpers";
  * 'formulario_site'), então o trigger de notificação — a parte 100% dentro
  * do banco — está coberto de ponta a ponta.
  *
- * O registro usado aqui é DEMO fixo (CPF 000.111.222-33, nunca aleatório):
- * fica gravado no banco de propósito (CLAUDE.md — dados de demonstração
- * permanecem), e o teste é idempotente — se já existir de uma rodada
- * anterior, não tenta recriar, só confere que a notificação correspondente
- * existe.
+ * O registro usado aqui é DEMO fixo (CPF 000.111.222-33, nunca aleatório) e o
+ * teste é idempotente: se já existir de uma rodada anterior, não recria, só
+ * confere a notificação correspondente.
+ *
+ * **A REGRA DE DADOS MUDOU EM 2026-09-09, e este arquivo foi alinhado em
+ * 2026-09-10.** Até ali o comentário aqui dizia que o registro "fica gravado no
+ * banco de propósito", e ficava mesmo — medido: duas pessoas DEMO sobreviveram
+ * a uma execução da suíte numa base que deveria ter UM trabalhador (o Isac,
+ * real e pendente). Numa base que agora recebe cadastro real de 9.186 caixas,
+ * pessoa fictícia inflaciona contagem que dirige decisão de campanha. Agora as
+ * duas saem no `afterAll` (`orientacoes.md` §7.3).
  */
 
 const CPF_DEMO = "00011122233";
+const CPF_DEMO_MANUAL = "00099988877";
 let admin: SupabaseClient;
 
 beforeAll(async () => {
   admin = (await loginComo("admin")).client;
+}, 30_000);
+
+afterAll(async () => {
+  if (!admin) return;
+  for (const cpf of [CPF_DEMO, CPF_DEMO_MANUAL]) {
+    const { data } = await admin.from("trabalhadores").select("id").eq("cpf", cpf).maybeSingle();
+    if (!data) continue;
+    // A notificação aponta para o trabalhador por `referencia_id`, que não é FK
+    // — sem apagá-la aqui, ela sobreviveria órfã e ainda apareceria no sino.
+    await admin
+      .from("notificacoes")
+      .delete()
+      .eq("referencia_tabela", "trabalhadores")
+      .eq("referencia_id", data.id as string);
+    await admin.from("trabalhadores").delete().eq("id", data.id as string);
+  }
 }, 30_000);
 
 describe("03.2 · notificação de cadastro vindo do formulário do site", () => {

@@ -35,16 +35,26 @@ import {
  * cada uma (Subetapa 08.11, D4). Substitui o cruzamento manual repetido a
  * cada rodada de cobrança.
  *
- * O LINK APARECE AQUI SÓ PARA O ADMIN, E QUEM DECIDE ISSO É O BANCO (Subetapa
- * 9.1). Até aqui a tela não mostrava o token para ninguém — e o efeito medido
- * foi que "Revogar" virou uma ação sem saída: o link antigo morria, um novo
- * nascia por DEFAULT do banco e ninguém conseguia vê-lo para reenviar. Agora a
- * leitura passa por `v_envios_campanha_mascarada`
- * (sql/25_reemissao_token_09_01.sql), que devolve `token = null` para quem não
- * é Admin. A regra mora no Postgres; a condição de papel abaixo só evita
- * oferecer um botão que não traria valor nenhum.
+ * QUEM VÊ O LINK É DECIDIDO PELO BANCO, NÃO POR ESTA TELA (Subetapa 9.1). Até
+ * a 9.1 a tela não mostrava o token para ninguém — e o efeito medido foi que
+ * "Revogar" virou uma ação sem saída: o link antigo morria, um novo nascia por
+ * DEFAULT do banco e ninguém conseguia vê-lo para reenviar. A leitura passa por
+ * `v_envios_campanha_mascarada` (sql/25_reemissao_token_09_01.sql), que devolve
+ * `token = null` para quem não está autorizado. A regra mora no Postgres; a
+ * condição de papel abaixo só evita oferecer um botão que não traria valor.
  */
-const PODE_REVOGAR = ["admin"] as const;
+/**
+ * Subetapa 9.2 — a Secretaria entra aqui, por ordem do Maxwell: é ela quem faz
+ * o contato direto com as empresas durante as ondas, e "meu link não abre" é
+ * pedido de atendimento, não de administração. Sem isso, toda reemissão teria
+ * de passar pelo Admin.
+ *
+ * A regra continua morando no BANCO (sql/28_cobertura_reemissao_atendimento_09_02.sql:
+ * a view desmascara o token para a Secretaria e as policies de insert/update
+ * de `envios_campanha` passam a admiti-la). Esta lista só evita oferecer um
+ * botão que não funcionaria — ela não concede nada.
+ */
+const PODE_REVOGAR = ["admin", "secretaria"] as const;
 
 const COLUNAS_CSV_PENDENTES: ColunaCsv<EstabelecimentoPendente>[] = [
   { titulo: "CNPJ", valor: (l) => l.cnpj },

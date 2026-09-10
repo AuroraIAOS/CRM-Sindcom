@@ -44,7 +44,9 @@ import {
  *    a base inteira (§4.4: exportar dado diferente do que se vê é como o
  *    relatório mente).
  */
-const PODE_REVOGAR = ["admin"] as const;
+/** Admin + Secretaria (Subetapa 9.2) — mesma razão e mesma fonte de verdade da
+ *  tela de contabilidades: quem concede é `sql/28_cobertura_reemissao_atendimento_09_02.sql`. */
+const PODE_REVOGAR = ["admin", "secretaria"] as const;
 
 const COLUNAS_CSV: ColunaCsv<LinhaCoberturaEmpresa>[] = [
   { titulo: "CNPJ", valor: (l) => l.cnpj },

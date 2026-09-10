@@ -1970,6 +1970,21 @@ não investigado agora, não é assunto deste item). Medido com cache-buster na 
 `X-Proxy-Cache: HIT`) por até 2h — método de diagnóstico e a distinção "regra errada" vs. "cache
 mais velho que a mudança" documentados em `orientacoes.md` §1.7. Confirmado: JS estático e
 `/wp-admin/` já redirecionavam sem cache-buster nenhum; só a home pura ficou presa no TTL.
+**REGRESSÃO ENCONTRADA E CORRIGIDA EM 2026-09-10 — o item (c) tinha voltado ao vermelho sem que
+ninguém soubesse.** Medido: páginas COM snapshot de cache (`/`, `/contato/`, `/dados/`) devolviam
+200 em HTTP puro e **com `X-Proxy-Cache: MISS`** — isto é, chegando à origem —, enquanto páginas
+sem snapshot devolviam 301. Não era o cache do §1.7. A causa: o comentário que escrevemos no topo
+do `.htaccess` **citava o texto literal do marcador do plugin de cache**, o plugin procurou esse
+marcador, achou a cópia dentro do nosso comentário e reescreveu o bloco dele ali — partindo a
+frase em duas e empurrando o redirecionamento para **depois** do cache. A linha resultante ainda
+começava com o marcador de abertura do WordPress, o que faria o próximo "Salvar links permanentes"
+apagar redirecionamento e HSTS silenciosamente (e provavelmente é a causa retroativa das duas
+truncagens do §1.6). Corrigido reconstruindo o arquivo por fatiamento do conteúdo ao vivo, com
+guarda de contagem de marcadores; estado anterior em
+`docs/htaccess_site_institucional_backup_2026-09-10_ANTES.txt`; lição completa em
+`orientacoes.md` §1.9. **Verificado por requisição:** estático 200 (o `.htaccess` é válido),
+`final=200 saltos=1` em `/`, `/contato/` e `/dados/`, HSTS presente só no HTTPS, `/wp-json/` 200
+(o roteamento do WordPress sobreviveu à edição).
 **(d) ✅ `Reply-To`** — configurado em 2026-09-04 no rascunho de campanha que existe hoje na Brevo
 (`TESTE — verificação de autenticação`, em Configurações adicionais → "Use um endereço de resposta
 diferente" → `secretaria@sindcompassos.org`). **As 4 campanhas reais (A/B/C/D) ainda não existem
@@ -2066,6 +2081,56 @@ qualquer item no vermelho, e repetir a Onda 00 não custa reputação nenhuma.
 
 ### Subetapa 9.2 — Onda 01: as 89 contabilidades grandes [Manual] [LLM: Opus] · Status: ⬜
 *(era a Subetapa 08.15; movida para cá em 2026-09-01, com o conteúdo preservado)*
+
+> **PREPARO DA 9.2 FEITO EM 2026-09-10 (o disparo em si continua ⬜, e é ordem do Maxwell).**
+>
+> **(1) "Link ativo" e "Revogar token" liberados para a Secretaria** — é ela quem faz o contato
+> direto com as empresas durante as ondas. Aplicado em produção como
+> `sql/28_cobertura_reemissao_atendimento_09_02.sql`: a view `v_envios_campanha_mascarada` deixa de
+> mascarar o token para ela, e `pol_envios_insert`/`pol_envios_update` passam a admiti-la
+> (`delete` segue só Admin). `PODE_REVOGAR` nas duas telas de cobertura acompanha. Medido depois de
+> aplicar: policies conferidas no catálogo, `tests/rls/cobertura.spec.ts` **20/20**, e os dois casos
+> novos falhavam antes da migração pelo motivo certo — prova de que medem a mudança.
+> **Poder novo assumido e registrado:** ela passa a poder emitir link para um e-mail qualquer,
+> porque reemitir é revogar + inserir. O raciocínio de por que isso não é escalada está no cabeçalho
+> do SQL, com o desenho alternativo (RPC transacional) descrito para quando o Maxwell quiser fechar.
+>
+> **(2) Achado de higiene ao conferir a própria migração:** `authenticated` tinha
+> INSERT/UPDATE/DELETE na view, herdados do default ACL (§2.25). Varredura de catálogo em **todas**
+> as views: 17 com o mesmo excedente, mas só 2 são de fato atualizáveis — e `v_fila_parceiro`, a
+> única `security_invoker=off`, **não é**, então o privilégio dela é inerte. Medido também que
+> nenhuma tabela do `public` está com RLS desligada e nenhuma policy de escrita alcança
+> `anon`/`public`. **Não é furo; é superfície de graça.** Revogada a escrita na view desta subetapa;
+> as outras 16 ficam como decisão do Maxwell.
+>
+> **(3) Bloqueio herdado da limpeza de 2026-09-09 — ENCONTRADO E RESOLVIDO no mesmo dia.** A
+> primeira execução completa da suíte depois da limpeza deu **16 falhas** (271 passando). Quinze
+> eram testes que PROCURAVAM dado DEMO removido (`remessas` 8, `coleta` 3, `dashboard` 2,
+> `adversarial/05_comunicacao` 2, `cartas` 1); a décima sexta era legítima — a 9.2 mudou de
+> propósito quem cria envio. Resolvido assim:
+> - **`coleta` e `adversarial/05`** passaram a SEMEAR os três estados de token (válido, expirado,
+>   revogado) por `tests/rls/fixtures/campanhaDemo.ts`, com remoção no `afterAll`.
+> - **`cartas`** deixou de exigir um CNPJ DEMO fixo e usa qualquer estabelecimento com CCT — o
+>   invariante sempre foi o recorte, nunca o registro.
+> - **`dashboard`** parou de afirmar volume (`total_trabalhadores > 0`) e passou a comparar o
+>   recorte por papel com a leitura do Admin; a fotografia por nível só é cobrada quando existe
+>   trabalhador **aprovado**, que é o predicado da própria `fn_snapshot_dashboard`.
+> - **`remessas` (8)** PULA com motivo explícito em produção, em vez de falhar. Não dá para semear:
+>   `remessas_dados` não tem policy de INSERT para papel autenticado (só a Edge Function, com
+>   `service_role`) e o bucket `remessas` não tem policy de DELETE — a evidência é imutável por
+>   desenho, e afrouxar isso por causa de teste seria trocar segurança permanente por conveniência
+>   (§2.30). Cobertura recuperável rodando a suíte contra o bench.
+> - **`formulario-site`** deixava duas pessoas DEMO gravadas a cada execução (desenho da regra
+>   antiga); agora remove no `afterAll`.
+>
+> **Placar final: 284 passando, 0 falhando, 46 pulados** (typecheck e build limpos), e a base
+> conferida depois da execução completa continua idêntica: 1 trabalhador (o Isac), 4 campanhas
+> reais, zero DEMO, 9.186 envios. Método e a armadilha nova do PostgREST em `orientacoes.md`
+> §7.3 e §2.7d.
+>
+> **(4) Deploy feito em 2026-09-10** com a suíte verde. Verificado: `/`, `/dashboard` e
+> `/cobertura` em 200, HTTP→HTTPS em 301, HSTS presente, e o HTML servido idêntico ao `dist/`
+> local (bundle `index-C89j-f6B.js`, 200).
 
 Objetivo: o primeiro disparo real — 89 envios que alcançam **3.758 estabelecimentos, 24% da base**.
 Se a copy estiver ruim, descobre-se com 89 e não com 9.000 (D8) — **e agora, com a Onda 00 no

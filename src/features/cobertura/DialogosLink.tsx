@@ -81,11 +81,12 @@ export function ConteudoLink({ consulta }: { consulta: ConsultaLink }) {
     );
   }
   if (!consulta.link.link) {
-    // O banco devolveu a linha sem o token: quem consulta não é Admin
-    // (v_envios_campanha_mascarada). Dizer isso é melhor do que mostrar vazio.
+    // O banco devolveu a linha sem o token: quem consulta não é Admin nem
+    // Secretaria (v_envios_campanha_mascarada). Dizer isso é melhor do que
+    // mostrar vazio.
     return (
       <p className="text-sm text-texto-2">
-        Existe um link ativo, mas o endereço só é exibido para o Admin.
+        Existe um link ativo, mas o endereço só é exibido para o Admin e para a Secretaria.
       </p>
     );
   }

@@ -1,0 +1,132 @@
+ESTADO DO .htaccess DE sindcompassos.org EM 2026-09-10, ANTES DA CORRECAO
+=========================================================================
+Caminho no servidor: /home2/davide59/sindcompassos.org/.htaccess
+Tamanho medido: 3.542 bytes, 82 linhas.
+
+POR QUE ESTE BACKUP EXISTE E O QUE ELE PROVA
+--------------------------------------------
+Este arquivo esta CORROMPIDO, e a corrupcao tem uma causa nova, diferente das
+duas de 2026-09-01 e 2026-09-09 (orientacoes.md 1.6):
+
+  O comentario que escrevemos no topo CITAVA, entre aspas, o texto literal do
+  marcador de bloco do plugin de cache. O plugin, ao regenerar, procurou esse
+  marcador no arquivo, achou a copia que estava DENTRO DO NOSSO COMENTARIO e
+  reescreveu o bloco dele ALI - partindo a nossa frase em duas (linha 9 termina
+  em `# BEGIN NFD EPC" e "` e a linha 37 recomeca em `# BEGIN WordPress": os
+  dois sao`) e empurrando o nosso redirecionamento HTTP->HTTPS para DEPOIS do
+  bloco de cache.
+
+Efeito medido em 2026-09-10, antes da correcao:
+
+  http://sindcompassos.org/            -> 200 (sem redirecionar)  [tem snapshot]
+  http://sindcompassos.org/contato/    -> 200 (sem redirecionar)  [tem snapshot]
+  http://sindcompassos.org/servicos/   -> 301 (correto)           [sem snapshot]
+  http://sindcompassos.org/inexistente -> 301 (correto)           [sem snapshot]
+  http://sindcompassos.org/contato/ COM cookie wordpress_logged_in -> 301
+
+  Ou seja: a regra funciona, mas so e alcancada quando o bloco de cache NAO
+  resolve antes. E exatamente a falha de ORDEM prevista em orientacoes.md 1.5,
+  chegando por um caminho que ninguem tinha previsto.
+
+BOMBA-RELOGIO ADICIONAL (linha 37)
+-----------------------------------
+A linha 37 COMECA com o texto do marcador de abertura do WordPress. Na proxima
+vez que o WordPress regenerar o bloco dele (qualquer "Salvar" em Configuracoes
+-> Links permanentes), ele substituiria TUDO entre a linha 37 e o fim do
+arquivo - apagando o redirecionamento e o HSTS sem nenhum aviso. Isso tambem
+explica, retroativamente, as truncagens de 2026-09-01 e 2026-09-09.
+
+CONTEUDO INTEGRAL DO ARQUIVO (as marcas [TAB] indicam tabulacao literal)
+========================================================================
+
+  1| # ============================================================================
+  2| # HTTPS + HSTS - regra PROPRIA do site, fora dos marcadores gerenciados.
+  3| #
+  4| # FICA NO TOPO, E ISSO NAO E ESTILO: o bloco de cache logo abaixo termina em
+  5| # [L]. Se esta regra viesse depois, a requisicao HTTP casaria com o cache,
+  6| # pararia ali e NUNCA chegaria ao redirecionamento - o site continuaria sendo
+  7| # entregue em texto claro com a regra "presente" no arquivo (orientacoes 1.5).
+  8| #
+  9| # Fica tambem FORA de "<marcador de abertura do plugin de cache>" e "
+ 10|
+ 11| <marcador de abertura do plugin de cache>
+ 12| <IfModule mod_rewrite.c>
+ 13| [TAB]RewriteEngine On
+ 14| [TAB]RewriteBase /
+ 15| [TAB]RewriteRule ^wp-content/endurance-page-cache/ - [L]
+ 16| [TAB]RewriteCond %{REQUEST_METHOD} !POST
+ 17| [TAB]RewriteCond %{QUERY_STRING} !.*=.*
+ 18| [TAB]RewriteCond %{HTTP_COOKIE} !(wordpress_test_cookie|comment_author|wp\-postpass|wordpress_logged_in|wptouch_switch_toggle|wp_woocommerce_session_) [NC]
+ 19| [TAB]RewriteCond %{DOCUMENT_ROOT}/wp-content/endurance-page-cache/$1/_index.html -f
+ 20| [TAB]RewriteRule ^(.*)$ /wp-content/endurance-page-cache/$1/_index.html [L]
+ 21| </IfModule>
+ 22|
+ 23| <IfModule mod_expires.c>
+ 24| [TAB]ExpiresActive On
+ 25| [TAB]ExpiresByType image/jpg "access plus 24 hours"
+ 26| [TAB]ExpiresByType image/jpeg "access plus 24 hours"
+ 27| [TAB]ExpiresByType image/gif "access plus 24 hours"
+ 28| [TAB]ExpiresByType image/png "access plus 24 hours"
+ 29| [TAB]ExpiresByType text/css "access plus 24 hours"
+ 30| [TAB]ExpiresByType application/pdf "access plus 1 week"
+ 31| [TAB]ExpiresByType text/javascript "access plus 24 hours"
+ 32| [TAB]ExpiresByType text/html "access plus 2 hours"
+ 33| [TAB]ExpiresByType image/x-icon "access plus 1 year"
+ 34| [TAB]ExpiresDefault "access plus 24 hours"
+ 35| </IfModule>
+ 36| <marcador de fechamento do plugin de cache>
+ 37| <marcador de abertura do WordPress>": os dois sao
+ 38| # regerados pelos respectivos softwares, e o que estiver entre os marcadores
+ 39| # deles e sobrescrito sem aviso.
+ 40| #
+ 41| # X-Forwarded-Proto entra por precaucao: medido em 2026-09-09 nao ha proxy no
+ 42| # caminho (so "Server: Apache", sem cf-ray nem via), entao %{HTTPS} basta hoje.
+ 43| # A condicao extra nao custa nada e cobre o dia em que houver CDN.
+ 44| #
+ 45| # HSTS dentro de <IfModule mod_headers.c> porque a presenca desse modulo NAO
+ 46| # foi comprovada: o Cache-Control que os assets devolvem vem do mod_expires,
+ 47| # que e outro modulo. Uma diretiva Header sem mod_headers derruba o Apache com
+ 48| # 500 - o envelope transforma isso em "ignorado", que e recuperavel.
+ 49| #
+ 50| # max-age curto (1 dia) de proposito na primeira aplicacao: HSTS e compromisso
+ 51| # que o navegador guarda, e se o TLS quebrar nao ha como voltar atras dentro da
+ 52| # janela ja distribuida. Elevar para 31536000 so depois de dias estavel.
+ 53| # includeSubDomains fica de fora: alcancaria envios.sindcompassos.org, que nao
+ 54| # tem relacao com este servidor.
+ 55| # ============================================================================
+ 56| <IfModule mod_rewrite.c>
+ 57| RewriteEngine On
+ 58| RewriteBase /
+ 59| RewriteCond %{HTTPS} !=on
+ 60| RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+ 61| RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+ 62| </IfModule>
+ 63| <IfModule mod_headers.c>
+ 64| Header always set Strict-Transport-Security "max-age=86400" env=HTTPS
+ 65| </IfModule>
+ 66|
+ 67| <marcador de abertura do plugin><marcador de fechamento do plugin>   (par VAZIO, numa linha so)
+ 68| <marcador de abertura do WordPress>
+ 69| # As diretrizes (linhas) entre "BEGIN WordPress" e "END WordPress" sao
+ 70| # geradas dinamicamente e so devem ser modificadas atraves de filtros do WordPress.
+ 71| # Quaisquer alteracoes nas diretivas entre esses marcadores serao sobrescritas.
+ 72| <IfModule mod_rewrite.c>
+ 73| RewriteEngine On
+ 74| RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+ 75| RewriteBase /
+ 76| RewriteRule ^index\.php$ - [L]
+ 77| RewriteCond %{REQUEST_FILENAME} !-f
+ 78| RewriteCond %{REQUEST_FILENAME} !-d
+ 79| RewriteRule . /index.php [L]
+ 80| </IfModule>
+ 81|
+ 82| <marcador de fechamento do WordPress>
+
+NOTA SOBRE ESTE PROPRIO ARQUIVO DE BACKUP
+------------------------------------------
+Os marcadores foram substituidos por descricoes entre <> DE PROPOSITO. Escrever
+o texto literal deles aqui nao quebraria nada (este arquivo nao e lido pelo
+Apache), mas manter a disciplina em todo lugar evita que alguem copie e cole um
+trecho daqui de volta para dentro do .htaccess e reproduza a mesma armadilha.
+Os valores literais estao no proprio servidor e nos backups anteriores
+(htaccess_site_institucional_backup_2026-09-09b.txt).
