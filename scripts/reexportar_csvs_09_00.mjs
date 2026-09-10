@@ -27,6 +27,40 @@
 // formulário; obrigá-los a passar por esta URL seria descumprimento, com custo
 // em entregabilidade e não em teste (plano, 9.00, decisão (a)).
 //
+// ────────────────────────────────────────────────────────────────────────────
+// ACRÉSCIMO DA SUBETAPA 9.2 (2026-09-10): as colunas `onda` e `lote`, e uma
+// LISTA ÚNICA. O nome do arquivo continua `09_00` de propósito — ele é citado
+// no `plano_fases.md` e renomear quebraria a referência sem ganhar nada.
+//
+// POR QUE ATRIBUTO, E NÃO UMA LISTA POR DIA (decisão do Maxwell)
+// Lista é IDENTIDADE ("as 89 contabilidades grandes"); dia de envio é AGENDA.
+// Codificar a agenda no nome da lista obriga a MOVER contato entre listas toda
+// vez que o calendário mudar — e replanejar é o normal, não a exceção. Com
+// `onda` e `lote` como atributos do contato, a lista é uma só e cada disparo
+// escolhe seus destinatários por filtro condicional no próprio painel da Brevo.
+//
+// O QUE CADA COLUNA SIGNIFICA
+//   onda → 1..4, o segmento estratégico (grandes / médias / pequenas /
+//          isoladas). Define QUAL COPY o e-mail usa — a onda 4 é a trilha B,
+//          que são três mensagens diferentes. Nunca misture ondas num disparo.
+//   lote → 1..N, o DIA de envio, global e contínuo. É o filtro do dia a dia:
+//          "lote = 7" é exatamente o que sai hoje.
+//
+// A RAMPA, E POR QUE ELA É O PRÓPRIO PLANO DE ONDAS
+// O teto do plano Free da Brevo é 300 e-mails/dia. A subida (15 → 30 → 50 → 75
+// → 110 → 150 → 200 → 250 → 300, depois 300 fixo) aquece o DOMÍNIO — o IP já é
+// quente, porque no Free o envio sai do pool compartilhado da Brevo, e o guia
+// de warm-up de IP dedicado (3.000/dia) NÃO se aplica aqui.
+//
+// **Um lote nunca mistura ondas.** Não é preferência: cada onda tem copy
+// própria, e a 4 tem três. Quando uma onda acaba, a seguinte começa num dia
+// novo e a rampa CONTINUA de onde estava (não reinicia) — quem já mandou 250
+// num dia não volta para 15 no dia seguinte.
+//
+// ORDEM DENTRO DA ONDA: maior carteira primeiro. As primeiras caixas a receber
+// são as que mais cobrem base e as que mais provavelmente estão ativas — e é
+// engajamento, não volume, que constrói reputação de domínio novo.
+//
 // Uso: node scripts/reexportar_csvs_09_00.mjs [--bench]
 // ============================================================================
 
@@ -64,11 +98,42 @@ const BASE_LINK = "https://crm.sindcompassos.org/enviar-dados";
 const BASE_SAIDA = "https://crm.sindcompassos.org/descadastrar";
 
 const CAMPANHAS = [
-  { chave: "a", nome: "Coleta 2026 · Contabilidades grandes (20+)", esperado: 89 },
-  { chave: "b", nome: "Coleta 2026 · Contabilidades médias (5-19)", esperado: 248 },
-  { chave: "c", nome: "Coleta 2026 · Contabilidades pequenas (2-4)", esperado: 613 },
-  { chave: "d", nome: "Coleta 2026 · Empresas isoladas", esperado: 8236 },
+  { chave: "a", onda: 1, nome: "Coleta 2026 · Contabilidades grandes (20+)", esperado: 89 },
+  { chave: "b", onda: 2, nome: "Coleta 2026 · Contabilidades médias (5-19)", esperado: 248 },
+  { chave: "c", onda: 3, nome: "Coleta 2026 · Contabilidades pequenas (2-4)", esperado: 613 },
+  { chave: "d", onda: 4, nome: "Coleta 2026 · Empresas isoladas", esperado: 8236 },
 ];
+
+/**
+ * A rampa de aquecimento, em e-mails por dia. Depois do último degrau, o teto
+ * do plano Free (300) se repete até acabar a base.
+ *
+ * Mexer aqui muda o calendário inteiro — e é onde se mexe, não no painel da
+ * Brevo. Baixar um degrau é sempre seguro; subir só depois de medir rejeição
+ * abaixo de 2% no degrau anterior.
+ */
+const RAMPA = [15, 30, 50, 75, 110, 150, 200, 250];
+const TETO_DIARIO = 300;
+
+/**
+ * Distribui as linhas de UMA onda em lotes diários, continuando a numeração de
+ * dias de onde a onda anterior parou. Devolve o próximo dia livre.
+ *
+ * O `Math.min` com `restantes` é o que faz o último lote da onda ser o resto —
+ * e é também o que garante que o lote seguinte comece numa onda nova, nunca
+ * completando o dia com contatos de outro segmento.
+ */
+function distribuirEmLotes(linhas, diaInicial) {
+  let dia = diaInicial;
+  let i = 0;
+  while (i < linhas.length) {
+    const tamanho = Math.min(RAMPA[dia - 1] ?? TETO_DIARIO, linhas.length - i);
+    for (let k = 0; k < tamanho; k += 1) linhas[i + k].lote = dia;
+    i += tamanho;
+    dia += 1;
+  }
+  return dia;
+}
 
 /** Mesma defesa de `src/lib/csv.ts` (§2.19), reimplementada porque este script
  *  roda em Node puro, fora do bundle TypeScript. Nome de empresa da Receita
@@ -99,6 +164,10 @@ const COLUNAS = [
   { titulo: "email", valor: (l) => l.email },
   { titulo: "link", valor: (l) => `${BASE_LINK}/${l.token}` },
   { titulo: "saida", valor: (l) => `${BASE_SAIDA}/${l.token}` },
+  // Os dois atributos da 9.2. Números, não texto: assim o painel da Brevo
+  // aceita filtro por faixa (`lote <= 3`) além de igualdade.
+  { titulo: "onda", valor: (l) => l.onda },
+  { titulo: "lote", valor: (l) => l.lote },
 ];
 
 async function lerTudo(construir) {
@@ -126,8 +195,21 @@ if (erroCampanhas) {
 }
 const idPorNome = new Map((campanhas ?? []).map((c) => [c.nome, c.id]));
 
+// Tamanho da carteira, para ordenar cada onda da maior para a menor. Vem da
+// view da 08.11, que já é a fonte de verdade desse número nas telas — refazer a
+// contagem aqui criaria uma segunda verdade que envelheceria sozinha.
+const carteiraPorContab = new Map();
+{
+  const linhas = await lerTudo((de, ate) =>
+    client.from("v_cobertura_contabilidades").select("contabilidade_id, total_estabelecimentos").range(de, ate),
+  );
+  for (const l of linhas) carteiraPorContab.set(l.contabilidade_id, l.total_estabelecimentos ?? 0);
+}
+
 mkdirSync(PASTA_SAIDA, { recursive: true });
 let divergencias = 0;
+let proximoDia = 1;
+const listaUnica = [];
 
 for (const campanha of CAMPANHAS) {
   const id = idPorNome.get(campanha.nome);
@@ -175,7 +257,17 @@ for (const campanha of CAMPANHAS) {
     nome: (e.contabilidade_id ? nomePorContab.get(e.contabilidade_id) : nomePorEstab.get(e.estabelecimento_id)) || e.email,
     email: e.email,
     token: e.token,
+    onda: campanha.onda,
+    lote: null, // preenchido logo abaixo
+    carteira: e.contabilidade_id ? (carteiraPorContab.get(e.contabilidade_id) ?? 0) : 1,
   }));
+
+  // Maior carteira primeiro; `email` como desempate para a ordem ser
+  // DETERMINÍSTICA — rodar o script duas vezes tem de produzir os mesmos lotes,
+  // senão replanejar viraria remanejamento de contato.
+  linhas.sort((x, y) => y.carteira - x.carteira || x.email.localeCompare(y.email));
+  proximoDia = distribuirEmLotes(linhas, proximoDia);
+  listaUnica.push(...linhas);
 
   const arquivo = `${PASTA_SAIDA}/segmento_${campanha.chave}.csv`;
   writeFileSync(arquivo, "﻿" + gerarCsv(linhas, COLUNAS), "utf-8");
@@ -188,8 +280,42 @@ for (const campanha of CAMPANHAS) {
   console.log(`  ${marca} ${arquivo}: ${linhas.length} linhas (08.13 exportou ${campanha.esperado})`);
 }
 
+// ----------------------------------------------------------------------------
+// A LISTA ÚNICA — é ESTE arquivo que se importa na Brevo (Subetapa 9.2).
+// Os quatro por segmento continuam saindo para conferência e para o caso de
+// alguém preferir listas separadas, mas administrar uma só é o desenho.
+// ----------------------------------------------------------------------------
+const arquivoUnico = `${PASTA_SAIDA}/lista_unica.csv`;
+writeFileSync(arquivoUnico, "﻿" + gerarCsv(listaUnica, COLUNAS), "utf-8");
+
+const porLote = new Map();
+for (const l of listaUnica) porLote.set(l.lote, (porLote.get(l.lote) ?? 0) + 1);
+const dias = [...porLote.keys()].sort((a, b) => a - b);
+
+// §7.2: o efeito observável, não a ausência de erro. Três invariantes que, se
+// quebrarem, quebram o calendário inteiro — e em silêncio.
+const semLote = listaUnica.filter((l) => !l.lote).length;
+const acimaDoTeto = dias.filter((d) => porLote.get(d) > TETO_DIARIO);
+const ondasPorLote = new Map();
+for (const l of listaUnica) {
+  if (!ondasPorLote.has(l.lote)) ondasPorLote.set(l.lote, new Set());
+  ondasPorLote.get(l.lote).add(l.onda);
+}
+const lotesMisturados = dias.filter((d) => ondasPorLote.get(d).size > 1);
+
+if (semLote > 0) { console.error(`  ✗ ${semLote} contato(s) sem lote`); divergencias += 1; }
+if (acimaDoTeto.length > 0) { console.error(`  ✗ lote(s) acima do teto de ${TETO_DIARIO}: ${acimaDoTeto.join(", ")}`); divergencias += 1; }
+if (lotesMisturados.length > 0) { console.error(`  ✗ lote(s) misturando ondas: ${lotesMisturados.join(", ")}`); divergencias += 1; }
+
+console.log(`\n  ✓ ${arquivoUnico}: ${listaUnica.length} contatos em ${dias.length} lotes (dias)`);
+console.log("\n  calendário (lote · onda · contatos):");
+for (const d of dias) {
+  const onda = [...ondasPorLote.get(d)][0];
+  console.log(`    lote ${String(d).padStart(2)} · onda ${onda} · ${String(porLote.get(d)).padStart(3)} contatos`);
+}
+
 console.log(
   divergencias === 0
-    ? "\n4 CSVs reexportados com a coluna `saida`. Nenhum envio foi criado, alterado ou revogado."
-    : `\n${divergencias} divergência(s) — leia a linha marcada acima antes de importar na Brevo.`,
+    ? `\nOK. Importe \`lista_unica.csv\` na Brevo como UMA lista; cada disparo filtra por \`lote\` (e \`onda\` escolhe a copy).\nNenhum envio foi criado, alterado ou revogado.`
+    : `\n${divergencias} divergência(s) — leia as linhas marcadas acima antes de importar na Brevo.`,
 );
