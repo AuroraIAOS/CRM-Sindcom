@@ -882,6 +882,49 @@ permanente por conveniência de um arquivo — o mesmo raciocínio do §2.30.
 3. Se um dia valer relaxar a regra, o desenho é uma **negação estreita** (`!sql/*.sql`) logo abaixo
    do bloco, com comentário dizendo por quê — e isso é decisão do Maxwell, não do CODE.
 
+### 2.6f "A borda bloqueou o script" era só LENTIDÃO acima do timeout de 10s do Node
+
+**(a) Problema.** Em 2026-09-10, depois de uma varredura pesada (768 consultas DNS + várias
+leituras), os scripts passaram a abortar no login:
+
+```
+ConnectTimeoutError: Connect Timeout Error
+  (attempted addresses: 172.64.149.246:443, 104.18.38.10:443, timeout: 10000ms)
+ABORTADO: login de Admin falhou — fetch failed
+```
+
+A leitura natural — e a que o §2.6e reforça — é *"a borda do Supabase me bloqueou"*. **Errada.** O
+`curl` no mesmo endpoint, no mesmo instante, respondia normalmente. Isso sugeriria que o bloqueio é
+por cliente, o que é uma conclusão ainda pior, porque leva a mexer em cabeçalho e *user-agent*.
+
+**A medição que desfaz as duas hipóteses** é cronometrar os dois:
+
+```
+node fetch -> 401 em 13.279 ms
+curl       -> 401 em  9.452 ms
+```
+
+Os dois **chegaram**. Ninguém foi bloqueado. O que difere é o teto: o `undici` (o cliente HTTP do
+`fetch` nativo do Node) usa **10 s de timeout de CONEXÃO** por padrão, e o `curl` não. Com a borda
+em ~13 s, o Node desiste e o `curl` passa — e o mesmo host parece "bloqueado para o script e
+liberado para o terminal".
+
+**(b) Solução.** Um `fetch` que repete erro de **transporte** com espera crescente, injetado no
+cliente Supabase (`scripts/lib/fetchResiliente.mjs`):
+
+```js
+createClient(URL, ANON, { global: { fetch: fetchResiliente } });
+```
+
+Repete `UND_ERR_CONNECT_TIMEOUT`, `ECONNRESET`, `ETIMEDOUT`, `EAI_AGAIN` e afins. **Não repete
+401/403/429** — esses são resposta, não falha de transporte, e repeti-los esconderia problema real.
+
+**(c) Como implantar.** Antes de concluir "fui bloqueado", **cronometre com dois clientes
+diferentes**. Se os dois respondem e só um estoura, é teto de timeout, não bloqueio — e a diferença
+importa, porque a resposta a "bloqueado" é esperar (ou mexer onde não deve) e a resposta a "lento" é
+uma linha de configuração. Distinguir isso do §2.6e (bloqueio de verdade, com timeout puro em TODOS
+os clientes) é exatamente o que o cronômetro faz.
+
 ### 2.7d `insert` de VÁRIAS linhas no PostgREST manda `null` onde você esperava o DEFAULT
 
 **(a) Problema.** Semeando três envios de campanha numa chamada só — um "válido" (para receber o

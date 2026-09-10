@@ -65,9 +65,10 @@
 // ============================================================================
 
 import { createClient } from "@supabase/supabase-js";
+import { fetchResiliente } from "./lib/fetchResiliente.mjs";
 import { config } from "dotenv";
 import Papa from "papaparse";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const BENCH = process.argv.includes("--bench");
 config({ path: BENCH ? ".env.bench" : ".env.test", override: true });
@@ -114,6 +115,40 @@ const CAMPANHAS = [
  */
 const RAMPA = [15, 30, 50, 75, 110, 150, 200, 250];
 const TETO_DIARIO = 300;
+
+/**
+ * O veredito de `higienizar_emails_09_02.mjs` (Subetapa 9.2). Três decisões, e
+ * cada uma tem uma razão diferente:
+ *
+ *  · `rejeicao_certa` → **NÃO SAI NO CSV.** Domínio inexistente é bounce
+ *    garantido, e bounce é o que destrói reputação de domínio novo — mais do
+ *    que volume. Não some do CRM: o contato continua na base para follow-up por
+ *    telefone, que é o canal certo para quem não tem e-mail alcançável.
+ *
+ *  · `arriscado` e `inconclusivo` → **SAEM, mas por último.** Vão para o fim da
+ *    fila da própria onda, o que na prática os mantém FORA dos lotes 1-9 — a
+ *    janela de aquecimento, onde cada rejeição pesa muito mais porque o
+ *    denominador é pequeno (uma rejeição em 15 é 6,7%; em 300 é 0,3%). Excluí-los
+ *    seria jogar fora contato provavelmente bom por causa de um timeout de DNS.
+ */
+const ARQUIVO_VEREDITO = `${"dados/campanha_08_13"}/veredito_emails.json`;
+const RISCO = { entregavel: 0, arriscado: 1, inconclusivo: 2 };
+
+function carregarVeredito() {
+  if (!existsSync(ARQUIVO_VEREDITO)) {
+    console.warn(
+      `\n  ⚠ ${ARQUIVO_VEREDITO} não existe — o CSV sairá SEM higienização de e-mail.\n` +
+        `    Rode antes: node scripts/higienizar_emails_09_02.mjs\n`,
+    );
+    return null;
+  }
+  const v = JSON.parse(readFileSync(ARQUIVO_VEREDITO, "utf-8"));
+  const dias = (Date.now() - new Date(v.gerado_em).getTime()) / 86_400_000;
+  if (dias > 7) {
+    console.warn(`\n  ⚠ veredito com ${Math.floor(dias)} dias. Domínio expira e caixa é desativada — reveja antes de disparar.\n`);
+  }
+  return v;
+}
 
 /**
  * Distribui as linhas de UMA onda em lotes diários, continuando a numeração de
@@ -181,7 +216,7 @@ async function lerTudo(construir) {
   }
 }
 
-const client = createClient(URL, ANON, { auth: { persistSession: false } });
+const client = createClient(URL, ANON, { auth: { persistSession: false }, global: { fetch: fetchResiliente } });
 const { error: erroLogin } = await client.auth.signInWithPassword({ email: EMAIL, password: SENHA });
 if (erroLogin) {
   console.error("ABORTADO: login de Admin falhou —", erroLogin.message);
@@ -206,10 +241,22 @@ const carteiraPorContab = new Map();
   for (const l of linhas) carteiraPorContab.set(l.contabilidade_id, l.total_estabelecimentos ?? 0);
 }
 
+const veredito = carregarVeredito();
+/** nível de risco de um e-mail: 0 entregável · 1 arriscado · 2 inconclusivo ·
+ *  null = rejeição certa (não sai). */
+function risco(email) {
+  if (!veredito) return 0;
+  const v = veredito.emails[String(email).trim().toLowerCase()];
+  if (!v) return 0; // ausente do veredito = entregável
+  return v.nivel === "rejeicao_certa" ? null : (RISCO[v.nivel] ?? 0);
+}
+
 mkdirSync(PASTA_SAIDA, { recursive: true });
 let divergencias = 0;
 let proximoDia = 1;
+let excluidos = 0;
 const listaUnica = [];
+const excluidosDetalhe = [];
 
 for (const campanha of CAMPANHAS) {
   const id = idPorNome.get(campanha.nome);
@@ -253,19 +300,31 @@ for (const campanha of CAMPANHAS) {
     for (const e of data ?? []) nomePorEstab.set(e.id, e.nome_fantasia || e.empresas?.razao_social || "");
   }
 
-  const linhas = envios.map((e) => ({
-    nome: (e.contabilidade_id ? nomePorContab.get(e.contabilidade_id) : nomePorEstab.get(e.estabelecimento_id)) || e.email,
-    email: e.email,
-    token: e.token,
-    onda: campanha.onda,
-    lote: null, // preenchido logo abaixo
-    carteira: e.contabilidade_id ? (carteiraPorContab.get(e.contabilidade_id) ?? 0) : 1,
-  }));
+  const linhas = [];
+  for (const e of envios) {
+    const r = risco(e.email);
+    if (r === null) {
+      excluidos += 1;
+      const v = veredito.emails[String(e.email).trim().toLowerCase()];
+      excluidosDetalhe.push({ onda: campanha.onda, email: e.email, motivo: v.motivo });
+      continue;
+    }
+    linhas.push({
+      nome: (e.contabilidade_id ? nomePorContab.get(e.contabilidade_id) : nomePorEstab.get(e.estabelecimento_id)) || e.email,
+      email: e.email,
+      token: e.token,
+      onda: campanha.onda,
+      lote: null, // preenchido logo abaixo
+      carteira: e.contabilidade_id ? (carteiraPorContab.get(e.contabilidade_id) ?? 0) : 1,
+      risco: r,
+    });
+  }
 
-  // Maior carteira primeiro; `email` como desempate para a ordem ser
-  // DETERMINÍSTICA — rodar o script duas vezes tem de produzir os mesmos lotes,
-  // senão replanejar viraria remanejamento de contato.
-  linhas.sort((x, y) => y.carteira - x.carteira || x.email.localeCompare(y.email));
+  // Ordem: entregável antes de duvidoso; dentro disso, maior carteira primeiro;
+  // `email` como desempate para a ordem ser DETERMINÍSTICA — rodar o script duas
+  // vezes tem de produzir os mesmos lotes, senão replanejar viraria
+  // remanejamento de contato.
+  linhas.sort((x, y) => x.risco - y.risco || y.carteira - x.carteira || x.email.localeCompare(y.email));
   proximoDia = distribuirEmLotes(linhas, proximoDia);
   listaUnica.push(...linhas);
 
@@ -275,9 +334,17 @@ for (const campanha of CAMPANHAS) {
   // §7.2: conferir o efeito, não a ausência de erro. A contagem esperada é a da
   // 08.13; qualquer diferença é notícia — pode ser um descadastro legítimo já
   // registrado, e nesse caso a diferença é o número certo, não um defeito.
-  const marca = linhas.length === campanha.esperado ? "✓" : "⚠";
+  // A conferência soma os EXCLUÍDOS de volta: a higienização de e-mail (9.2)
+  // reduz o CSV de propósito, e cobrar o número da 08.13 sem somá-los faria as
+  // quatro ondas parecerem divergentes justamente quando estão certas.
+  const foraDestaOnda = excluidosDetalhe.filter((x) => x.onda === campanha.onda).length;
+  const marca = linhas.length + foraDestaOnda === campanha.esperado ? "✓" : "⚠";
   if (marca === "⚠") divergencias += 1;
-  console.log(`  ${marca} ${arquivo}: ${linhas.length} linhas (08.13 exportou ${campanha.esperado})`);
+  console.log(
+    `  ${marca} ${arquivo}: ${linhas.length} linhas` +
+      (foraDestaOnda > 0 ? ` (+${foraDestaOnda} excluído(s) por e-mail morto)` : "") +
+      ` — 08.13 exportou ${campanha.esperado}`,
+  );
 }
 
 // ----------------------------------------------------------------------------
@@ -307,7 +374,28 @@ if (semLote > 0) { console.error(`  ✗ ${semLote} contato(s) sem lote`); diverg
 if (acimaDoTeto.length > 0) { console.error(`  ✗ lote(s) acima do teto de ${TETO_DIARIO}: ${acimaDoTeto.join(", ")}`); divergencias += 1; }
 if (lotesMisturados.length > 0) { console.error(`  ✗ lote(s) misturando ondas: ${lotesMisturados.join(", ")}`); divergencias += 1; }
 
+// Quem NÃO recebe e-mail não some do trabalho — muda de canal. Este arquivo é
+// a lista de quem o follow-up tem de alcançar por telefone (Subetapa 9.6),
+// exatamente como acontece com quem se descadastra.
+if (excluidosDetalhe.length > 0) {
+  const arquivoExcluidos = `${PASTA_SAIDA}/excluidos_email_morto.csv`;
+  writeFileSync(
+    arquivoExcluidos,
+    "﻿" +
+      gerarCsv(excluidosDetalhe, [
+        { titulo: "onda", valor: (l) => l.onda },
+        { titulo: "email", valor: (l) => l.email },
+        { titulo: "motivo", valor: (l) => l.motivo },
+      ]),
+    "utf-8",
+  );
+  console.log(`\n  ✓ ${arquivoExcluidos}: ${excluidosDetalhe.length} contato(s) para follow-up por TELEFONE`);
+}
+
+const duvidosos = listaUnica.filter((l) => l.risco > 0);
+const duvidosoNoAquecimento = duvidosos.filter((l) => l.lote <= RAMPA.length + 1).length;
 console.log(`\n  ✓ ${arquivoUnico}: ${listaUnica.length} contatos em ${dias.length} lotes (dias)`);
+console.log(`    ${excluidos} excluído(s) por e-mail morto · ${duvidosos.length} duvidoso(s) mantido(s), ${duvidosoNoAquecimento} deles na janela de aquecimento`);
 console.log("\n  calendário (lote · onda · contatos):");
 for (const d of dias) {
   const onda = [...ondasPorLote.get(d)][0];
