@@ -846,6 +846,74 @@ segundos e a correção depois do push custa reescrita de história.
 
 ---
 
+### 2.7e Corrigir dado que vem de fonte externa: o conserto tem prazo de validade se a origem insistir no erro
+
+**(a) Problema.** Medido em 2026-09-11. Dezoito e-mails com domínio digitado errado (`@gmai.com`,
+`@gmail.con`, `@bolcom.br`) foram corrigidos na véspera — e no dia seguinte continuavam errados na
+tela. **Dois defeitos diferentes, e o segundo é invisível até o mês virar.**
+
+**Defeito 1 — o dado morava em três lugares, e eu corrigi um.**
+
+```
+estabelecimentos.email   ← CADASTRO MESTRE (vem da RFB)
+contabilidades.email     ← cadastro mestre das contabilidades
+envios_campanha.email    ← CÓPIA do disparo   ← só este foi corrigido
+```
+
+A correção foi feita onde o CSV da campanha é montado, que era o objetivo imediato. Mas cadastro é
+o que a tela de cobertura mostra, o que o follow-up telefônico usa e o que uma regeneração de
+campanha leria. **Antes de corrigir, `grep` no catálogo:**
+
+```sql
+select table_name, column_name from information_schema.columns
+ where table_schema='public' and column_name ilike '%email%';
+```
+
+**Defeito 2 — a fonte externa vai reescrever a correção, todo mês, em silêncio.** `email` está na
+lista de colunas que o delta mensal da Receita compara e atualiza. E o endereço errado **não é
+engano nosso**: é o que a empresa declarou à Receita. A Receita vai servir o mesmo valor errado no
+arquivo do mês que vem, e o delta reverteria tudo — **sem erro, sem log, e com um sintoma idêntico
+ao estado anterior**, o que torna o diagnóstico quase impossível na segunda vez.
+
+**(b) Solução — e por que "proteger a coluna" é a resposta errada.** Congelar `email` contra o
+delta destruiria o caso legítimo: empresa que troca de e-mail na Receita PRECISA que o CRM
+acompanhe. A proteção tem de distinguir os dois casos, e para isso precisa lembrar **o que a fonte
+mandava quando corrigimos**:
+
+```sql
+alter table estabelecimentos
+  add column email_rfb_original text,      -- o valor da fonte no momento da correção
+  add column email_corrigido_em timestamptz;
+
+-- o gatilho só age enquanto a fonte insistir NAQUELE valor
+if new.email_corrigido_em is not null
+   and new.email is distinct from old.email
+   and lower(trim(new.email)) is not distinct from lower(trim(old.email_rfb_original))
+then new.email := old.email; end if;
+```
+
+Medido em transação, com os dois cenários:
+
+```
+A) fonte reenvia o valor errado  → reverteu=0  resistiu=18   (correção preservada)
+B) empresa troca de e-mail       → mudou=18                  (mudança legítima passa)
+```
+
+**(c) Como implantar.**
+
+1. **A regra vai no BANCO, não no script de carga.** Um gatilho vale para o delta mensal, para a
+   tela, para o próximo script e para quem rodar SQL à mão — nenhum deles precisa lembrar da regra.
+2. **Guarde o valor da FONTE, não um booleano "corrigido".** Com só um booleano, a escolha seria
+   entre congelar a coluna e não proteger nada; é o valor original que permite a distinção.
+3. **Teste o gatilho.** Ele é a garantia inteira, e é invisível: se sumir num restore de dump ou
+   numa recriação de tabela, nada avisa até o mês seguinte
+   (`tests/rls/email-corrigido.spec.ts`).
+4. **Avise no runbook da carga** por que a coluna continua no update E mesmo assim está protegida —
+   senão alguém "conserta" adicionando `email` à lista de omitidas e quebra a outra metade.
+
+**Regra transferível:** ao corrigir dado importado, pergunte **"a origem vai me mandar isso de novo?"**.
+Se sim, o conserto não é o `update` — é o `update` mais o mecanismo que sobrevive à próxima carga.
+
 ### 2.7c A rede de `.gitignore` por palavra sensível engoliu uma MIGRAÇÃO — "secretaria" contém "secret"
 
 **(a) Problema.** Em 2026-09-10, a migração `sql/28_cobertura_secretaria_09_02.sql` foi criada,

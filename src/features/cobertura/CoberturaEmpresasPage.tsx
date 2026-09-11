@@ -53,6 +53,10 @@ const COLUNAS_CSV: ColunaCsv<LinhaCoberturaEmpresa>[] = [
   { titulo: "Razão social", valor: (l) => l.razaoSocial },
   { titulo: "Nome fantasia", valor: (l) => l.nomeFantasia ?? "" },
   { titulo: "E-mail", valor: (l) => l.email },
+  // §4.4: a exportação leva o que está NA TELA. Se a tela mostra a divergência,
+  // o CSV também tem de mostrar — quem vai ligar precisa saber que o link saiu
+  // para outro endereço.
+  { titulo: "E-mail do link enviado", valor: (l) => (l.emailEnvio !== l.email ? l.emailEnvio : "") },
   { titulo: "Enviou dados", valor: (l) => (l.coberta ? "sim" : "não") },
   { titulo: "Descadastrada", valor: (l) => (l.descadastradoEm ? "sim" : "não") },
   { titulo: "Descadastrada em", valor: (l) => formatarDataBR(l.descadastradoEm) },
@@ -164,7 +168,20 @@ export function CoberturaEmpresasPage() {
                   )}
                 </TableCell>
                 <TableCell className="font-mono text-xs text-texto-2">{formatarCnpj(l.cnpj)}</TableCell>
-                <TableCell className="text-texto-2">{l.email}</TableCell>
+                <TableCell className="text-texto-2">
+                  {l.email}
+                  {/* Divergência entre o contato do cadastro e o endereço para
+                      onde o link saiu acontece quando o e-mail foi corrigido
+                      depois do envio. Mostrar os dois é o único jeito honesto:
+                      esconder o do cadastro tiraria do operador o contato certo;
+                      esconder o do envio faria parecer que o link foi para um
+                      endereço que nunca recebeu nada. */}
+                  {l.emailEnvio && l.emailEnvio !== l.email && (
+                    <div className="text-xs text-estado-alerta" title="O cadastro foi corrigido depois que este link foi criado">
+                      link enviado para {l.emailEnvio}
+                    </div>
+                  )}
+                </TableCell>
                 <TableCell className="text-right">
                   <span
                     className={l.coberta ? "font-medium text-estado-sucesso" : "font-medium text-estado-erro"}

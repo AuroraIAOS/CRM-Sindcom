@@ -622,6 +622,20 @@ export type Database = {
             referencedRelation: "envios_campanha"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "descadastros_campanha_envio_id_fkey"
+            columns: ["envio_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_empresas"
+            referencedColumns: ["envio_id"]
+          },
+          {
+            foreignKeyName: "descadastros_campanha_envio_id_fkey"
+            columns: ["envio_id"]
+            isOneToOne: false
+            referencedRelation: "v_envios_campanha_mascarada"
+            referencedColumns: ["id"]
+          },
         ]
       }
       empresas: {
@@ -788,6 +802,8 @@ export type Database = {
           ddd_1: string | null
           ddd_2: string | null
           email: string | null
+          email_corrigido_em: string | null
+          email_rfb_original: string | null
           id: string
           logradouro: string | null
           matriz_filial: number | null
@@ -820,6 +836,8 @@ export type Database = {
           ddd_1?: string | null
           ddd_2?: string | null
           email?: string | null
+          email_corrigido_em?: string | null
+          email_rfb_original?: string | null
           id?: string
           logradouro?: string | null
           matriz_filial?: number | null
@@ -852,6 +870,8 @@ export type Database = {
           ddd_1?: string | null
           ddd_2?: string | null
           email?: string | null
+          email_corrigido_em?: string | null
+          email_rfb_original?: string | null
           id?: string
           logradouro?: string | null
           matriz_filial?: number | null
@@ -1536,6 +1556,20 @@ export type Database = {
             columns: ["envio_id"]
             isOneToOne: false
             referencedRelation: "envios_campanha"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "remessas_dados_envio_id_fkey"
+            columns: ["envio_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_empresas"
+            referencedColumns: ["envio_id"]
+          },
+          {
+            foreignKeyName: "remessas_dados_envio_id_fkey"
+            columns: ["envio_id"]
+            isOneToOne: false
+            referencedRelation: "v_envios_campanha_mascarada"
             referencedColumns: ["id"]
           },
           {
@@ -2363,6 +2397,7 @@ export type Database = {
           created_at: string | null
           descadastrado_em: string | null
           email: string | null
+          email_envio: string | null
           envio_id: string | null
           estabelecimento_id: string | null
           link_revogado: boolean | null
@@ -2372,7 +2407,57 @@ export type Database = {
           razao_social: string | null
           ultima_remessa_em: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "envios_campanha_campanha_id_fkey"
+            columns: ["campanha_id"]
+            isOneToOne: false
+            referencedRelation: "campanhas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_estabelecimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "estabelecimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["estabelecimento_id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_relatorio_convencao"
+            referencedColumns: ["estabelecimento_id"]
+          },
+          {
+            foreignKeyName: "estabelecimentos_municipio_id_fkey"
+            columns: ["municipio_id"]
+            isOneToOne: false
+            referencedRelation: "municipios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estabelecimentos_municipio_id_fkey"
+            columns: ["municipio_id"]
+            isOneToOne: false
+            referencedRelation: "v_dash_mapa"
+            referencedColumns: ["municipio_id"]
+          },
+        ]
       }
       v_dash_conversoes_mensais: {
         Row: {
@@ -2401,16 +2486,6 @@ export type Database = {
           data_ref: string | null
           nivel: Database["public"]["Enums"]["nivel_protecao"] | null
           qtd_trabalhadores: number | null
-        }
-        Insert: {
-          data_ref?: string | null
-          nivel?: Database["public"]["Enums"]["nivel_protecao"] | null
-          qtd_trabalhadores?: number | null
-        }
-        Update: {
-          data_ref?: string | null
-          nivel?: Database["public"]["Enums"]["nivel_protecao"] | null
-          qtd_trabalhadores?: number | null
         }
         Relationships: []
       }
@@ -2482,7 +2557,87 @@ export type Database = {
           token_revogado_em: string | null
           ultima_remessa_em: string | null
         }
-        Relationships: []
+        Insert: {
+          campanha_id?: string | null
+          contabilidade_id?: string | null
+          created_at?: string | null
+          descadastrado_em?: string | null
+          email?: string | null
+          enviado_em?: string | null
+          estabelecimento_id?: string | null
+          id?: string | null
+          primeira_remessa_em?: string | null
+          token?: never
+          token_expira_em?: string | null
+          token_revogado_em?: string | null
+          ultima_remessa_em?: string | null
+        }
+        Update: {
+          campanha_id?: string | null
+          contabilidade_id?: string | null
+          created_at?: string | null
+          descadastrado_em?: string | null
+          email?: string | null
+          enviado_em?: string | null
+          estabelecimento_id?: string | null
+          id?: string | null
+          primeira_remessa_em?: string | null
+          token?: never
+          token_expira_em?: string | null
+          token_revogado_em?: string | null
+          ultima_remessa_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "envios_campanha_campanha_id_fkey"
+            columns: ["campanha_id"]
+            isOneToOne: false
+            referencedRelation: "campanhas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_contabilidade_id_fkey"
+            columns: ["contabilidade_id"]
+            isOneToOne: false
+            referencedRelation: "contabilidades"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_contabilidade_id_fkey"
+            columns: ["contabilidade_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_contabilidades"
+            referencedColumns: ["contabilidade_id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_estabelecimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "estabelecimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["estabelecimento_id"]
+          },
+          {
+            foreignKeyName: "envios_campanha_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_relatorio_convencao"
+            referencedColumns: ["estabelecimento_id"]
+          },
+        ]
       }
       v_fila_parceiro: {
         Row: {

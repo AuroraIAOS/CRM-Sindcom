@@ -143,7 +143,19 @@ export type LinhaCoberturaEmpresa = {
   cnpj: string;
   razaoSocial: string;
   nomeFantasia: string | null;
+  /**
+   * O e-mail do CADASTRO (`estabelecimentos.email`) — o contato de verdade, e
+   * o mesmo lugar de onde a tela de contabilidades sempre leu. Até a 9.2 esta
+   * tela lia `envios_campanha.email`, e as duas telas irmãs respondiam "qual é
+   * o e-mail desta empresa?" a partir de tabelas diferentes.
+   */
   email: string;
+  /**
+   * Para onde o link EFETIVAMENTE saiu. Difere de `email` quando o cadastro foi
+   * corrigido à mão depois de o envio ter sido criado — e aí a tela mostra os
+   * dois, porque divergência é informação, não ruído a esconder.
+   */
+  emailEnvio: string;
   coberta: boolean;
   descadastradoEm: string | null;
   linkRevogado: boolean;
@@ -163,7 +175,7 @@ export function useCoberturaEmpresas(filtro: FiltroCobertura, pagina: number) {
       let consulta = supabase
         .from("v_cobertura_empresas")
         .select(
-          "estabelecimento_id, envio_id, cnpj_completo, razao_social, nome_fantasia, email, coberta, descadastrado_em, link_revogado",
+          "estabelecimento_id, envio_id, cnpj_completo, razao_social, nome_fantasia, email, coberta, descadastrado_em, link_revogado, email_envio",
           { count: "exact" },
         );
 
@@ -176,7 +188,7 @@ export function useCoberturaEmpresas(filtro: FiltroCobertura, pagina: number) {
           consulta = consulta.ilike("cnpj_completo", `%${digitos}%`);
         } else {
           consulta = consulta.or(
-            `razao_social.ilike.%${termo}%,nome_fantasia.ilike.%${termo}%,email.ilike.%${termo}%`,
+            `razao_social.ilike.%${termo}%,nome_fantasia.ilike.%${termo}%,email.ilike.%${termo}%,email_envio.ilike.%${termo}%`,
           );
         }
       }
@@ -203,6 +215,7 @@ export function useCoberturaEmpresas(filtro: FiltroCobertura, pagina: number) {
           razaoSocial: (r.razao_social as string) ?? "",
           nomeFantasia: (r.nome_fantasia as string | null) ?? null,
           email: (r.email as string) ?? "",
+          emailEnvio: (r.email_envio as string) ?? "",
           coberta: (r.coberta as boolean) ?? false,
           descadastradoEm: (r.descadastrado_em as string | null) ?? null,
           linkRevogado: (r.link_revogado as boolean) ?? false,
