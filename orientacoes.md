@@ -3266,8 +3266,28 @@ exigir que fique, é decisão do Maxwell, **pedida explicitamente** — não pre
   dizia isso com todas as letras. Numa base de 55 trabalhadores ninguém via; numa base de UM, salta.
   Quando uma regra de dados muda, **os comentários que citam a regra antiga são a lista de tarefas**:
   `git grep -n "dados de demonstração permanecem"` acha os que faltam.
-- **Exceção nominal:** `Isac Henrique Machado Rufino` — real, veio do formulário do site, pendente
-  de aprovação. Não apagar, não aprovar sem ordem do Maxwell.
+- **Exceção nominal:** `Isac Henrique Machado Rufino` — real, veio do formulário do site. (Aprovado
+  pelo Maxwell em 2026-09-11; é o primeiro trabalhador real da base.)
+
+- **DADO DERIVADO DE DADO DEMO TAMBÉM É DADO DEMO — e ele sobrevive à limpeza (2026-09-11).** A
+  limpeza de 2026-09-09 apagou os 55 trabalhadores fictícios, mas **não** apagou as fotografias de
+  `snapshots_dashboard` que os haviam contado. Dois dias depois, o gráfico "Evolução por nível" do
+  dashboard ainda desenhava uma população de **53 pessoas** num CRM cujo cartão de KPI dizia
+  "Trabalhadores: 1".
+
+  **E o sintoma aponta para o lugar errado.** Quem olha vê linhas em 40 e 13 com o eixo Y em 0..40 e
+  conclui "erro de escala do gráfico". Não era: o eixo estava certo e o gráfico era fiel. **O que
+  estava errado era a história.** Perseguir a escala teria custado horas num componente sem defeito.
+
+  **Ao apagar dado, faça a pergunta:** *"o que mais foi calculado A PARTIR disto?"* — snapshots,
+  agregados, contadores materializados, exportações já geradas, e o painel do ESP. A linha some; o
+  que ela alimentou, não.
+
+  ```sql
+  -- o teste de uma linha: sobrou agregado contando gente que não existe mais?
+  select max(qtd_trabalhadores) from snapshots_dashboard where nivel is not null;
+  -- maior que o total real de aprovados = a limpeza ficou pela metade
+  ```
 
 ### 7.8 Resposta não-JSON num teste de endpoint pode ser a BORDA, não o seu código
 

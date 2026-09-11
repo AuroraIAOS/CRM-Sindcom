@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +12,13 @@ import {
 import { AlertTriangle, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 import { formatarDataBR } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
-import { taxa, useFunilCampanha, useKpisBrevo, type CampanhaBrevo } from "./api";
+import {
+  ehCampanhaDeTeste,
+  taxa,
+  useFunilCampanha,
+  useKpisBrevo,
+  type CampanhaBrevo,
+} from "./api";
 
 /**
  * `/campanhas/dashboard` — o painel diário da campanha (ETAPA 09 · Subetapa 9.2).
@@ -42,6 +49,29 @@ export function DashboardCampanhasPage() {
   const brevo = useKpisBrevo();
 
   const f = funil.data;
+
+  /**
+   * AS CAMPANHAS DE TESTE SAEM DA CONTA POR PADRÃO (Subetapa 9.2).
+   *
+   * Maxwell viu o painel com 7 enviados, 7 entregues e 12 cliques numa campanha
+   * que ainda não saiu. Os números eram reais, mas da **Onda 00** — a prova
+   * ponta a ponta feita em caixas do próprio sindicato. Somá-los faz a Onda 01
+   * nascer com resultado que não é dela, e é sobre esse número que a regra dos
+   * 2% de rejeição decide se a onda seguinte sai.
+   *
+   * Isto também UNIFORMIZA as duas telas, que era a terceira coisa relatada: a
+   * aba Descadastros lê o Supabase (zerado, correto) enquanto este bloco lia a
+   * Brevo inteira (com a Onda 00). Não eram fontes "erradas" — são fontes
+   * diferentes por desenho, e a tela já diz qual é qual —, mas uma mostrava a
+   * era de teste e a outra não, e comparar as duas induzia a conclusão errada.
+   *
+   * Ocultar não é esconder: o total aparece no rótulo da caixa de seleção, e um
+   * clique traz tudo de volta.
+   */
+  const [mostrarTestes, setMostrarTestes] = useState(false);
+  const todas = brevo.data?.ok ? brevo.data.campanhas : [];
+  const testes = todas.filter((c) => ehCampanhaDeTeste(c.nome));
+  const visiveis = mostrarTestes ? todas : todas.filter((c) => !ehCampanhaDeTeste(c.nome));
 
   /**
    * O DENOMINADOR HONESTO, e por que ele tem duas formas.
@@ -198,15 +228,30 @@ export function DashboardCampanhasPage() {
           </Card>
         )}
 
-        {brevo.data?.ok && brevo.data.campanhas.length === 0 && (
+        {brevo.data?.ok && testes.length > 0 && (
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-texto-2">
+            <input
+              type="checkbox"
+              checked={mostrarTestes}
+              onChange={(e) => setMostrarTestes(e.target.checked)}
+              className="h-3.5 w-3.5 accent-realce"
+            />
+            Incluir as {testes.length} campanhas de teste da Onda 00 — elas saíram para caixas do
+            próprio sindicato e não são resultado de campanha real.
+          </label>
+        )}
+
+        {brevo.data?.ok && visiveis.length === 0 && (
           <Card className="p-4 text-sm text-texto-2">
-            A conta da Brevo respondeu, mas não há campanha de e-mail registrada nela ainda.
+            {testes.length > 0
+              ? "Nenhuma campanha real disparada ainda — só as de teste da Onda 00, ocultas acima. Este bloco passa a mostrar números quando a Onda 01 sair."
+              : "A conta da Brevo respondeu, mas não há campanha de e-mail registrada nela ainda."}
           </Card>
         )}
 
-        {brevo.data?.ok && brevo.data.campanhas.length > 0 && (
+        {brevo.data?.ok && visiveis.length > 0 && (
           <>
-            <ResumoBrevo campanhas={brevo.data.campanhas} />
+            <ResumoBrevo campanhas={visiveis} />
             <Card className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -222,7 +267,7 @@ export function DashboardCampanhasPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {brevo.data.campanhas.map((c) => {
+                  {visiveis.map((c) => {
                     const rejeicoes = c.rejeicoesDuras + c.rejeicoesLeves;
                     const taxaRejeicao = taxa(rejeicoes, c.enviados);
                     return (

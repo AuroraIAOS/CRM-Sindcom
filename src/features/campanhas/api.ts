@@ -170,6 +170,28 @@ export function useKpisBrevo() {
   });
 }
 
+/**
+ * Campanha de TESTE, pelo nome que ela tem na Brevo (Subetapa 9.2).
+ *
+ * A Onda 00 foi a prova ponta a ponta feita em caixas do próprio Maxwell, com
+ * contabilidades e empresas fictícias. Os 7 enviados e 12 cliques dela são
+ * reais — só não são da campanha real, e somá-los ao painel faz a primeira onda
+ * de verdade nascer com números que não são dela.
+ *
+ * POR QUE FILTRAR AQUI E NÃO APAGAR NA BREVO. Apagar as campanhas resolveria o
+ * painel e **destruiria a evidência da 9.1** — os prints, as taxas de entrega e
+ * a prova de autenticação que autorizaram tudo o que veio depois. O plano trata
+ * essa evidência como entrega da subetapa. Filtrar na leitura preserva as duas
+ * coisas, e é reversível com um clique na tela.
+ *
+ * O casamento é por PREFIXO (`Onda 00`), nunca por "contém": filtrar por
+ * conteúdo já pegou `contabilidademontanari` e `diegomarademorais` na limpeza
+ * da base, os dois reais (orientacoes.md §7.3).
+ */
+export function ehCampanhaDeTeste(nome: string): boolean {
+  return /^\s*onda\s*0+\s*[-–—·:]?\s/i.test(nome);
+}
+
 /** Taxa em % sobre um denominador, protegendo contra divisão por zero. */
 export function taxa(parte: number, total: number): number | null {
   return total > 0 ? (parte / total) * 100 : null;

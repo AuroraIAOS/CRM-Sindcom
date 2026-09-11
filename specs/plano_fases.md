@@ -2131,6 +2131,31 @@ qualquer item no vermelho, e repetir a Onda 00 não custa reputação nenhuma.
 > **(4) Deploy feito em 2026-09-10** com a suíte verde. Verificado: `/`, `/dashboard` e
 > `/cobertura` em 200, HTTP→HTTPS em 301, HSTS presente, e o HTML servido idêntico ao `dist/`
 > local (bundle `index-C89j-f6B.js`, 200).
+>
+> **(5) Três defeitos de LEITURA corrigidos em 2026-09-11**, encontrados pelo Maxwell olhando o CRM
+> em produção. Nenhum era erro de cálculo; os três faziam a tela contar uma história falsa.
+> - **Gráfico "Evolução por nível" mostrava 53 pessoas que não existem.** A limpeza de 2026-09-09
+>   apagou os trabalhadores DEMO mas não as fotografias que os contaram. Não era erro de escala do
+>   eixo (a hipótese natural, e a cara): o eixo estava certo e o gráfico era fiel — a história é que
+>   estava errada. Corrigido em `sql/29_snapshots_niveis_09_02.sql`: 18 fotografias da era DEMO
+>   apagadas (dump em `docs/snapshots_demo_apagados_2026-09-11.md`), `fn_snapshot_dashboard` passou
+>   a gravar os três níveis SEMPRE — inclusive com zero, senão nível vazio vira ausência e a linha
+>   parece continuar em vez de cair (§4.5) — e a view passou a zerar o que falta, inclusive nas
+>   fotografias antigas. O frontend passou a agregar por MÊS, o que acaba com o eixo X repetindo
+>   "ago/26, ago/26, ago/26". Medido depois: eixo com jul/26 · ago/26 · set/26 e escala 0..4.
+> - **Dashboard de campanhas somava a Onda 00** (7 enviados, 12 cliques). Aqueles números vêm da
+>   **Brevo**, não do Supabase — a suspeita do Maxwell estava certa. Em vez de apagar as campanhas
+>   na Brevo (o que destruiria a evidência da 9.1), a tela passou a ocultá-las por padrão, com caixa
+>   de seleção visível e o total no rótulo. `ehCampanhaDeTeste` casa por PREFIXO e tem teste
+>   dedicado, porque o modo de falha é assimétrico: deixar teste passar suja o painel; casar com
+>   onda real **esconde resultado de campanha de verdade**.
+> - **"Dashboard" e "Descadastros" pareciam ler fontes contraditórias.** Não liam: são fontes
+>   diferentes por desenho (Brevo × Supabase) e a tela já dizia qual era qual. Mas uma exibia a era
+>   de teste e a outra não, e comparar as duas induzia conclusão errada. Com o filtro acima, as duas
+>   passam a mostrar a mesma realidade — zero até a Onda 01 sair.
+>
+> Suíte: **288 passando, 0 falhando**. Deploy feito e conferido em produção (bundle
+> `index-CoqVtNjr.js`).
 
 Objetivo: o primeiro disparo real — 89 envios que alcançam **3.758 estabelecimentos, 24% da base**.
 Se a copy estiver ruim, descobre-se com 89 e não com 9.000 (D8) — **e agora, com a Onda 00 no
