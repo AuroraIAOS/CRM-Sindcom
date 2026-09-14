@@ -134,6 +134,99 @@ export function LinkAtivoDialog({
   );
 }
 
+/**
+ * Trocar o e-mail da contabilidade — o pedido que chega por telefone: "mudamos
+ * de caixa, manda para este outro endereço" (Subetapa 9.2).
+ *
+ * O DIÁLOGO DIZ O QUE VAI ACONTECER COM O LINK, e isso não é verbosidade: quem
+ * troca o e-mail não espera que o link antigo pare de funcionar, e o contato do
+ * outro lado pode estar com aquele link aberto. Anunciar antes é a diferença
+ * entre uma troca e uma surpresa.
+ */
+export function AlterarEmailDialog({
+  contabilidade,
+  onOpenChange,
+  onEmitido,
+  alterar,
+}: {
+  contabilidade: { contabilidadeId: string; nome: string; email: string } | null;
+  onOpenChange: (open: boolean) => void;
+  onEmitido: (nome: string, link: LinkAtivo) => void;
+  alterar: {
+    mutateAsync: (v: { contabilidadeId: string; emailNovo: string }) => Promise<LinkAtivo>;
+    isPending: boolean;
+  };
+}) {
+  const [novo, setNovo] = useState("");
+  const [erro, setErro] = useState<string | null>(null);
+
+  // `key` no Dialog zera o campo a cada contabilidade — sem isso o endereço
+  // digitado para uma reaparece na seguinte (orientacoes.md §4.1).
+  async function confirmar() {
+    if (!contabilidade) return;
+    setErro(null);
+    try {
+      const link = await alterar.mutateAsync({
+        contabilidadeId: contabilidade.contabilidadeId,
+        emailNovo: novo,
+      });
+      onOpenChange(false);
+      setNovo("");
+      onEmitido(contabilidade.nome, link);
+    } catch (e) {
+      setErro(mensagemErro(e));
+    }
+  }
+
+  return (
+    <Dialog key={contabilidade?.contabilidadeId ?? "vazio"} open={!!contabilidade} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Alterar e-mail da contabilidade</DialogTitle>
+          <DialogDescription>
+            O endereço de <strong>{contabilidade?.nome}</strong> passa a ser o novo, e{" "}
+            <strong>o link atual deixa de funcionar imediatamente</strong> — um substituto é emitido
+            para a caixa nova e mostrado na tela seguinte, para você enviar ao contato. As remessas
+            já recebidas não são afetadas.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex flex-col gap-3">
+          <div className="text-sm text-texto-2">
+            E-mail atual: <span className="font-mono text-texto-1">{contabilidade?.email}</span>
+          </div>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-texto-2">Novo e-mail</span>
+            <input
+              type="email"
+              value={novo}
+              autoFocus
+              onChange={(e) => setNovo(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && novo.trim() && void confirmar()}
+              placeholder="contato@escritorio.com.br"
+              className="rounded-md border border-borda bg-fundo-1 px-3 py-2 font-mono text-sm text-texto-1"
+            />
+          </label>
+          {erro && <p className="text-sm text-estado-erro">{erro}</p>}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={alterar.isPending}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => void confirmar()}
+            disabled={alterar.isPending || !novo.trim() || novo.trim().toLowerCase() === contabilidade?.email}
+          >
+            {alterar.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+            Alterar e emitir novo link
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /** O link recém-emitido, logo depois da revogação — o passo que faltava. */
 export function LinkEmitidoDialog({
   emitido,

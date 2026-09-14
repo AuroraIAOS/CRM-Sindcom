@@ -10,19 +10,20 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
-import { BellOff, ChevronDown, ChevronUp, Download, Link2, Loader2, ShieldAlert } from "lucide-react";
+import { BellOff, ChevronDown, ChevronUp, Download, Link2, Loader2, Mail, ShieldAlert } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { mensagemErro } from "@/lib/mensagens";
 import { formatarDataBR } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
 import { exportarCsv, type ColunaCsv } from "@/lib/csv";
 import { FiltrosCobertura } from "./FiltrosCobertura";
-import { LinkAtivoDialog, LinkEmitidoDialog } from "./DialogosLink";
+import { AlterarEmailDialog, LinkAtivoDialog, LinkEmitidoDialog } from "./DialogosLink";
 import {
   FILTRO_VAZIO,
   useCoberturaContabilidades,
   useLinkAtivo,
   usePendentesDaContabilidade,
+  useAlterarEmailContabilidade,
   useRevogarToken,
   type EstabelecimentoPendente,
   type FiltroCobertura,
@@ -91,6 +92,8 @@ export function CoberturaContabilidadesPage() {
   const cobertura = useCoberturaContabilidades();
   const [aberta, setAberta] = useState<string | null>(null);
   const [paraRevogar, setParaRevogar] = useState<LinhaCobertura | null>(null);
+  const [paraAlterarEmail, setParaAlterarEmail] = useState<LinhaCobertura | null>(null);
+  const alterarEmail = useAlterarEmailContabilidade();
   const [verLinkDe, setVerLinkDe] = useState<LinhaCobertura | null>(null);
   // O link recém-emitido, mostrado LOGO DEPOIS de revogar. Sem esta tela, a
   // revogação deixaria o contador sem link nenhum na prática — o novo existiria
@@ -257,6 +260,10 @@ export function CoberturaContabilidadesPage() {
                             <Link2 className="h-4 w-4" />
                             Link ativo
                           </Button>
+                          <Button variant="outline" size="sm" onClick={() => setParaAlterarEmail(l)}>
+                            <Mail className="h-4 w-4" />
+                            Alterar e-mail
+                          </Button>
                           <Button variant="outline" size="sm" onClick={() => setParaRevogar(l)}>
                             <ShieldAlert className="h-4 w-4" />
                             Revogar token
@@ -290,6 +297,13 @@ export function CoberturaContabilidadesPage() {
         contabilidade={paraRevogar}
         onOpenChange={(open) => !open && setParaRevogar(null)}
         onEmitido={(contabilidade, link) => setEmitido({ nome: contabilidade.nome, link })}
+      />
+
+      <AlterarEmailDialog
+        contabilidade={paraAlterarEmail}
+        onOpenChange={(open) => !open && setParaAlterarEmail(null)}
+        onEmitido={(nome, link) => setEmitido({ nome, link })}
+        alterar={alterarEmail}
       />
 
       <LinkAtivoDialog

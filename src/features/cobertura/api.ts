@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -313,8 +314,12 @@ export function useLinkAtivoEmpresa(estabelecimentoId: string | null) {
  * destinatário fica sem link ativo até alguém repetir a ação — janela pequena,
  * aceitável numa ação manual e rara de Admin, e sinalizada em vez de escondida.
  */
-async function revogarEEmitir(alvo: AlvoEnvio): Promise<LinkAtivo> {
-  const { data: ativo, error: erroBusca } = await supabase
+async function revogarEEmitir(
+  alvo: AlvoEnvio,
+  emailNovo?: string,
+  cliente: SupabaseClient = supabase,
+): Promise<LinkAtivo> {
+  const { data: ativo, error: erroBusca } = await cliente
     .from("envios_campanha")
     .select("id, campanha_id, contabilidade_id, estabelecimento_id, email")
     .eq(alvo.coluna, alvo.id)
@@ -325,7 +330,7 @@ async function revogarEEmitir(alvo: AlvoEnvio): Promise<LinkAtivo> {
   if (erroBusca) throw erroBusca;
   if (!ativo) throw new Error("Nenhum link ativo encontrado para este destinatário.");
 
-  const { data: revogado, error: erroRevoga } = await supabase
+  const { data: revogado, error: erroRevoga } = await cliente
     .from("envios_campanha")
     .update({ token_revogado_em: new Date().toISOString() })
     .eq("id", ativo.id as string)
@@ -336,13 +341,16 @@ async function revogarEEmitir(alvo: AlvoEnvio): Promise<LinkAtivo> {
     throw new Error("Sem permissão para revogar este link (restrito ao Admin e à Secretaria).");
   }
 
-  const { data: novo, error: erroNovo } = await supabase
+  const { data: novo, error: erroNovo } = await cliente
     .from("envios_campanha")
     .insert({
       campanha_id: ativo.campanha_id,
       contabilidade_id: ativo.contabilidade_id,
       estabelecimento_id: ativo.estabelecimento_id,
-      email: ativo.email,
+      // O envio novo nasce com o e-mail NOVO quando a reemissão veio de uma
+      // troca de endereço — senão o link seria emitido para a caixa que a
+      // contabilidade acabou de dizer que não usa mais.
+      email: emailNovo ?? ativo.email,
     })
     .select("id")
     .single();
@@ -351,7 +359,7 @@ async function revogarEEmitir(alvo: AlvoEnvio): Promise<LinkAtivo> {
   // O valor do token vem da view mascarada, nunca do `insert().select()` na
   // tabela crua — assim a regra de quem enxerga a credencial continua sendo do
   // banco, e a guarda de código desta feature continua valendo.
-  const { data: emitido, error: erroLeitura } = await supabase
+  const { data: emitido, error: erroLeitura } = await cliente
     .from("v_envios_campanha_mascarada")
     .select("id, token, token_expira_em, created_at")
     .eq("id", novo.id as string)
@@ -372,6 +380,87 @@ export function useRevogarToken() {
   return useMutation<LinkAtivo, Error, string>({
     mutationFn: (contabilidadeId: string) =>
       revogarEEmitir({ coluna: "contabilidade_id", id: contabilidadeId }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["cobertura"] });
+    },
+  });
+}
+
+/** Formato conservador, igual ao da higienização: recusa só o indefensável. */
+const EMAIL_VALIDO = /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i;
+
+/**
+ * TROCAR O E-MAIL DE UMA CONTABILIDADE E REEMITIR O LINK (Subetapa 9.2).
+ *
+ * POR QUE AS DUAS COISAS SÃO UMA SÓ AÇÃO, e não dois botões
+ * A contabilidade avisa que mudou de caixa. Se só o cadastro fosse atualizado,
+ * o link que ela tem continuaria apontando para o envio antigo — e o próximo
+ * disparo iria para o endereço velho, porque o CSV é montado a partir de
+ * `envios_campanha`, não do cadastro. Trocar sem reemitir seria consertar o que
+ * se vê e deixar quebrado o que funciona.
+ *
+ * A ORDEM IMPORTA, e é esta:
+ *   1. valida o formato                  — erro aqui não toca em nada
+ *   2. recusa e-mail já usado por OUTRO envio ativo (ver abaixo)
+ *   3. grava no cadastro                 — se o `unique` do banco reclamar,
+ *                                          nada mais aconteceu ainda
+ *   4. revoga o link antigo e emite o novo COM o endereço novo
+ *
+ * A GUARDA DO PASSO 2 CUSTOU CARO PARA SER APRENDIDA (2026-09-10): a Brevo
+ * FUNDE contato por e-mail na importação. Dois envios ativos com o mesmo
+ * endereço viram um contato só, e o `link` de um deles desaparece — sem erro,
+ * sem aviso, e o destinatário fica sem caminho de envio sem ninguém perceber.
+ * Por isso a troca é recusada aqui, com o motivo escrito, em vez de produzir um
+ * CSV que a exportação vai rejeitar depois.
+ */
+export async function alterarEmailEReemitir(
+  contabilidadeId: string,
+  emailNovo: string,
+  /** Parâmetro para o teste usar a sessão DELE — o cliente global é o padrão,
+   *  mesmo desenho de `importarTrabalhadores` (features/importacao/api.ts). */
+  cliente: SupabaseClient = supabase,
+): Promise<LinkAtivo> {
+  // O banco normaliza por trigger (`trg_contabilidades_normaliza`); fazer o
+  // mesmo aqui evita que a comparação da guarda abaixo passe por engano.
+  const email = emailNovo.trim().toLowerCase();
+  if (!EMAIL_VALIDO.test(email)) {
+    throw new Error("E-mail inválido. Confira o endereço informado pela contabilidade.");
+  }
+
+  const { data: emUso, error: erroBusca } = await cliente
+    .from("envios_campanha")
+    .select("id, contabilidade_id, estabelecimento_id")
+    .eq("email", email)
+    .is("token_revogado_em", null)
+    .is("descadastrado_em", null);
+  if (erroBusca) throw erroBusca;
+  const conflito = (emUso ?? []).filter((e) => e.contabilidade_id !== contabilidadeId);
+  if (conflito.length > 0) {
+    throw new Error(
+      `Já existe um link ativo para ${email} em outro destinatário. ` +
+        "Dois links para a mesma caixa fazem a Brevo fundir os contatos e um deles se perde — " +
+        "revogue o outro antes, ou use um endereço diferente.",
+    );
+  }
+
+  const { data: gravado, error: erroUpdate } = await cliente
+    .from("contabilidades")
+    .update({ email })
+    .eq("id", contabilidadeId)
+    .select("id");
+  if (erroUpdate) throw erroUpdate;
+  // UPDATE barrado por RLS não dá erro — afeta zero linhas (§2.6d).
+  if (!gravado || gravado.length === 0) {
+    throw new Error("Sem permissão para alterar o e-mail (restrito ao Admin e à Secretaria).");
+  }
+
+  return revogarEEmitir({ coluna: "contabilidade_id", id: contabilidadeId }, email, cliente);
+}
+
+export function useAlterarEmailContabilidade() {
+  const queryClient = useQueryClient();
+  return useMutation<LinkAtivo, Error, { contabilidadeId: string; emailNovo: string }>({
+    mutationFn: ({ contabilidadeId, emailNovo }) => alterarEmailEReemitir(contabilidadeId, emailNovo),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["cobertura"] });
     },

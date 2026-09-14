@@ -3,6 +3,7 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { loginComo, ehErroRls, type Role } from "./helpers";
+import { alterarEmailEReemitir } from "../../src/features/cobertura/api";
 
 /**
  * Subetapa 08.11 — cobertura por contabilidade e revogação de token.
@@ -25,6 +26,22 @@ import { loginComo, ehErroRls, type Role } from "./helpers";
 
 const PAPEIS: Role[] = ["admin", "presidente", "secretaria", "juridico", "parceiro"];
 const clientes: Record<Role, SupabaseClient> = {} as never;
+
+/**
+ * `montarLink` (features/cobertura/api.ts) usa `window.location.origin`, e isso
+ * é DELIBERADO: o link copiado tem de apontar para o ambiente em que a tela
+ * está aberta, nunca para uma URL cravada no código. A suíte roda em `node`,
+ * onde `window` não existe.
+ *
+ * A saída é estabelecer a origem AQUI, no teste, em vez de pôr um fallback no
+ * código de produção — um fallback silencioso devolveria um link com o domínio
+ * errado no dia em que `window` faltasse por outro motivo, e um link errado é
+ * pior que um erro, porque chega ao destinatário e ninguém consegue
+ * diagnosticá-lo do outro lado da linha.
+ */
+if (typeof globalThis.window === "undefined") {
+  (globalThis as { window?: unknown }).window = { location: { origin: "https://crm.teste.local" } };
+}
 
 beforeAll(async () => {
   for (const p of PAPEIS) clientes[p] = (await loginComo(p)).client;
@@ -383,6 +400,99 @@ describe("9.1 + 9.2 · revogar emite um substituto, e quem atende consegue entre
       .select("id");
     expect(error).toBeNull();
     expect((data ?? []).length, "o Presidente não deveria revogar").toBe(0);
+  }, 30_000);
+
+  /**
+   * TROCAR O E-MAIL DA CONTABILIDADE E REEMITIR O LINK (Subetapa 9.2).
+   *
+   * A função testada é a REAL, a mesma que a tela chama — não uma
+   * reimplementação. Se a tela e o teste divergirem, é porque alguém forkou, e é
+   * isso que se quer impedir (mesmo critério de `importarTrabalhadores` em
+   * remessas.spec.ts).
+   */
+  it("9.2 · trocar o e-mail atualiza o cadastro E emite link novo PARA O ENDEREÇO NOVO", async () => {
+    if (!contabilidadeId) return;
+    const novoEmail = `trocado.${Date.now()}@teste.local`;
+
+    const link = await alterarEmailEReemitir(contabilidadeId, novoEmail, clientes.secretaria);
+    expect(link.link, "a troca não devolveu o link substituto — reemitir sem entregar não é reemitir").toBeTruthy();
+    if (link.envioId) enviosCriados.push(link.envioId);
+
+    // Efeito observável nos DOIS lugares (§7.2): cadastro e envio.
+    const { data: cadastro } = await clientes.admin
+      .from("contabilidades")
+      .select("email")
+      .eq("id", contabilidadeId)
+      .maybeSingle();
+    expect(cadastro?.email, "o cadastro não foi atualizado").toBe(novoEmail);
+
+    const { data: ativos } = await clientes.admin
+      .from("envios_campanha")
+      .select("email")
+      .eq("contabilidade_id", contabilidadeId)
+      .is("token_revogado_em", null);
+    expect((ativos ?? []).length, "deveria sobrar exatamente um link ativo").toBe(1);
+    expect(
+      ativos![0].email,
+      "o link novo nasceu com o e-mail ANTIGO — o próximo disparo iria para a caixa que a contabilidade abandonou",
+    ).toBe(novoEmail);
+  }, 30_000);
+
+  /**
+   * A guarda que custou caro para ser aprendida (2026-09-10): a Brevo FUNDE
+   * contato por e-mail na importação. Dois envios ativos com o mesmo endereço
+   * viram um contato só e um dos links some — sem erro e sem aviso.
+   */
+  it("9.2 · recusa e-mail que já tem link ativo em OUTRO destinatário", async () => {
+    if (!contabilidadeId) return;
+    const { data: outro } = await clientes.admin
+      .from("envios_campanha")
+      .select("email")
+      .neq("contabilidade_id", contabilidadeId)
+      .is("token_revogado_em", null)
+      .is("descadastrado_em", null)
+      .limit(1)
+      .maybeSingle();
+    if (!outro) return; // base sem outro envio ativo — nada com que colidir
+
+    await expect(
+      alterarEmailEReemitir(contabilidadeId, outro.email as string, clientes.secretaria),
+    ).rejects.toThrow(/já existe um link ativo/i);
+
+    // E a recusa tem de ser TOTAL: nada pode ter sido gravado pelo caminho.
+    const { data: cadastro } = await clientes.admin
+      .from("contabilidades")
+      .select("email")
+      .eq("id", contabilidadeId)
+      .maybeSingle();
+    expect(cadastro?.email, "o cadastro foi alterado mesmo com a troca recusada").not.toBe(outro.email);
+  }, 30_000);
+
+  it("9.2 · e-mail malformado é recusado antes de tocar em qualquer tabela", async () => {
+    if (!contabilidadeId) return;
+    const { data: antes } = await clientes.admin
+      .from("contabilidades")
+      .select("email")
+      .eq("id", contabilidadeId)
+      .maybeSingle();
+
+    await expect(alterarEmailEReemitir(contabilidadeId, "sem-arroba", clientes.secretaria)).rejects.toThrow(
+      /inválido/i,
+    );
+
+    const { data: depois } = await clientes.admin
+      .from("contabilidades")
+      .select("email")
+      .eq("id", contabilidadeId)
+      .maybeSingle();
+    expect(depois?.email).toBe(antes?.email);
+  }, 30_000);
+
+  it("9.2 · o Presidente não troca o e-mail — RLS, não só UI", async () => {
+    if (!contabilidadeId) return;
+    await expect(
+      alterarEmailEReemitir(contabilidadeId, `presidente.${Date.now()}@teste.local`, clientes.presidente),
+    ).rejects.toThrow(/sem permissão/i);
   }, 30_000);
 
   it("9.2 · jurídico e parceiro nem enxergam a linha para tentar", async () => {
