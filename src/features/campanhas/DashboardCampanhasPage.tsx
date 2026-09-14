@@ -9,15 +9,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { AlertTriangle, ExternalLink, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, Download, ExternalLink, Loader2, RefreshCw } from "lucide-react";
 import { formatarDataBR } from "@/lib/formatters";
 import { cn } from "@/lib/utils";
+import { exportarCsv, type ColunaCsv } from "@/lib/csv";
 import {
+  ACAO_POR_TIPO,
   ehCampanhaDeTeste,
   taxa,
   useFunilCampanha,
   useKpisBrevo,
+  useRejeicoes,
   type CampanhaBrevo,
+  type RejeicaoContato,
 } from "./api";
 
 /**
@@ -320,9 +324,155 @@ export function DashboardCampanhasPage() {
           </>
         )}
       </section>
+
+      <SecaoRejeicoes />
     </div>
   );
 }
+
+/**
+ * REJEIÇÕES — quem não recebeu, e por onde mais falar com essa pessoa
+ * (Subetapa 9.2, pedido do Maxwell em 2026-09-14).
+ *
+ * ESTA SEÇÃO NÃO É UM RELATÓRIO, É UMA LISTA DE TRABALHO. Por isso ela mostra
+ * TELEFONE e município ao lado do e-mail: a razão de existir é iniciar a
+ * abordagem por outra via — SMS, ligação, carta, visita. Uma tabela só com
+ * endereços rejeitados informaria e não permitiria agir.
+ *
+ * A ordem das colunas segue a ordem de uso: quem é → como falo → por que não
+ * chegou. E o tipo aparece traduzido em AÇÃO ("não reenviar", "vale tentar de
+ * novo"), porque `hard`/`soft` é vocabulário de ESP, não do sindicato.
+ */
+function SecaoRejeicoes() {
+  const rejeicoes = useRejeicoes();
+  const [busca, setBusca] = useState("");
+
+  const linhas = (rejeicoes.data ?? []).filter((r) => {
+    const t = busca.trim().toLowerCase();
+    if (!t) return true;
+    return [r.email, r.nome, r.cnpj, r.telefone, r.municipio].some((c) => (c ?? "").toLowerCase().includes(t));
+  });
+
+  const semTelefone = linhas.filter((r) => !r.telefone).length;
+  const definitivas = linhas.filter((r) => r.tipo !== "soft").length;
+
+  return (
+    <section className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 className="text-sm font-bold uppercase tracking-wide text-texto-2">
+          Rejeições — para contatar por outra via
+        </h2>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={linhas.length === 0}
+          onClick={() => exportarCsv("rejeicoes-para-contato", linhas, COLUNAS_CSV_REJEICOES)}
+        >
+          <Download className="h-3.5 w-3.5" />
+          Exportar CSV
+        </Button>
+      </div>
+
+      {rejeicoes.isLoading && (
+        <div className="flex items-center gap-2 text-texto-2">
+          <Loader2 className="h-4 w-4 animate-spin" /> Carregando…
+        </div>
+      )}
+      {rejeicoes.isError && (
+        <Card className="border-estado-erro/30 bg-estado-erro/5 p-4 text-sm text-estado-erro">
+          {(rejeicoes.error as Error).message}
+        </Card>
+      )}
+
+      {rejeicoes.data && rejeicoes.data.length === 0 && (
+        <Card className="p-4 text-sm text-texto-2">
+          Nenhuma rejeição registrada. Esta lista se preenche sozinha conforme a Brevo avisa que uma
+          caixa recusou a mensagem — e só passa a ter conteúdo depois que a primeira onda sair.
+        </Card>
+      )}
+
+      {rejeicoes.data && rejeicoes.data.length > 0 && (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Tile titulo="Rejeições" valor={linhas.length} />
+            <Tile
+              titulo="Sem retorno por e-mail"
+              valor={definitivas}
+              destaque={definitivas > 0 ? "alerta" : undefined}
+              rodape="não adianta reenviar"
+            />
+            <Tile
+              titulo="Sem telefone no cadastro"
+              valor={semTelefone}
+              destaque={semTelefone > 0 ? "alerta" : undefined}
+              rodape="carta ou visita"
+            />
+          </div>
+
+          <input
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+            placeholder="Buscar por e-mail, nome, CNPJ, telefone ou município"
+            className="w-full max-w-md rounded-md border border-borda bg-fundo-1 px-3 py-2 text-sm text-texto-1"
+          />
+
+          <Card className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Quem</TableHead>
+                  <TableHead>Telefone</TableHead>
+                  <TableHead>E-mail recusado</TableHead>
+                  <TableHead>O que fazer</TableHead>
+                  <TableHead>Quando</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {linhas.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell>
+                      <div className="text-texto-1">{r.nome ?? "(fora da base)"}</div>
+                      <div className="text-xs text-texto-2">
+                        {[r.cnpj, r.municipio].filter(Boolean).join(" · ") || "sem cadastro vinculado"}
+                      </div>
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap font-mono text-sm">
+                      {r.telefone ?? <span className="text-estado-alerta">sem telefone</span>}
+                    </TableCell>
+                    <TableCell className="text-texto-2">{r.email}</TableCell>
+                    <TableCell>
+                      <div className="text-texto-1">{ACAO_POR_TIPO[r.tipo].rotulo}</div>
+                      <div className="text-xs text-texto-2">{ACAO_POR_TIPO[r.tipo].acao}</div>
+                      {r.motivo && <div className="text-xs text-texto-2 italic">"{r.motivo}"</div>}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-sm text-texto-2">
+                      {formatarDataBR(r.ocorridoEm)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </>
+      )}
+    </section>
+  );
+}
+
+/** §4.4: a exportação leva o que está NA TELA — quem vai ligar precisa da lista
+ *  no papel, com o telefone e o motivo junto. */
+const COLUNAS_CSV_REJEICOES: ColunaCsv<RejeicaoContato>[] = [
+  { titulo: "Nome", valor: (r) => r.nome ?? "" },
+  { titulo: "CNPJ", valor: (r) => r.cnpj ?? "" },
+  { titulo: "Município", valor: (r) => r.municipio ?? "" },
+  { titulo: "Telefone", valor: (r) => r.telefone ?? "" },
+  { titulo: "E-mail recusado", valor: (r) => r.email },
+  { titulo: "Situação", valor: (r) => ACAO_POR_TIPO[r.tipo].rotulo },
+  { titulo: "O que fazer", valor: (r) => ACAO_POR_TIPO[r.tipo].acao },
+  { titulo: "Motivo do provedor", valor: (r) => r.motivo ?? "" },
+  { titulo: "Quando", valor: (r) => formatarDataBR(r.ocorridoEm) },
+  { titulo: "Campanha", valor: (r) => r.campanha ?? "" },
+];
 
 /** O consolidado das campanhas listadas — a leitura que decide se a onda seguinte sai. */
 function ResumoBrevo({ campanhas }: { campanhas: CampanhaBrevo[] }) {

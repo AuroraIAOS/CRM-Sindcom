@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -166,6 +167,85 @@ export function useKpisBrevo() {
         };
       }
       return data as RespostaBrevo;
+    },
+  });
+}
+
+/**
+ * REJEIÇÕES — a lista de quem NÃO recebeu, com o que a abordagem por outra via
+ * exige (Subetapa 9.2).
+ *
+ * POR QUE VEM DO SUPABASE E NÃO DA BREVO, sendo um dado do ESP
+ * A API da Brevo devolve, no relatório de campanha, apenas o TOTAL de
+ * `hardBounces`/`softBounces`. Para a lista nominal existe
+ * `POST /v3/emailCampaigns/{id}/exportRecipients`, que é assíncrono (devolve um
+ * `processId`, exige polling, entrega um CSV) e traz só o endereço, sem motivo.
+ *
+ * E mesmo que fosse síncrono, não responderia a pergunta que este painel
+ * existe para responder. A pergunta não é "quantos rejeitaram" — é **"para quem
+ * eu ligo amanhã"**, e isso exige cruzar o endereço com razão social, CNPJ,
+ * TELEFONE e município, que só existem dentro do CRM. Um e-mail solto numa
+ * exportação do ESP não inicia abordagem nenhuma.
+ *
+ * Então o evento chega por webhook e é gravado, como já se faz com o
+ * descadastro desde a 9.00; a view `v_rejeicoes_para_contato` faz a junção.
+ */
+export type RejeicaoContato = {
+  id: string;
+  email: string;
+  tipo: "hard" | "soft" | "bloqueado" | "spam";
+  motivo: string | null;
+  ocorridoEm: string;
+  campanha: string | null;
+  nome: string | null;
+  cnpj: string | null;
+  telefone: string | null;
+  municipio: string | null;
+  temEnvio: boolean;
+};
+
+/** O que cada tipo PEDE — a coluna existe para virar decisão, não rótulo. */
+export const ACAO_POR_TIPO: Record<RejeicaoContato["tipo"], { rotulo: string; acao: string }> = {
+  hard: { rotulo: "Caixa inexistente", acao: "Não reenviar. Telefone, carta ou visita." },
+  soft: { rotulo: "Falha temporária", acao: "Caixa cheia ou servidor fora. Vale tentar de novo antes de ligar." },
+  bloqueado: { rotulo: "Remetente bloqueado", acao: "Insistir por e-mail piora a reputação do domínio. Outro canal." },
+  spam: { rotulo: "Marcou como spam", acao: "Nunca reenviar. Rever a copy antes da onda seguinte." },
+};
+
+export function useRejeicoes() {
+  return useQuery<RejeicaoContato[]>({
+    queryKey: ["campanhas", "rejeicoes"],
+    queryFn: async () => {
+      /**
+       * O cast existe porque `database.types.ts` ainda não conhece esta view: o
+       * MCP do Supabase perdeu o acesso a este projeto no meio da sessão, e a
+       * regeneração dos tipos passa por lá. A view existe e está conferida no
+       * banco (sql/31); o que falta é só o arquivo de tipos.
+       *
+       * REMOVER ESTE CAST na próxima regeneração — ele é dívida declarada, não
+       * solução. Enquanto estiver aqui, as colunas abaixo não são verificadas
+       * pelo compilador, então uma renomeação na view passaria batida até a
+       * tela ficar vazia.
+       */
+      const { data, error } = await (supabase as unknown as SupabaseClient)
+        .from("v_rejeicoes_para_contato")
+        .select("id, email, tipo, motivo, ocorrido_em, campanha, nome, cnpj_completo, telefone, municipio, tem_envio")
+        .order("ocorrido_em", { ascending: false })
+        .limit(1000); // §2.4: o PostgREST trunca em 1000 sem avisar — melhor pedir o teto de propósito
+      if (error) throw error;
+      return (data ?? []).map((r) => ({
+        id: r.id as string,
+        email: r.email as string,
+        tipo: r.tipo as RejeicaoContato["tipo"],
+        motivo: (r.motivo as string | null) ?? null,
+        ocorridoEm: r.ocorrido_em as string,
+        campanha: (r.campanha as string | null) ?? null,
+        nome: (r.nome as string | null) ?? null,
+        cnpj: (r.cnpj_completo as string | null) ?? null,
+        telefone: (r.telefone as string | null) ?? null,
+        municipio: (r.municipio as string | null) ?? null,
+        temEnvio: !!r.tem_envio,
+      }));
     },
   });
 }
