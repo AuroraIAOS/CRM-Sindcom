@@ -2264,8 +2264,34 @@ Se esgotar: parar o agendamento no ESP e relatar. **Onda 2 não sai com a onda 1
 >   Medido depois, sem escrever nada: `OPTIONS` → 204 (a função sobe), `GET` sem token →
 >   `Link inválido.` (o caminho de saída segue intacto), `POST ?fonte=brevo` com chave errada → 401
 >   (o ramo novo está vivo e guardado). `verify_jwt: false` preservado.
->   **Falta ligar `hard_bounce` e `soft_bounce` no webhook, no painel da Brevo** — até lá a função
->   sabe tratá-los, mas a Brevo não os envia.
+>   Os eventos foram marcados no painel em 2026-09-15 pelo Maxwell — ver a ressalva abaixo.
+>
+> - **Prova de ponta a ponta do despacho, 2026-09-15** (com o segredo do webhook, lido de
+>   `.env.n8n.test` e nunca impresso). Seis passos, todos verdes:
+>   1. evento **desconhecido** (`delivered`) → `{"tratado":"ignorado"}` e **zero** linhas gravadas.
+>      É esta a prova de que a mina saiu: antes, este mesmo POST teria virado descadastro.
+>   2. `hard_bounce` → `{"tratado":"rejeicao","tipo":"hard","gravou":true}`, 1 linha.
+>   3. o **mesmo** evento repetido → continua **1 linha**. A idempotência do webhook funciona; a
+>      Brevo repete a entrega quando não recebe 2xx, e sem isso a lista mandaria telefonar duas
+>      vezes para a mesma pessoa.
+>   4. `soft_bounce` no MESMO instante → **2 linhas**. O tipo faz parte da chave, então é evento
+>      novo — e tem de ser: a mesma caixa pode falhar de dois jeitos diferentes.
+>   5. a view devolveu `situacao = 'fora da base'`, com motivo do provedor e nome da campanha; e
+>      `ocorrido_em` veio do `ts_event` enviado (19:20:00Z), **não** do `now()` do registro — que é
+>      exatamente o que a chave de idempotência exige.
+>   6. limpeza: 2 linhas apagadas, tabela de volta a **0**.
+>
+> - **NÃO CONFERIDO — os eventos no painel da Brevo.** O Maxwell marcou `hard_bounce` e
+>   `soft_bounce` em 2026-09-15, mas o cartão do webhook continua exibindo *"Última edição
+>   04/09/2026"*. Não sei dizer se a Brevo simplesmente não atualiza esse campo para mudança de
+>   evento, ou se a marcação não chegou a ser salva — a tela de edição (`/webhooks/outbound/update/…`)
+>   não renderiza sob automação e não há API interna alcançável pela sessão do navegador. **Fica
+>   aberto até alguém reabrir o webhook e confirmar visualmente.** O lado do CRM está provado; o que
+>   falta confirmar é se a Brevo vai ENVIAR.
+>
+> - **A rejeição da Onda-Lote 01/01 (11/09) não volta.** A Brevo não reenvia eventos passados: o
+>   webhook só recebe o que acontece depois de estar ligado. Aquele 1 bounce só é recuperável
+>   manualmente, pelo relatório da campanha no painel da Brevo.
 
 ### Subetapa 9.3 — Onda 02: as 248 contabilidades médias [Manual] [LLM: Sonnet] · Status: ⬜
 Objetivo: 248 envios, 2.189 estabelecimentos, levando o alcance acumulado a 38%.
