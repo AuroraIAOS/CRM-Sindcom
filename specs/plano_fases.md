@@ -2245,14 +2245,27 @@ Se esgotar: parar o agendamento no ESP e relatar. **Onda 2 não sai com a onda 1
 >   `linhas_na_tabela = 0`, `authenticated = SELECT` apenas, `anon` sem grant, 1 policy,
 >   `security_invoker=on`, 16 colunas.
 > - **`database.types.ts` regenerado** e o cast de dívida declarada removido de `useRejeicoes`.
-> - **PENDENTE, e é o que falta para o painel encher:** a Edge Function `descadastrar` estendida
->   para despachar o webhook da Brevo **por tipo de evento**. Hoje aquele ramo trata QUALQUER evento
->   como descadastro — foi por isso que todos os outros eventos tiveram de ser desligados um a um no
->   painel da Brevo, e basta marcar uma caixa a mais lá para a base começar a se descadastrar
->   sozinha. O código está escrito, com sintaxe validada e **hash conferido** (SHA-256
->   `724cfb56…c6d0`, 24.948 bytes), carregado no editor de Edge Functions do painel — falta só o
->   clique em **"Deploy updates"**, que não responde a automação (§2.32). Depois do deploy, ligar
->   `hard_bounce` e `soft_bounce` no MESMO webhook que já existe; não é preciso criar outro.
+> - **Edge Function publicada em 2026-09-15 (version 5).** `descadastrar` passou a despachar o
+>   webhook da Brevo **por tipo de evento**. Antes, aquele ramo tratava QUALQUER evento como
+>   descadastro — foi por isso que todos os outros eventos tiveram de ser desligados um a um no
+>   painel da Brevo, e bastava marcar uma caixa a mais lá para a base começar a se descadastrar
+>   sozinha, sem erro nenhum aparecendo. O despacho desarma essa mina E entrega a 9.2 no MESMO
+>   endpoint: `hard_bounce` e `soft_bounce` podem ser ligados no webhook que já existe.
+>   **Decisões do despacho:** `invalid_email` entra como `hard` (mesma ação: não reenviar nunca);
+>   `deferred` ficou DE FORA de propósito (é adiamento com nova tentativa, e a maioria termina
+>   entregue — o que não se resolve vira `soft_bounce`, e esse nós pegamos); evento **vazio** cai no
+>   ramo de descadastro, porque o webhook em produção foi criado só com esse evento e engolir um
+>   descadastro é o pior desfecho possível deste arquivo; evento desconhecido responde **200 e não
+>   faz nada** (200 porque a Brevo repete a entrega quando não recebe 2xx).
+>   **Rejeição NÃO descadastra:** são fatos diferentes, e tratar um como o outro apagaria do painel
+>   exatamente as pessoas que precisam ser procuradas por telefone.
+>   Publicado pelo editor do painel (o `deploy_edge_function` do MCP foi barrado, e o botão não
+>   responde a automação — §2.32); o conteúdo foi conferido por **SHA-256** antes do clique.
+>   Medido depois, sem escrever nada: `OPTIONS` → 204 (a função sobe), `GET` sem token →
+>   `Link inválido.` (o caminho de saída segue intacto), `POST ?fonte=brevo` com chave errada → 401
+>   (o ramo novo está vivo e guardado). `verify_jwt: false` preservado.
+>   **Falta ligar `hard_bounce` e `soft_bounce` no webhook, no painel da Brevo** — até lá a função
+>   sabe tratá-los, mas a Brevo não os envia.
 
 ### Subetapa 9.3 — Onda 02: as 248 contabilidades médias [Manual] [LLM: Sonnet] · Status: ⬜
 Objetivo: 248 envios, 2.189 estabelecimentos, levando o alcance acumulado a 38%.
