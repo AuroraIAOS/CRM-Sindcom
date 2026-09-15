@@ -2500,6 +2500,44 @@ Math.max(doc.documentElement.scrollWidth, doc.body.scrollWidth) > largura   // t
 mensagem precisa para ser legível tem de estar no inline; a media query só refina. E o teste que
 prova isso é o de remover o `<style>` — não o de abrir no navegador, onde ele sempre sobrevive.
 
+### 3.10 Os webhooks da Brevo MUDARAM de lugar — hoje vivem em "Plug-ins e integrações"
+
+**(a) Problema.** Em 2026-09-15 nem o Maxwell nem eu achamos onde ligar `hard_bounce` e
+`soft_bounce`. Os caminhos "óbvios" respondem página de erro:
+
+```
+https://app.brevo.com/webhook/list       -> "Não foi possível exibir esta página"
+https://app.brevo.com/settings/webhook   -> "Ocorreu um problema"
+```
+
+E não há link com "webhook" no menu principal nem em `/settings` — a busca por `a[href*=webhook]`
+devolve lista vazia, porque os itens do menu são `div`, não âncora.
+
+**(b) Solução.** O caminho real, verificado:
+
+**Configurações » (seção Marketing) Campanhas » cartão "Webhooks" » Configurar**
+
+que leva a **`https://app.brevo.com/app-store/webhooks`**, aba **Webhooks**. A própria Brevo avisa
+lá: *"Seus webhooks existentes foram movidos para esta página."* O webhook do projeto é o
+`sindcom-descadastro-crm` (Ativo · Marketing).
+
+**(c) Como implantar.** Vá direto a `app.brevo.com/app-store/webhooks`. Duas armadilhas de
+automação que vêm junto, e que valem a pena saber antes de tentar:
+
+1. **A tela de edição não renderiza sob automação.** Clicar no cartão muda a URL para
+   `/webhooks/outbound/update/<id>`, mas o `body` fica com ~26 caracteres e zero `input` — e
+   navegar direto para essa URL também não pinta nada. É rota de SPA que só monta a partir da
+   lista, com gesto real. **Peça o clique.**
+2. **A credencial do webhook mora DENTRO da URL configurada** (`…?fonte=brevo&chave=<segredo>`).
+   Então essa tela é uma tela de segredo: não tire screenshot dela, não leia o `innerText` sem
+   máscara, e não peça para colarem a URL no chat. O caminho limpo é o segredo ir para um `.env`
+   já ignorado pelo Git, e o código lê de lá.
+
+**Cuidado com "Última edição" como prova:** o cartão continuou exibindo `04/09/2026` depois de uma
+alteração de eventos feita no mesmo dia. Ou a Brevo não atualiza esse campo para esse tipo de
+mudança, ou a alteração não foi salva — o campo não distingue os dois casos, então **ele não serve
+como confirmação**. Confirme abrindo o webhook, ou pelo efeito (um evento real chegando).
+
 ## 4. Frontend e React
 
 ### 4.1 Falta de `key` faz o estado grudar entre entidades
