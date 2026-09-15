@@ -2113,6 +2113,106 @@ linha sumiu, nao o conteudo dela.
 ser a regra funcionando. Antes de conceder privilegio, pergunte **por que aquele papel nao tinha**;
 se a resposta for "porque so o servidor deveria escrever ali", o caminho e outro, nao o `grant`.
 
+### 2.31 `concat_ws` NUNCA devolve null — devolve `''`, e isso mata o `coalesce` que vem depois
+
+**(a) Problema.** Na view de rejeições (sql/32) o telefone era escolhido por preferência:
+
+```sql
+nullif(trim(coalesce(
+  c.telefone,                                                              -- da contabilidade
+  concat_ws(' ', nullif(est.ddd_1, ''), nullif(est.telefone_1, '')),       -- do estabelecimento
+  fone.telefone                                                            -- o mais repetido da carteira
+)), '') as telefone,
+```
+
+Numa rejeição de **contabilidade** (em que `est` é nulo, porque o envio não tem estabelecimento) a
+view devolvia, na MESMA linha:
+
+```
+telefone        = null
+telefone_origem = 'carteira'
+telefone_em_n_empresas = 19
+```
+
+Uma contradição: a view afirmava que havia um telefone da carteira e não o mostrava.
+
+**Causa.** `concat_ws` é a exceção da família: ele **ignora** os argumentos nulos e devolve string
+**vazia** quando todos são nulos — nunca `null`. Então o `coalesce` encontrava `''`, considerava
+"achei um valor", parava ali e **nunca chegava ao terceiro argumento**. O `nullif(..., '')` externo
+convertia esse `''` em `null` já tarde demais.
+
+**(b) Solução.** `nullif` em volta do `concat_ws`, e não só no fim da expressão:
+
+```sql
+nullif(trim(coalesce(
+  c.telefone,
+  nullif(concat_ws(' ', nullif(est.ddd_1, ''), nullif(est.telefone_1, '')), ''),
+  fone.telefone
+)), '') as telefone,
+```
+
+**(c) Como implantar.** Em toda cadeia `coalesce(..., concat_ws(...), ...)`, envolva o `concat_ws`
+em `nullif(..., '')`. Regra geral: **um `coalesce` só funciona se cada alternativa souber devolver
+`null`** — e `concat_ws`, `string_agg` com filtro vazio, `array_to_string` e `format` não sabem.
+
+**Regra transferível, e é ela que vale mais que o conserto:** o defeito só apareceu porque a
+conferência olhou **duas colunas juntas** (`telefone` e `telefone_origem`). Lendo só `telefone` eu
+teria visto um nulo plausível — contabilidade sem telefone é normal — e teria dado por correto.
+Sempre que a view tiver uma coluna que **explica** outra, confira as duas na mesma consulta: a
+contradição entre elas é um detector que nenhuma das duas sozinha oferece.
+
+### 2.32 Painel Supabase: o editor aceita `setValue`, o BOTÃO não aceita clique — publique só depois de conferir por hash
+
+**(a) Problema.** Três fricções distintas, que juntas parecem uma só ("a automação não funciona no
+painel"), e que têm causas e contornos diferentes:
+
+1. **Aba de SQL com edição não salva CONGELA o renderer.** O `beforeunload` do editor faz o
+   `navigate` ser recusado ("Leave site?") e, pior, faz `screenshot` e `Runtime.evaluate`
+   expirarem — a aba fica inútil e parece que a extensão quebrou. Não quebrou: é aquela aba.
+2. **`Run` do editor SQL não responde a clique por coordenada**, mas responde a **Ctrl+Enter** com
+   o foco dentro do editor.
+3. **`Deploy updates` do editor de Edge Function não responde a NADA por automação** — nem clique
+   por coordenada, nem `element.click()`, nem `KeyboardEvent` sintético. Medido em 2026-09-15:
+   `list_edge_functions` continuou devolvendo `version: 4` depois das três tentativas.
+
+**(b) Solução.**
+
+- Fricção 1: **abra uma aba nova** em vez de tentar recuperar a travada. A aba nova funciona
+  normalmente; a velha só será fechada pelo Maxwell.
+- Fricção 2: `setValue` no modelo do Monaco → clicar DENTRO do editor para dar foco → `Ctrl+Enter`.
+- Fricção 3: não há contorno. **Carregue o conteúdo e peça o clique** — é o que o `CLAUDE.md` já
+  previa para botões de painel.
+
+**(c) Como implantar — e a parte que não é opcional: conferir ANTES de pedir o clique.**
+
+Carregar 25 KB de código em Base64 pela automação é transcrição, e transcrição trunca em silêncio
+(aconteceu: um pedaço chegou com 2.244 de 5.544 caracteres, e nada acusou). Então:
+
+1. Prefira **montar sobre o que já está na página**: o editor já contém a versão publicada. Se ela
+   for idêntica ao `git HEAD` — confira o número de caracteres —, aplique ali as MESMAS
+   substituições que você fez localmente e transcreva só os blocos novos. No caso medido isso caiu
+   de 33 KB para 11 KB.
+2. **Confira por SHA-256 antes de publicar**, comparando com o arquivo local:
+
+```js
+// no navegador, depois de montar o conteúdo em `s`:
+const bytes = new TextEncoder().encode(s);
+const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
+  .map(b => b.toString(16).padStart(2, '0')).join('');
+```
+
+```bash
+# local, para comparar:
+node -e "const c=require('crypto'),f=require('fs');console.log(c.createHash('sha256').update(f.readFileSync(process.argv[1])).digest('hex'))" caminho/do/arquivo
+```
+
+3. Só depois `setValue` e peça o clique. **Confira o efeito pelo lado de fora** (`list_edge_functions`
+   → o `version` subiu?), nunca pela aparência da tela.
+
+**Regra transferível:** quando o canal de entrega é frágil, a integridade tem de ser verificada
+**no destino**, não presumida da origem. Um hash custa uma linha e transforma "acho que colei certo"
+em "é o mesmo arquivo".
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo
@@ -3472,3 +3572,45 @@ do §7.4 (cota de `signInWithPassword`) e do §2.6e (proteção de borda do Supa
 que nós mesmos escrevemos. **Regra transferível:** todo teste que exercita um rate limit é
 auto-interferente por construção; o intervalo entre execuções faz parte do procedimento, não é
 detalhe de ambiente.
+
+### 7.11 "A ferramenta falhou" NÃO é prova de que o efeito não aconteceu — confira o efeito
+
+**(a) Problema.** Na sessão de 2026-09-14 tentei semear uma linha de teste em `rejeicoes_campanha`
+pelo navegador. A chamada expirou (`CDP sendCommand "Runtime.evaluate" timed out`), a grade continuou
+mostrando o resultado anterior, e eu relatei ao Maxwell, textualmente, que **"o insert nunca rodou"**.
+
+No dia seguinte, ao listar a tabela pelo PostgREST, lá estava ela:
+
+```json
+{ "email": "dulceterra.s@bol.com.br", "tipo": "hard",
+  "campanha": "9.2 teste", "created_at": "2026-09-14T17:48:43.690054+00:00" }
+```
+
+O insert **rodou**. O que falhou foi só o canal que me traria a resposta — e eu tratei o silêncio do
+canal como silêncio do banco. O custo: um relatório errado, e uma linha de teste que ficou 21 horas
+em produção contrariando a regra de que dado de verificação sai no fim da própria subetapa.
+
+**(b) Solução.** Timeout, erro de transporte, aba congelada e sessão expirada dizem **"não sei o que
+aconteceu"**, nunca "não aconteceu nada". A diferença importa porque quase toda escrita é enviada
+antes de a resposta voltar. Depois de qualquer falha de canal numa operação que ESCREVE, a próxima
+ação é obrigatoriamente **medir o estado pelo outro lado**, por um caminho independente:
+
+```bash
+# o canal que falhou foi o navegador → meça pelo PostgREST, que não passa por ele
+curl -s "$URL/rest/v1/rejeicoes_campanha?select=id,email,created_at" \
+     -H "apikey: $CHAVE" -H "Authorization: Bearer $CHAVE"
+```
+
+**(c) Como implantar.** Três regras, e a terceira é a que fecha o buraco:
+
+1. **Nunca escreva "não rodou" sem ter medido.** O vocabulário honesto é "não sei se rodou" — e
+   então vá medir.
+2. **Meça por um canal diferente do que falhou.** Se o navegador travou, use REST/CLI/MCP; se o MCP
+   caiu, use REST. Repetir o canal quebrado não é medição.
+3. **Se a operação que falhou criava dado de verificação, a limpeza tem de rodar mesmo assim** — ela
+   é `delete` por critério (prefixo/campanha), então é inofensiva quando não há o que apagar. Rodar
+   a limpeza "à toa" custa um comando; não rodá-la deixou lixo em produção.
+
+**Regra transferível:** este é o §7.2 ("passou não é o mesmo que funcionou") no espelho — **"falhou"
+também não é o mesmo que "não fez"**. Os dois erros têm a mesma raiz: tomar o que a ferramenta
+*disse* pelo que o sistema *fez*. Só o efeito observado decide, nos dois sentidos.

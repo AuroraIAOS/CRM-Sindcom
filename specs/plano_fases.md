@@ -2201,6 +2201,58 @@ Se esgotar: parar o agendamento no ESP e relatar. **Onda 2 não sai com a onda 1
 > Vale reavaliar junto a migração das páginas do Elementor para HTML puro, que o Maxwell provisionou
 > para depois da ETAPA 09: menos peças móveis reescrevendo arquivo de configuração é menos
 > superfície para este mesmo defeito voltar.
+>
+> **(6) Trocar o e-mail da contabilidade, com token novo no mesmo ato (2026-09-14).** Pedido do
+> Maxwell: contabilidades vêm pedindo mudança de endereço, e havia onde editar o do estabelecimento,
+> mas não o da contabilidade — que costuma atender várias empresas. Entregue em
+> "Campanha » Cobertura por contabilidade" como `alterarEmailEReemitir()` +
+> `useAlterarEmailContabilidade()` (`src/features/cobertura/api.ts`) e o diálogo `AlterarEmailDialog`.
+> **A ordem das guardas é a decisão:** formato → colisão com envio ativo → `update` no cadastro com
+> checagem de zero linhas (RLS barra UPDATE sem erro, §2.6d) → só então revogar e reemitir. O token
+> novo nasce lastreado no endereço novo; o antigo é revogado, não apagado. Commit `7efab1f`.
+>
+> **(7) Painel de REJEIÇÕES — "para quem eu ligo amanhã de manhã" (2026-09-14/15).** Pedido do
+> Maxwell: ver, dentro da aba Dashboard das campanhas, os e-mails recusados no disparo, para começar
+> a abordagem por outra via (SMS, ligação, carta, visita).
+>
+> - **Por que tabela e não consulta à Brevo na hora:** o relatório da campanha só expõe o TOTAL de
+>   `hardBounces`/`softBounces`; a lista nominal sai por `exportRecipients`, que é assíncrono, exige
+>   polling, devolve CSV e **não traz o motivo**. E, sobretudo, um endereço solto não inicia
+>   abordagem nenhuma — o que inicia é nome + CNPJ + **telefone** + município, que só existem aqui.
+>   `sql/31_rejeicoes_campanha_09_02.sql`: tabela com `unique (email, tipo, ocorrido_em)` para a
+>   idempotência que todo webhook exige, RLS espelhando `descadastros_campanha` (leitura para quem
+>   toca campanha; escrita para ninguém autenticado — quem escreve é a Edge Function).
+> - **A view nasceu CEGA no grupo que mais importa, e a medição pegou.** Com duas linhas de
+>   verificação, uma rejeição de contabilidade devolvia nome = o próprio e-mail, e CNPJ, telefone e
+>   município todos nulos. Não é caso de borda: são **951 dos 9.187 envios**, cada um respondendo por
+>   uma carteira inteira. Causa: `contabilidades` nasceu do agrupamento por e-mail da 08.9 — não há
+>   razão social nem telefone, a Receita publica as EMPRESAS do escritório, não o escritório.
+>   `sql/32_rejeicoes_contato_contabilidade_09_02.sql` resolve pelo sinal que estava na carteira: **o
+>   telefone que se REPETE entre os clientes é a linha do escritório.** Medido na primeira carteira
+>   examinada — `35 35611154` em **19 das 31** empresas. A view devolve esse número e diz em quantas
+>   empresas ele aparece (`telefone_em_n_empresas`), porque 1 em 1 é palpite e 19 em 31 é o
+>   escritório; e `telefone_origem` avisa quando o número veio da carteira, para ninguém ligar para
+>   um cliente achando que fala com o contador. Armadilha vencida no caminho: §2.31 (`concat_ws`).
+> - **A tela é FILA, não relatório.** Ordenada por estrago (`estabelecimentos_atendidos`), porque a
+>   rejeição de uma contabilidade de 31 empresas deixa 31 empresas sem o link e a de uma empresa
+>   isolada deixa uma. Quatro contadores no topo: Rejeições · Empresas sem o link · Sem retorno por
+>   e-mail · Sem telefone no cadastro (essas são carta ou visita). O tipo aparece traduzido em AÇÃO,
+>   porque `hard`/`soft` é vocabulário de ESP, não do sindicato.
+> - **Verificado com linha de verdade e limpo em seguida.** Duas linhas semeadas em produção,
+>   conferidas na tela publicada (a de contabilidade com telefone da carteira, nome, município e a
+>   carteira contada), e **removidas** — junto com uma terceira que havia ficado de 2026-09-14 por
+>   causa do erro de método registrado em §7.11. Estado final medido em 2026-09-15 15:17 UTC:
+>   `linhas_na_tabela = 0`, `authenticated = SELECT` apenas, `anon` sem grant, 1 policy,
+>   `security_invoker=on`, 16 colunas.
+> - **`database.types.ts` regenerado** e o cast de dívida declarada removido de `useRejeicoes`.
+> - **PENDENTE, e é o que falta para o painel encher:** a Edge Function `descadastrar` estendida
+>   para despachar o webhook da Brevo **por tipo de evento**. Hoje aquele ramo trata QUALQUER evento
+>   como descadastro — foi por isso que todos os outros eventos tiveram de ser desligados um a um no
+>   painel da Brevo, e basta marcar uma caixa a mais lá para a base começar a se descadastrar
+>   sozinha. O código está escrito, com sintaxe validada e **hash conferido** (SHA-256
+>   `724cfb56…c6d0`, 24.948 bytes), carregado no editor de Edge Functions do painel — falta só o
+>   clique em **"Deploy updates"**, que não responde a automação (§2.32). Depois do deploy, ligar
+>   `hard_bounce` e `soft_bounce` no MESMO webhook que já existe; não é preciso criar outro.
 
 ### Subetapa 9.3 — Onda 02: as 248 contabilidades médias [Manual] [LLM: Sonnet] · Status: ⬜
 Objetivo: 248 envios, 2.189 estabelecimentos, levando o alcance acumulado a 38%.

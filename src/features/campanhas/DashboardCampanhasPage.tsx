@@ -347,14 +347,23 @@ function SecaoRejeicoes() {
   const rejeicoes = useRejeicoes();
   const [busca, setBusca] = useState("");
 
-  const linhas = (rejeicoes.data ?? []).filter((r) => {
-    const t = busca.trim().toLowerCase();
-    if (!t) return true;
-    return [r.email, r.nome, r.cnpj, r.telefone, r.municipio].some((c) => (c ?? "").toLowerCase().includes(t));
-  });
+  const linhas = (rejeicoes.data ?? [])
+    .filter((r) => {
+      const t = busca.trim().toLowerCase();
+      if (!t) return true;
+      return [r.email, r.nome, r.cnpj, r.telefone, r.municipio].some((c) => (c ?? "").toLowerCase().includes(t));
+    })
+    /**
+     * ORDENADA POR ESTRAGO, e não por data — é essa escolha que separa uma
+     * lista de uma FILA. A rejeição de uma contabilidade que atende 40 empresas
+     * deixa 40 empresas sem o link; a de uma empresa isolada deixa uma. Quem
+     * tem a manhã para ligar precisa começar por cima.
+     */
+    .sort((a, b) => empresasAtingidas(b) - empresasAtingidas(a) || b.ocorridoEm.localeCompare(a.ocorridoEm));
 
   const semTelefone = linhas.filter((r) => !r.telefone).length;
   const definitivas = linhas.filter((r) => r.tipo !== "soft").length;
+  const empresasSemLink = linhas.reduce((soma, r) => soma + empresasAtingidas(r), 0);
 
   return (
     <section className="flex flex-col gap-3">
@@ -396,6 +405,12 @@ function SecaoRejeicoes() {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Tile titulo="Rejeições" valor={linhas.length} />
             <Tile
+              titulo="Empresas sem o link"
+              valor={empresasSemLink}
+              destaque={empresasSemLink > linhas.length ? "alerta" : undefined}
+              rodape="contando a carteira de cada contabilidade"
+            />
+            <Tile
               titulo="Sem retorno por e-mail"
               valor={definitivas}
               destaque={definitivas > 0 ? "alerta" : undefined}
@@ -433,11 +448,23 @@ function SecaoRejeicoes() {
                     <TableCell>
                       <div className="text-texto-1">{r.nome ?? "(fora da base)"}</div>
                       <div className="text-xs text-texto-2">
-                        {[r.cnpj, r.municipio].filter(Boolean).join(" · ") || "sem cadastro vinculado"}
+                        {[rotuloCarteira(r), r.cnpj, r.municipio].filter(Boolean).join(" · ") ||
+                          "sem cadastro vinculado"}
                       </div>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap font-mono text-sm">
-                      {r.telefone ?? <span className="text-estado-alerta">sem telefone</span>}
+                    <TableCell className="whitespace-nowrap text-sm">
+                      {r.telefone ? (
+                        <>
+                          <div className="font-mono text-texto-1">{r.telefone}</div>
+                          {/* Sem este aviso alguém ligaria para um CLIENTE do escritório
+                              achando que estava falando com o contador. */}
+                          {r.telefoneOrigem === "carteira" && (
+                            <div className="text-xs text-texto-2">{origemDoTelefone(r)}</div>
+                          )}
+                        </>
+                      ) : (
+                        <span className="text-estado-alerta">sem telefone</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-texto-2">{r.email}</TableCell>
                     <TableCell>
@@ -459,6 +486,37 @@ function SecaoRejeicoes() {
   );
 }
 
+/**
+ * Quantas EMPRESAS ficam sem o link por causa desta rejeição. Para uma
+ * contabilidade é a carteira inteira; para uma empresa isolada é uma; e para um
+ * endereço que já não está na base é zero — não há ninguém a procurar.
+ */
+function empresasAtingidas(r: RejeicaoContato): number {
+  if (r.tipoDestinatario === "contabilidade") return r.estabelecimentosAtendidos;
+  return r.tipoDestinatario === "empresa" ? 1 : 0;
+}
+
+function plural(n: number, singular: string, plural_: string): string {
+  return n === 1 ? singular : plural_;
+}
+
+function rotuloCarteira(r: RejeicaoContato): string | null {
+  if (r.tipoDestinatario !== "contabilidade") return null;
+  const n = r.estabelecimentosAtendidos;
+  return "contabilidade · atende " + n + " " + plural(n, "empresa", "empresas");
+}
+
+/**
+ * O telefone de uma contabilidade não vem do cadastro dela — ela não tem um.
+ * Vem do número mais repetido na carteira (sql/32), e dizer em quantas empresas
+ * ele aparece é o que transforma um palpite em algo que se pode discar: 1 em 1
+ * é chute, 7 em 9 é o escritório.
+ */
+function origemDoTelefone(r: RejeicaoContato): string {
+  const n = r.telefoneEmNEmpresas ?? 1;
+  return "da carteira · o mesmo número aparece em " + n + " " + plural(n, "empresa", "empresas");
+}
+
 /** §4.4: a exportação leva o que está NA TELA — quem vai ligar precisa da lista
  *  no papel, com o telefone e o motivo junto. */
 const COLUNAS_CSV_REJEICOES: ColunaCsv<RejeicaoContato>[] = [
@@ -466,6 +524,9 @@ const COLUNAS_CSV_REJEICOES: ColunaCsv<RejeicaoContato>[] = [
   { titulo: "CNPJ", valor: (r) => r.cnpj ?? "" },
   { titulo: "Município", valor: (r) => r.municipio ?? "" },
   { titulo: "Telefone", valor: (r) => r.telefone ?? "" },
+  { titulo: "Origem do telefone", valor: (r) => (r.telefoneOrigem === "carteira" ? origemDoTelefone(r) : r.telefoneOrigem ?? "") },
+  { titulo: "Tipo", valor: (r) => r.tipoDestinatario },
+  { titulo: "Empresas atingidas", valor: (r) => String(empresasAtingidas(r)) },
   { titulo: "E-mail recusado", valor: (r) => r.email },
   { titulo: "Situação", valor: (r) => ACAO_POR_TIPO[r.tipo].rotulo },
   { titulo: "O que fazer", valor: (r) => ACAO_POR_TIPO[r.tipo].acao },

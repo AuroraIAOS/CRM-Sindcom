@@ -297,6 +297,114 @@ async function registrarDescadastro(reg: Registro): Promise<{ carimbou: boolean 
 }
 
 // ---------------------------------------------------------------------------
+// REJEIÇÕES (Subetapa 9.2) — o MESMO webhook, agora despachando por tipo.
+//
+// O QUE ESTAVA ERRADO ATÉ AQUI, e é o que este bloco conserta: o ramo
+// `?fonte=brevo` tratava QUALQUER evento como descadastro. Um `delivered` ou um
+// `opened` faria a própria entrega do e-mail virar saída da campanha — foi por
+// isso que, ao criar o webhook no painel da Brevo, todos os outros eventos
+// tiveram de ser desligados um a um. Isso é uma mina: bastava marcar uma caixa
+// a mais naquela tela para a base começar a se descadastrar sozinha, sem erro
+// nenhum aparecendo em lugar nenhum.
+//
+// Despachar por tipo desarma a mina E entrega a 9.2 no MESMO endpoint: hard e
+// soft bounce passam a poder ser ligados no painel sem criar webhook novo.
+// ---------------------------------------------------------------------------
+
+/**
+ * De vocabulário de ESP para o tipo que a tela traduz em AÇÃO (sql/31).
+ *
+ * `invalid_email` entra como `hard` de propósito: a Brevo o emite quando o
+ * endereço é inválido, e a ação é a mesma da caixa inexistente — não reenviar
+ * nunca, procurar por telefone.
+ *
+ * `deferred` foi deixado DE FORA. Ele é adiamento com nova tentativa em curso,
+ * e a maioria termina entregue; gravá-lo encheria a lista de ligação com gente
+ * que recebeu o e-mail meia hora depois. O que sobra de um `deferred` que não
+ * se resolve é um `soft_bounce`, e esse nós pegamos.
+ */
+const TIPO_REJEICAO_POR_EVENTO: Record<string, string> = {
+  hard_bounce: "hard",
+  invalid_email: "hard",
+  soft_bounce: "soft",
+  blocked: "bloqueado",
+  spam: "spam",
+  complaint: "spam",
+};
+
+/**
+ * Nomes que significam "saia da lista". Generoso de propósito: errar para
+ * menos aqui significaria ENGOLIR um descadastro, que é obrigação legal e de
+ * entregabilidade — o erro mais caro que esta função pode cometer.
+ */
+const EVENTOS_DE_DESCADASTRO = ["unsubscribed", "unsubscribe", "unsubscribed_contact"];
+
+/**
+ * QUANDO o provedor recusou — não é o `now()` do registro, e a diferença
+ * importa: a chave de idempotência (email, tipo, ocorrido_em) inclui o
+ * instante, então tomar o campo errado faria a mesma recusa entrar duas vezes
+ * se a Brevo repetisse a entrega.
+ *
+ * `ts_event` é o instante do evento no provedor; `ts`, o do processamento na
+ * Brevo. `date` é o último recurso e vem sem fuso — por isso é o último.
+ */
+function instanteDoEvento(corpo: Record<string, unknown>): string {
+  const epoch = corpo.ts_event ?? corpo.ts;
+  if (typeof epoch === "number" && Number.isFinite(epoch)) {
+    return new Date(epoch * 1000).toISOString();
+  }
+  const texto = String(corpo.date ?? "").trim();
+  if (texto) {
+    const d = new Date(texto.replace(" ", "T"));
+    if (!Number.isNaN(d.getTime())) return d.toISOString();
+  }
+  return new Date().toISOString();
+}
+
+/**
+ * Grava a recusa. Reconhece o envio pelo e-mail — o webhook não traz token —,
+ * mas NÃO exige encontrá-lo: um endereço que rejeitou e já não está na base
+ * continua sendo informação, e dizer que a lista e a realidade divergiram é
+ * justamente para isso que a coluna `situacao` da view existe.
+ *
+ * `ignoreDuplicates` é a idempotência exigida por qualquer webhook: a Brevo
+ * REPETE a entrega quando não recebe 2xx a tempo, e sem isso uma repetição
+ * mandaria telefonar duas vezes para a mesma pessoa.
+ */
+async function registrarRejeicao(ev: {
+  email: string;
+  tipo: string;
+  motivo: string | null;
+  ocorridoEm: string;
+  campanha: string | null;
+}): Promise<{ gravou: boolean }> {
+  const { data: envio } = await admin
+    .from("envios_campanha")
+    .select("id")
+    .eq("email", ev.email)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { error } = await admin.from("rejeicoes_campanha").upsert(
+    {
+      envio_id: (envio?.id as string | undefined) ?? null,
+      email: ev.email,
+      tipo: ev.tipo,
+      motivo: ev.motivo,
+      ocorrido_em: ev.ocorridoEm,
+      campanha: ev.campanha,
+    },
+    { onConflict: "email,tipo,ocorrido_em", ignoreDuplicates: true },
+  );
+  if (error) {
+    console.error("rejeicoes_campanha:", error.message);
+    return { gravou: false };
+  }
+  return { gravou: true };
+}
+
+// ---------------------------------------------------------------------------
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -316,6 +424,9 @@ Deno.serve(async (req: Request) => {
   // manda header customizado. Sem o segredo configurado o caminho fica FECHADO
   // — nunca aberto por omissão: um webhook público aceitaria qualquer um
   // descadastrando qualquer e-mail da base.
+  //
+  // UM endpoint, DOIS tratamentos, despachados pelo campo `event` (9.2). Ver o
+  // bloco TIPO_REJEICAO_POR_EVENTO acima para por que o despacho existe.
   if (url.searchParams.get("fonte") === "brevo") {
     if (!WEBHOOK_SEGREDO || url.searchParams.get("chave") !== WEBHOOK_SEGREDO) {
       return json(req, { ok: false, erro: "não autorizado" }, 401);
@@ -331,6 +442,40 @@ Deno.serve(async (req: Request) => {
 
     const email = String(corpo.email ?? corpo["contact_email"] ?? "").trim().toLowerCase();
     if (!email) return json(req, { ok: false, erro: "sem e-mail" }, 400);
+
+    const evento = String(corpo.event ?? corpo["event_name"] ?? "").trim().toLowerCase();
+
+    // ---- recusa no disparo (9.2)
+    const tipoRejeicao = TIPO_REJEICAO_POR_EVENTO[evento];
+    if (tipoRejeicao) {
+      const { gravou } = await registrarRejeicao({
+        email,
+        tipo: tipoRejeicao,
+        motivo: String(corpo.reason ?? "").trim().slice(0, 1000) || null,
+        ocorridoEm: instanteDoEvento(corpo),
+        campanha: String(corpo["campaign name"] ?? corpo.campaign ?? corpo.subject ?? "").trim() || null,
+      });
+      // Rejeição NÃO descadastra. São fatos diferentes: quem rejeitou não pediu
+      // para sair — a caixa é que não recebeu. Tratar um como o outro apagaria
+      // do painel exatamente as pessoas que precisam ser procuradas por
+      // telefone, que é a razão de a 9.2 existir.
+      return json(req, { ok: true, tratado: "rejeicao", tipo: tipoRejeicao, gravou });
+    }
+
+    // ---- saída da campanha (9.00)
+    //
+    // `evento` VAZIO cai aqui de propósito. O webhook em produção foi criado com
+    // apenas o evento de descadastro ligado, então um corpo sem `event` só pode
+    // ser um descadastro — e engolir um descadastro por causa de um campo que
+    // mudou de nome é o pior desfecho possível deste arquivo.
+    if (evento && !EVENTOS_DE_DESCADASTRO.includes(evento)) {
+      // AQUI mora a mina desarmada: antes, este `return` não existia e o evento
+      // desconhecido virava descadastro. 200 porque a Brevo repete a entrega
+      // quando não recebe 2xx, e repetir o que vamos ignorar gasta os dois
+      // lados. O log fica como evidência de que um evento novo apareceu.
+      console.log("webhook brevo: evento ignorado —", evento);
+      return json(req, { ok: true, tratado: "ignorado", evento });
+    }
 
     // O webhook não traz token: o vínculo se resolve pelo e-mail, que é a chave
     // com que a lista foi montada (uma linha por caixa, 08.13).
@@ -360,7 +505,7 @@ Deno.serve(async (req: Request) => {
         userAgent,
       });
     }
-    return json(req, { ok: true, registrados: alvos.length });
+    return json(req, { ok: true, tratado: "descadastro", registrados: alvos.length });
   }
 
   // -------------------------------------------------------------------- token

@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
 
 /**
@@ -202,6 +201,14 @@ export type RejeicaoContato = {
   telefone: string | null;
   municipio: string | null;
   temEnvio: boolean;
+  /** 'contabilidade' | 'empresa' | 'desconhecido' — contador e empresa não se abordam igual. */
+  tipoDestinatario: string;
+  /** Quantas empresas ficam sem o link por causa desta rejeição. É por aqui que a fila se ordena. */
+  estabelecimentosAtendidos: number;
+  /** 'propria' | 'carteira' | null — de onde saiu o telefone mostrado (sql/32). */
+  telefoneOrigem: string | null;
+  /** Em quantas empresas da carteira o mesmo número aparece. 1 é palpite; 7 é o escritório. */
+  telefoneEmNEmpresas: number | null;
 };
 
 /** O que cada tipo PEDE — a coluna existe para virar decisão, não rótulo. */
@@ -216,20 +223,9 @@ export function useRejeicoes() {
   return useQuery<RejeicaoContato[]>({
     queryKey: ["campanhas", "rejeicoes"],
     queryFn: async () => {
-      /**
-       * O cast existe porque `database.types.ts` ainda não conhece esta view: o
-       * MCP do Supabase perdeu o acesso a este projeto no meio da sessão, e a
-       * regeneração dos tipos passa por lá. A view existe e está conferida no
-       * banco (sql/31); o que falta é só o arquivo de tipos.
-       *
-       * REMOVER ESTE CAST na próxima regeneração — ele é dívida declarada, não
-       * solução. Enquanto estiver aqui, as colunas abaixo não são verificadas
-       * pelo compilador, então uma renomeação na view passaria batida até a
-       * tela ficar vazia.
-       */
-      const { data, error } = await (supabase as unknown as SupabaseClient)
+      const { data, error } = await supabase
         .from("v_rejeicoes_para_contato")
-        .select("id, email, tipo, motivo, ocorrido_em, campanha, nome, cnpj_completo, telefone, municipio, tem_envio")
+        .select("id, email, tipo, motivo, ocorrido_em, campanha, nome, cnpj_completo, telefone, municipio, tem_envio, tipo_destinatario, estabelecimentos_atendidos, telefone_origem, telefone_em_n_empresas")
         .order("ocorrido_em", { ascending: false })
         .limit(1000); // §2.4: o PostgREST trunca em 1000 sem avisar — melhor pedir o teto de propósito
       if (error) throw error;
@@ -245,6 +241,13 @@ export function useRejeicoes() {
         telefone: (r.telefone as string | null) ?? null,
         municipio: (r.municipio as string | null) ?? null,
         temEnvio: !!r.tem_envio,
+        tipoDestinatario: (r.tipo_destinatario as string | null) ?? "desconhecido",
+        estabelecimentosAtendidos: Number(r.estabelecimentos_atendidos ?? 0),
+        telefoneOrigem: (r.telefone_origem as string | null) ?? null,
+        telefoneEmNEmpresas:
+          r.telefone_em_n_empresas === null || r.telefone_em_n_empresas === undefined
+            ? null
+            : Number(r.telefone_em_n_empresas),
       }));
     },
   });

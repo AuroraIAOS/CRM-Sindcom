@@ -1504,6 +1504,61 @@ export type Database = {
           },
         ]
       }
+      rejeicoes_campanha: {
+        Row: {
+          campanha: string | null
+          created_at: string
+          email: string
+          envio_id: string | null
+          id: string
+          motivo: string | null
+          ocorrido_em: string
+          tipo: string
+        }
+        Insert: {
+          campanha?: string | null
+          created_at?: string
+          email: string
+          envio_id?: string | null
+          id?: string
+          motivo?: string | null
+          ocorrido_em: string
+          tipo: string
+        }
+        Update: {
+          campanha?: string | null
+          created_at?: string
+          email?: string
+          envio_id?: string | null
+          id?: string
+          motivo?: string | null
+          ocorrido_em?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rejeicoes_campanha_envio_id_fkey"
+            columns: ["envio_id"]
+            isOneToOne: false
+            referencedRelation: "envios_campanha"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rejeicoes_campanha_envio_id_fkey"
+            columns: ["envio_id"]
+            isOneToOne: false
+            referencedRelation: "v_cobertura_empresas"
+            referencedColumns: ["envio_id"]
+          },
+          {
+            foreignKeyName: "rejeicoes_campanha_envio_id_fkey"
+            columns: ["envio_id"]
+            isOneToOne: false
+            referencedRelation: "v_envios_campanha_mascarada"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       remessas_dados: {
         Row: {
           arquivo_path: string
@@ -2688,6 +2743,27 @@ export type Database = {
             referencedColumns: ["cnpj_basico"]
           },
         ]
+      }
+      v_rejeicoes_para_contato: {
+        Row: {
+          campanha: string | null
+          cnpj_completo: string | null
+          email: string | null
+          estabelecimentos_atendidos: number | null
+          id: string | null
+          motivo: string | null
+          municipio: string | null
+          nome: string | null
+          ocorrido_em: string | null
+          situacao: string | null
+          telefone: string | null
+          telefone_em_n_empresas: number | null
+          telefone_origem: string | null
+          tem_envio: boolean | null
+          tipo: string | null
+          tipo_destinatario: string | null
+        }
+        Relationships: []
       }
       v_relatorio_convencao: {
         Row: {
