@@ -1,0 +1,78 @@
+# BACKUP — /home2/davide59/sindcompassos.org/.htaccess
+# Estado SAUDÁVEL em 2026-09-09, DEPOIS de restaurar o bloco `# BEGIN WordPress`
+# pelo caminho canônico (Configurações → Links permanentes → Salvar).
+#
+# 1.598 bytes · um BEGIN/END de cada bloco · ordem NFD EPC → WordPress.
+#
+# POR QUE ESTE BACKUP É DIFERENTE DOS ANTERIORES
+# Os de 2026-08-25, 09-04 e 09-09a registram o arquivo SEM o bloco do WordPress
+# (ou com ele, no caso do de agosto, mas sem ninguém saber o que a ausência
+# causava). Este é o primeiro em que o roteamento do WordPress está PROVADO por
+# medição, e não presumido:
+#
+#   antes da correção          depois
+#   /dados/?x=1        404  →  200
+#   /contato/?x=1      404  →  200
+#   /wp-json/          404  →  200
+#   /servicos/         404  →  301 → /servicos-sindicais/
+#
+# O `?x=1` desvia o cache (a própria regra do bloco NFD EPC ignora requisição
+# com query string contendo `=`). Sem esse desvio, TODAS essas rotas já
+# devolviam 200 — servidas pelo snapshot em disco, com o WordPress fora do
+# circuito. Ver orientacoes.md §1.8.
+#
+# A ORDEM DOS BLOCOS NÃO É COSMÉTICA. O bloco de cache termina em `[L]` e
+# precisa vir primeiro para poder servir o snapshot; o do WordPress é o
+# fallback que manda para o `index.php` o que não é arquivo nem diretório.
+# Inverter derruba o cache; remover o segundo derruba o site inteiro assim que
+# o cache for limpo.
+#
+# AINDA NÃO ESTÁ AQUI, e é decisão pendente do Maxwell:
+#  · redirecionamento HTTP → HTTPS + HSTS (orientacoes §1.5). Medido em
+#    2026-09-09: `http://sindcompassos.org/` responde 200 sem redirecionar.
+#    Quando entrar, tem de ficar ACIMA do bloco de cache — que termina em `[L]`
+#    e interromperia o processamento antes de a regra ser alcançada.
+#
+# ----------------------------------------------------------------------------
+
+# BEGIN NFD EPC
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+	RewriteBase /
+	RewriteRule ^wp-content/endurance-page-cache/ - [L]
+	RewriteCond %{REQUEST_METHOD} !POST
+	RewriteCond %{QUERY_STRING} !.*=.*
+	RewriteCond %{HTTP_COOKIE} !(wordpress_test_cookie|comment_author|wp\-postpass|wordpress_logged_in|wptouch_switch_toggle|wp_woocommerce_session_) [NC]
+	RewriteCond %{DOCUMENT_ROOT}/wp-content/endurance-page-cache/$1/_index.html -f
+	RewriteRule ^(.*)$ /wp-content/endurance-page-cache/$1/_index.html [L]
+</IfModule>
+
+<IfModule mod_expires.c>
+	ExpiresActive On
+	ExpiresByType image/jpg "access plus 24 hours"
+	ExpiresByType image/jpeg "access plus 24 hours"
+	ExpiresByType image/gif "access plus 24 hours"
+	ExpiresByType image/png "access plus 24 hours"
+	ExpiresByType text/css "access plus 24 hours"
+	ExpiresByType application/pdf "access plus 1 week"
+	ExpiresByType text/javascript "access plus 24 hours"
+	ExpiresByType text/html "access plus 2 hours"
+	ExpiresByType image/x-icon "access plus 1 year"
+	ExpiresDefault "access plus 24 hours"
+</IfModule>
+# END NFD EPC
+# BEGIN WordPress
+# As diretrizes (linhas) entre "BEGIN WordPress" e "END WordPress" são
+# geradas dinamicamente e só devem ser modificadas através de filtros do WordPress.
+# Quaisquer alterações nas diretivas entre esses marcadores serão sobrescritas.
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+
+# END WordPress

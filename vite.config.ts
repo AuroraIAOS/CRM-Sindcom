@@ -9,7 +9,16 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      // "prompt", não "autoUpdate" (Subetapa 9.2). Em `autoUpdate` o código
+      // que o plugin injeta é literalmente
+      //   wb.addEventListener("activated", e => { if (e.isUpdate) window.location.reload() })
+      // — um F5 de verdade, disparado no instante em que o service worker novo
+      // assume, sem perguntar nada. Como este projeto publica ao fim de cada
+      // subetapa, isso podia cair no meio do preenchimento de uma empresa ou de
+      // uma CCT e apagar o formulário. Com "prompt", a versão nova espera; quem
+      // decide a hora de recarregar é quem está digitando
+      // (src/app/AtualizacaoDisponivel.tsx).
+      registerType: "prompt",
       includeAssets: ["assets/brand/logo_horizontal_colorido.png"],
       workbox: {
         navigateFallbackDenylist: [/^\/guia\//],

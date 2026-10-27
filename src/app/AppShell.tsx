@@ -5,11 +5,16 @@ import { NAV, type NavItem } from "./nav";
 import { cn } from "@/lib/utils";
 import { NotificationBell } from "@/features/notificacoes/NotificationBell";
 import { useNotificacoesRealtime } from "@/features/notificacoes/api";
+import { useContagemRemessasAbertas } from "@/features/remessas/api";
+import { useContagemCadastrosPendentes } from "@/features/aprovacoes/api";
+import { useContagemFilaAdminPendente } from "@/features/fila-admin/api";
 import { OfflineBanner } from "@/components/shared/OfflineBanner";
 
 const GRUPOS: Array<{ id: NavItem["grupo"]; titulo: string }> = [
   { id: "principal", titulo: "" },
   { id: "financeiro", titulo: "Financeiro" },
+  { id: "campanhas", titulo: "Campanhas" },
+  { id: "boletos", titulo: "Boletos" },
   { id: "administracao", titulo: "Administração" },
   { id: "portal", titulo: "Portal do parceiro" },
 ];
@@ -22,10 +27,46 @@ const ROTULO_ROLE: Record<string, string> = {
   parceiro: "Parceiro",
 };
 
+/**
+ * Marcador de quantidade das abas — o MESMO do sino de notificações
+ * (`NotificationBell`), de propósito: dois marcadores com desenhos diferentes
+ * na mesma tela ensinariam que eles significam coisas diferentes. Aqui ele é
+ * embutido na linha em vez de sobreposto ao ícone, porque a linha do menu tem
+ * largura e o ícone do cabeçalho não tem.
+ */
+function Marcador({ n }: { n: number | undefined }) {
+  if (!n) return null;
+  return (
+    <span
+      className="ml-auto inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-realce px-1.5 text-xs font-bold text-white"
+      aria-label={`${n} ${n === 1 ? "pendência" : "pendências"}`}
+    >
+      {n > 99 ? "99+" : n}
+    </span>
+  );
+}
+
 export function AppShell() {
   const { perfil, role, signOut } = useAuth();
   const itens = NAV.filter((i) => role && i.roles.includes(role));
   useNotificacoesRealtime();
+
+  /**
+   * Cada contagem só é buscada por quem tem a aba — `enabled` recebe a MESMA
+   * matriz de papéis do `NAV`. Sem isso, o parceiro dispararia uma consulta a
+   * `remessas_dados` que a RLS zera (§2.6b: view/RLS não recusa, ZERA), e nós
+   * gastaríamos requisição para desenhar um marcador que nunca aparece.
+   */
+  const podeVer = (path: string) => itens.some((i) => i.path === path);
+  const remessasAbertas = useContagemRemessasAbertas(podeVer("/remessas"));
+  const cadastrosPendentes = useContagemCadastrosPendentes(podeVer("/aprovacoes"));
+  const filaAdminPendente = useContagemFilaAdminPendente(podeVer("/fila-admin"));
+
+  const contagemPorRota: Record<string, number | undefined> = {
+    "/remessas": remessasAbertas.data,
+    "/aprovacoes": cadastrosPendentes.data,
+    "/fila-admin": filaAdminPendente.data,
+  };
 
   return (
     <div className="grid min-h-full grid-cols-[260px_1fr] print:block">
@@ -58,7 +99,8 @@ export function AppShell() {
                     }
                   >
                     <item.icon className="h-4 w-4 shrink-0" />
-                    {item.label}
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                    <Marcador n={contagemPorRota[item.path]} />
                   </NavLink>
                 ))}
               </div>

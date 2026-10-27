@@ -46,22 +46,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let ativo = true;
+    // Qual usuário já teve o perfil resolvido. É a chave da correção abaixo:
+    // distingue "mudou quem está logado" (login/logout — precisa recarregar e
+    // pode mostrar a tela de carregando) de "o mesmo usuário de sempre, só com
+    // token novo" (nada a recarregar, nada a desmontar).
+    let usuarioResolvido: string | null = null;
+    let jaResolveuUmaVez = false;
 
     async function sincroniza(s: Session | null) {
       if (!ativo) return;
       setSession(s);
-      if (s?.user) {
-        const p = await carregarPerfil(s.user.id);
-        if (ativo) setPerfil(p);
+      const idAtual = s?.user?.id ?? null;
+
+      if (jaResolveuUmaVez && idAtual === usuarioResolvido) {
+        // Só o token mudou. Buscar o perfil de novo custaria uma requisição e,
+        // pior, manteria `carregando` ligado durante ela.
+        if (ativo) setCarregando(false);
+        return;
+      }
+
+      usuarioResolvido = idAtual;
+      if (idAtual) {
+        const p = await carregarPerfil(idAtual);
+        if (!ativo) return;
+        setPerfil(p);
       } else {
         setPerfil(null);
       }
+      // Só aqui, e não antes do `await`: `getSession()` e o primeiro evento do
+      // listener correm juntos na abertura do app. Marcar antes deixaria o
+      // segundo a chegar cair no atalho acima e desligar `carregando` com o
+      // perfil ainda em voo — e a tela "sem perfil" piscaria no meio do login.
+      jaResolveuUmaVez = true;
       if (ativo) setCarregando(false);
     }
 
     supabase.auth.getSession().then(({ data }) => sincroniza(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
-      setCarregando(true);
+      // NÃO ligar `carregando` para todo evento de auth (defeito medido na
+      // Subetapa 9.2). O supabase-js reage ao `visibilitychange` da aba: ao
+      // voltar de outra aba ele chama `_recoverAndRefresh()` e, se o token
+      // estiver dentro da margem de 90s do vencimento, emite `TOKEN_REFRESHED`
+      // — e o ticker de auto-refresh emite o mesmo evento uma vez por hora com
+      // a aba aberta. Como `RoleGate` devolve <TelaCarregando/> NO LUGAR dos
+      // children enquanto `carregando` é true, a árvore inteira desmontava e
+      // remontava: o formulário que o operador estava preenchendo voltava em
+      // branco, com a aparência exata de um F5. Só a troca de USUÁRIO justifica
+      // esconder a tela.
+      const mudouUsuario = (s?.user?.id ?? null) !== usuarioResolvido;
+      if (mudouUsuario || !jaResolveuUmaVez) setCarregando(true);
       void sincroniza(s);
     });
 

@@ -1,0 +1,100 @@
+-- ============================================================================
+-- CRM SINDCOM — sql/28_cct_atacadista_escopo_09_01.sql
+-- ETAPA 09 · Subetapa 9.1 — a CCT do Atacado é de PASSOS, não de Passos & Região
+--
+-- ✅ APLICADO EM PRODUÇÃO em 2026-09-08, por ordem do Maxwell.
+--
+-- O QUE MUDOU NO MUNDO, E POR ISSO NO BANCO
+--
+-- A base foi montada assumindo que a `CCT 2026 - Fecomércio Atacadista -
+-- PASSOS & REGIÃO` regia o comércio atacadista dos 29 municípios. Ela rege
+-- apenas o município de **Passos**. As duas convenções mantiveram o `id` e
+-- passaram a se chamar:
+--
+--   1c4bc577-857d-4bee-85bc-3c9ccea10409  CCT 2026 - Fecomércio Atacadista - PASSOS
+--   49c45b75-9f33-4496-8cae-441a6bdd1971  CCT 2026 - Fecomércio Atacadista & Varejista - REGIÃO
+--
+-- (o rename já estava feito quando este arquivo foi escrito; ele trata só do
+-- vínculo dos estabelecimentos).
+--
+-- O QUE FOI MEDIDO ANTES DE ESCREVER UMA LINHA
+--
+--   Fecomércio Atacadista - PASSOS ……… 1.598 estabelecimentos, 29 municípios
+--     · de Passos/MG ……………………………………     404   ← ficam
+--     · de outros 28 municípios ………………   1.194   ← migram (1.104 empresas)
+--     · sem município …………………………………       0
+--   Fecomércio Atac. & Varej. - REGIÃO … 8.833 estabelecimentos, 28 municípios,
+--                                          NENHUM de Passos
+--
+-- Ou seja: as duas já eram territorialmente complementares em todo o resto —
+-- Passos só existia na primeira, e os 28 municípios existiam nas duas. O
+-- conserto é mover os 1.194 que estavam do lado errado da fronteira.
+--
+-- **Zero vínculos empregatícios** nos 1.194 estabelecimentos que migraram:
+-- nenhuma pessoa cadastrada mudou de convenção nesta operação. Isso foi
+-- conferido ANTES de aplicar, porque mudar a CCT de um trabalhador altera piso,
+-- base de cálculo e prazo de carta de oposição — se houvesse gente ali, a
+-- decisão teria de ser tomada por pessoa, não em bloco.
+--
+-- POR QUE NÃO HÁ RECLASSIFICAÇÃO AUTOMÁTICA JUNTO
+-- `estabelecimentos` tem apenas os gatilhos genéricos de `updated_at` e
+-- `auditoria` — nenhum trigger reclassifica trabalhador quando `convencao_id`
+-- muda, e isso está certo: reclassificar é ato deliberado, por
+-- `fn_reclassificar_convencao(uuid)`. Como nenhum trabalhador foi afetado, não
+-- havia o que reclassificar.
+--
+-- A operação ficou registrada em `auditoria` (1.194 linhas de UPDATE), e a
+-- lista dos ids migrados foi guardada fora do git antes da escrita.
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- A MIGRAÇÃO. Idempotente: reaplicar não move mais nada, porque depois da
+-- primeira execução não sobra estabelecimento de outro município na CCT de
+-- Passos. O `is distinct from` cobriria também linha sem município — aqui não
+-- havia nenhuma, e deixá-la de fora seria pior: estabelecimento sem município
+-- não tem como ser julgado por território, e mover no escuro é o oposto do que
+-- este arquivo faz.
+-- ----------------------------------------------------------------------------
+update estabelecimentos
+   set convencao_id = '49c45b75-9f33-4496-8cae-441a6bdd1971'   -- Atacadista & Varejista - REGIÃO
+ where convencao_id = '1c4bc577-857d-4bee-85bc-3c9ccea10409'   -- Atacadista - PASSOS
+   and municipio_id is not null
+   and municipio_id <> (select id from municipios where nome = 'Passos' and uf = 'MG');
+
+-- ----------------------------------------------------------------------------
+-- CONFERÊNCIA — rodada depois de aplicar, em 2026-09-08.
+--
+-- (1) Cada CCT com o seu território, e a soma preservada:
+--   select c.nome,
+--          count(*) filter (where m.nome = 'Passos')  as de_passos,
+--          count(*) filter (where m.nome <> 'Passos') as de_outros,
+--          count(*)                                   as total
+--     from estabelecimentos e
+--     join convencoes_coletivas c on c.id = e.convencao_id
+--     left join municipios m on m.id = e.municipio_id
+--    where c.id in ('1c4bc577-857d-4bee-85bc-3c9ccea10409',
+--                   '49c45b75-9f33-4496-8cae-441a6bdd1971')
+--    group by c.nome;
+--
+--   MEDIDO:
+--     Fecomércio Atacadista - PASSOS ………………  404 de Passos ·      0 de outros ·    404
+--     Fecomércio Atac. & Varej. - REGIÃO ……      0 de Passos · 10.027 de outros · 10.027
+--
+--   404 + 10.027 = 10.431 = 1.598 + 8.833. Nenhuma linha se perdeu no caminho —
+--   e essa soma é a conferência que importa, não o "deu certo" do UPDATE.
+--
+-- (2) A coerência territorial vale para TODAS as convenções, não só para estas
+--     duas — varrido depois da migração: nenhuma CCT/ACT com "PASSOS" no nome
+--     tem estabelecimento de fora, e nenhuma com "REGIÃO" tem estabelecimento
+--     de Passos. Única marcação: 2 estabelecimentos sem município dentro de
+--     `CCT 2026 - SindPass Varejista - PASSOS` (são DEMO, anteriores a isto).
+--
+-- (3) PENDÊNCIA CONHECIDA, e ela NÃO é desta migração: 9 estabelecimentos
+--     `DEMO — …` (CNPJ 99999…) da Onda 00 estão com `convencao_id` NULO, com 52
+--     vínculos entre eles. Como `v_relatorio_convencao` e `v_cartas_ano_base`
+--     fazem `join` por `convencao_id`, essas 52 pessoas somem dos dois
+--     relatórios EM SILÊNCIO — é o §7.9 do `orientacoes.md` se repetindo com
+--     dado novo. Medido em 2026-09-08: as duas views devolvem 1 linha cada.
+--     Atribuir CCT a empresa DEMO sem município e sem CNAE é decisão de dado,
+--     não de código, e por isso ficou para o Maxwell.
+-- ----------------------------------------------------------------------------

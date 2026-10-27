@@ -58,8 +58,8 @@ quebrado, nenhum CPF vai no corpo, e a copy fica idêntica ao que o destinatári
 | **From (e-mail)** | `secretaria@envios.sindcompassos.org` | subdomínio autenticado na Brevo (SPF+DKIM próprios) |
 | **Reply-To** | **`secretaria@sindcompassos.org`** | ⚠️ **correção pendente, ver §6** — `envios.sindcompassos.org` **não tem MX** (medido hoje): resposta enviada para lá volta |
 | **Anexo** | **nenhum**, em nenhuma das 4 | anexo em disparo em massa derruba entregabilidade |
-| **Mesclagem** | só `{{ contact.LINK }}` | §1 |
-| **Descadastro** | obrigatório nas 4, no rodapé, **com o texto que delimita o seu alcance** | não é só exigência da spec e do ESP: **79,9% da lista é Google + Microsoft**, e os dois exigem descadastro em um clique de remetente em massa. Ver §10 |
+| **Mesclagem** | `{{ contact.LINK }}` e `{{ contact.SAIDA }}` | §1 — e **nunca `{{ contact.NOME }}`**. `SAIDA` nasceu na Subetapa 9.00; ver §11 |
+| **Descadastro** | obrigatório nas 4, no rodapé, **com o texto que delimita o seu alcance** | não é só exigência da spec e do ESP: **79,9% da lista é Google + Microsoft**, e os dois exigem descadastro em um clique de remetente em massa. Ver §10 e §11 |
 | **Formato** | HTML simples + versão texto | sem imagem remota, mesma razão da 08.2: o cliente do destinatário bloqueia imagem por padrão |
 | **Prazo** | prazo variável conforme ONDA | **único campo em branco deste documento** — ver §5 |
 
@@ -132,7 +132,7 @@ Av. dos Expedicionários, 137 · Centro · Passos/MG
 
 ---
 
-*Você recebeu este e-mail porque este endereço consta como contato de empresas do comércio na base pública da Receita Federal. Se preferir não receber estas mensagens, [descadastre-se aqui]. O descadastro encerra apenas os envios desta campanha e **não afasta as obrigações da empresa perante a convenção coletiva** — para assuntos formais, o Sindcom continua utilizando os canais institucionais e, quando necessário, a notificação por via própria.*
+*Você recebeu este e-mail porque este endereço consta como contato de empresas do comércio na base pública da Receita Federal. Se preferir não receber estas mensagens, [descadastre-se aqui]({{ contact.SAIDA }}). O descadastro encerra apenas os envios desta campanha e **não afasta as obrigações da empresa perante a convenção coletiva** — para assuntos formais, o Sindcom continua utilizando os canais institucionais e, quando necessário, a notificação por via própria.*
 
 ---
 
@@ -202,7 +202,7 @@ Av. dos Expedicionários, 137 · Centro · Passos/MG
 
 ---
 
-*Você recebeu este e-mail porque este endereço consta como contato desta empresa na base pública da Receita Federal. Se preferir não receber estas mensagens, [descadastre-se aqui]. O descadastro encerra apenas os envios desta campanha e **não afasta as obrigações da empresa perante a convenção coletiva** — para assuntos formais, o Sindcom continua utilizando os canais institucionais e, quando necessário, a notificação por via própria.*
+*Você recebeu este e-mail porque este endereço consta como contato desta empresa na base pública da Receita Federal. Se preferir não receber estas mensagens, [descadastre-se aqui]({{ contact.SAIDA }}). O descadastro encerra apenas os envios desta campanha e **não afasta as obrigações da empresa perante a convenção coletiva** — para assuntos formais, o Sindcom continua utilizando os canais institucionais e, quando necessário, a notificação por via própria.*
 
 ---
 
@@ -264,7 +264,7 @@ Av. dos Expedicionários, 137 · Centro · Passos/MG
 
 ---
 
-*Você recebeu este e-mail porque este endereço consta como contato desta empresa na base pública da Receita Federal. Se preferir não receber estas mensagens, [descadastre-se aqui]. O descadastro encerra apenas os envios desta campanha e **não afasta as obrigações da empresa perante a convenção coletiva** — para assuntos formais, o Sindcom continua utilizando os canais institucionais e, quando necessário, a notificação por via própria.*
+*Você recebeu este e-mail porque este endereço consta como contato desta empresa na base pública da Receita Federal. Se preferir não receber estas mensagens, [descadastre-se aqui]({{ contact.SAIDA }}). O descadastro encerra apenas os envios desta campanha e **não afasta as obrigações da empresa perante a convenção coletiva** — para assuntos formais, o Sindcom continua utilizando os canais institucionais e, quando necessário, a notificação por via própria.*
 
 ---
 
@@ -332,7 +332,7 @@ Av. dos Expedicionários, 137 · Centro · Passos/MG
 
 ---
 
-*Você recebeu este e-mail porque este endereço consta como contato desta empresa na base pública da Receita Federal. Se preferir não receber estas mensagens, [descadastre-se aqui]. O descadastro encerra apenas os envios desta campanha e **não afasta as obrigações da empresa perante a convenção coletiva** — para assuntos formais, o Sindcom continua utilizando os canais institucionais e, quando necessário, a notificação por via própria.*
+*Você recebeu este e-mail porque este endereço consta como contato desta empresa na base pública da Receita Federal. Se preferir não receber estas mensagens, [descadastre-se aqui]({{ contact.SAIDA }}). O descadastro encerra apenas os envios desta campanha e **não afasta as obrigações da empresa perante a convenção coletiva** — para assuntos formais, o Sindcom continua utilizando os canais institucionais e, quando necessário, a notificação por via própria.*
 
 ---
 
@@ -554,3 +554,65 @@ entregar a página — o enquadramento como conduta antissindical fica na Nota T
 se descadastrou **e** não enviou dados é a candidata mais forte à via formal — há registro de que
 foi contatada, de que optou por interromper o canal e de que não cumpriu. Hoje esse dado se perde
 dentro da Brevo. **A Subetapa 9.00 da ETAPA 09 existe para capturá-lo.**
+
+---
+
+## 11. O descadastro depois da 9.00 — o que mudou nas copies e o que a Brevo precisa
+
+A Subetapa 9.00 foi implementada em 2026-09-02. O que segue é o que ela mudou **nestas quatro
+copies**, e o que ela cobra da configuração do ESP antes de qualquer disparo.
+
+### O rodapé ganhou um destino de verdade
+
+Os quatro rodapés diziam `[descadastre-se aqui]` — um marcador sem endereço. Agora dizem
+`[descadastre-se aqui]({{ contact.SAIDA }})`, e `SAIDA` é a **quarta coluna** dos CSVs do ESP:
+
+```
+nome ; email ; link ; saida
+```
+
+`saida` é `https://crm.sindcompassos.org/descadastrar/<token>` — **o mesmo token de `link`**. É ele
+que liga o motivo do descadastro à contabilidade; sem ele o formulário registraria "alguém saiu",
+que é quase tão pouco quanto o que a Brevo já dá hoje.
+
+Os 4 CSVs foram reexportados com a coluna nova por `scripts/reexportar_csvs_09_00.mjs`, que **só lê**
+`envios_campanha` — não cria campanha, não cria envio, não toca em token. Contagens conferidas
+contra as da 08.13: **89 / 248 / 613 / 8.236**, sem divergência. Como a importação na Brevo (item
+(e) da Subetapa 9.0) ainda não aconteceu, acrescentar a coluna custou zero; depois dela custaria
+reimportar 9.186 contatos.
+
+### DOIS caminhos de saída, e só um passa pelo formulário
+
+Isto é a decisão (a) da 9.00 e é o único risco desta etapa cujo dano **não aparece em teste nenhum**:
+
+| Caminho | Onde fica | Passa pelo formulário? | Registro |
+|---|---|---|---|
+| Link do **corpo** do e-mail | rodapé, `{{ contact.SAIDA }}` | **sim** — uma pergunta, uma tela | `via = 'formulario'`, com motivo |
+| Botão de **um clique** do provedor | cabeçalho `List-Unsubscribe` / `List-Unsubscribe-Post` (RFC 8058) | **não, e não pode** | `via = 'um_clique'`, sem motivo |
+
+> **O cabeçalho `List-Unsubscribe` continua sendo o da Brevo, intocado.** Google e Microsoft são
+> 79,9% da lista e exigem que aquele botão funcione **sem formulário, sem confirmação e sem página
+> intermediária**. Apontá-lo para a nossa página seria descumprimento, e o custo não é um teste
+> vermelho: é queda de entrega semanas depois, com a base já queimada. **Cobertura parcial de
+> propósito é melhor que campanha barrada.**
+
+### O que a Brevo precisa receber antes do primeiro disparo
+
+Três itens, e nenhum deles mora no repositório:
+
+1. **Os 4 CSVs reexportados**, com as quatro colunas — o atributo `SAIDA` precisa existir na lista,
+   ou `{{ contact.SAIDA }}` sai vazio no rodapé e o link do corpo não leva a lugar nenhum.
+2. **`BREVO_API_KEY`** nos *secrets* da Edge Function (Supabase → Edge Functions → `descadastrar`).
+   Sem ela o descadastro é registrado e `descadastrado_em` é carimbado, mas **a remoção no ESP não
+   acontece** — a linha fica com `brevo_erro = "BREVO_API_KEY ausente"` e a pessoa continua
+   recebendo. É o único ponto do fluxo em que o CRM sabe e o ESP não.
+3. **`DESCADASTRO_WEBHOOK_SEGREDO`**, no mesmo lugar, mais o webhook `unsubscribed` apontando para
+   `…/functions/v1/descadastrar?fonte=brevo&chave=<segredo>`. Sem ele o caminho de um clique
+   funciona normalmente para o destinatário — quem clica sai —, mas o Sindcom não fica sabendo, que
+   é exatamente o problema que a 9.00 existe para resolver. **Sem segredo configurado o webhook
+   responde 401 a todo mundo**, e isso é deliberado: aberto por omissão, ele deixaria qualquer um
+   descadastrar qualquer endereço da base.
+
+Os itens 2 e 3 são **verificados na Onda 00** (Subetapa 9.1), pelos pontos 7 e 8 da lista de
+evidências — e ali a prova é a mesma de sempre: o contato sumindo da lista na Brevo, não a tela de
+configuração dizendo que está configurado.

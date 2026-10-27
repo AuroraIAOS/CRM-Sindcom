@@ -50,9 +50,6 @@ const clientes: Record<Role, SupabaseClient> = {} as never;
 let anon: SupabaseClient;
 
 const PREFIXO = "04.2 teste —";
-/** Estabelecimento DEMO de Passos — precisa ter `convencao_id`, senão o
- *  trabalhador vinculado a ele não aparece em relatório de convenção nenhum. */
-const CNPJ_DEMO = "99999901000191";
 const ANO = 2026;
 
 const trabalhadoresParaLimpar: string[] = [];
@@ -120,17 +117,28 @@ beforeAll(async () => {
   for (const p of PAPEIS) clientes[p] = (await loginComo(p)).client;
   anon = clienteAnon();
 
+  /**
+   * QUALQUER estabelecimento com CCT serve — e essa mudança é de método, não de
+   * conveniência (2026-09-10). Antes, a fixture procurava um CNPJ DEMO fixo
+   * (`99999901000191`), e a limpeza da base de 2026-09-09 o levou junto com as
+   * outras empresas fictícias: o arquivo inteiro passou a estourar no
+   * `beforeAll`. O invariante que estes casos medem nunca foi "existe este CNPJ";
+   * é "quem tem vínculo com estabelecimento COM convenção aparece na view". Ancorar
+   * num registro específico da base compartilhada é o erro que o cabeçalho deste
+   * mesmo arquivo já advertia — afirmar o RECORTE, não o registro (§7.1b, §7.3).
+   */
   const { data: estab, error } = await clientes.admin
     .from("estabelecimentos")
     .select("id, convencao_id, convencoes_coletivas(nome)")
-    .eq("cnpj_completo", CNPJ_DEMO)
-    .single();
-  if (error || !estab) throw new Error(`estabelecimento DEMO ${CNPJ_DEMO} não encontrado: ${error?.message}`);
-  expect(
-    estab.convencao_id,
-    `o estabelecimento DEMO ${CNPJ_DEMO} está sem convenção — quem estiver vinculado a ele fica fora ` +
-      `de TODO relatório por CCT, e a tela /cartas aparece vazia sem explicar por quê`,
-  ).not.toBeNull();
+    .not("convencao_id", "is", null)
+    .limit(1)
+    .maybeSingle();
+  if (error || !estab) {
+    throw new Error(
+      `nenhum estabelecimento com convenção na base — sem isso o vínculo da fixture ficaria fora de ` +
+        `todo relatório por CCT: ${error?.message ?? "consulta vazia"}`,
+    );
+  }
   estabelecimentoId = estab.id as string;
   // O embed do PostgREST devolve array quando o relacionamento não é inferido
   // como "para um" — normaliza antes de ler o nome.

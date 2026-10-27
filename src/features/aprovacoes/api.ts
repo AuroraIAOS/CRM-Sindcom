@@ -31,6 +31,33 @@ export function useCadastrosPendentes() {
   });
 }
 
+/**
+ * Contagem da fila de aprovação — o marcador da sidebar (Subetapa 9.2).
+ *
+ * Mesma condição de `useCadastrosPendentes` (`status_cadastro = 'pendente'`),
+ * porque o marcador tem de contar exatamente o que a tela lista. `head: true`
+ * traz só a contagem: nenhum CPF viaja para desenhar um número.
+ *
+ * A chave fica sob "aprovacoes" para pegar carona no `invalidateQueries` que
+ * aprovar e rejeitar já disparam — o número cai no mesmo instante em que a
+ * linha sai da fila.
+ */
+export function useContagemCadastrosPendentes(habilitado: boolean) {
+  return useQuery({
+    queryKey: ["aprovacoes", "contagem-pendentes"],
+    enabled: habilitado,
+    refetchInterval: 60_000,
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("trabalhadores")
+        .select("id", { count: "exact", head: true })
+        .eq("status_cadastro", "pendente");
+      if (error) throw error;
+      return count ?? 0;
+    },
+  });
+}
+
 async function uidAtual(): Promise<string | null> {
   const { data } = await supabase.auth.getUser();
   return data.user?.id ?? null;

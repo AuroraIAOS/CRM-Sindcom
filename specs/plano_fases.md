@@ -1843,7 +1843,26 @@ produção (`docs/RELATORIO_08_ADVERSARIAL.md`).
 > 2026-09-01, e é a única subetapa de CONSTRUÇÃO desta etapa — as demais são operação. Manteve-se a
 > numeração das outras para não invalidar as referências já escritas nos documentos e nos commits.
 
-### Subetapa 9.00 — Tela de descadastramento e coleta de dados [Goal] [LLM: Sonnet] · Status: ⬜
+### Subetapa 9.00 — Tela de descadastramento e coleta de dados [Goal] [LLM: Sonnet] · Status: ✅ CONCLUÍDA
+
+> **Concluída em 2026-09-02.** `sql/24_descadastro_09_00.sql` aplicado em bench e produção;
+> Edge Function `descadastrar` publicada nos dois (mesmo `ezbr_sha256`, o que prova código idêntico);
+> `/descadastrar/:token` no ar; a marcação e a exportação em `/cobertura`. Suíte: **280 verdes, 0
+> falhas** (46 casos novos, 21 funcionais + 25 adversariais). Ciclo provado em produção com dado
+> DEMO, que **fica gravado**: `DEMO — Contabilidade Modelo` sai com motivo `nao_sou_mais_contador`,
+> `descadastrado_em` carimbado e o selo aparecendo em `/cobertura`.
+>
+> **Um achado adversarial do próprio desenho, corrigido antes de ir ao ar:** o freio de varredura só
+> valia na consulta, e o POST com token inválido gravava uma linha por chamada, sem teto. Corrigido
+> e medido — 14 chamadas passaram a gravar 9 linhas. Ver `orientacoes.md` §2.28; a armadilha do
+> `verify_jwt` está em §2.27.
+>
+> **DUAS PENDÊNCIAS QUE NÃO MORAM NO REPOSITÓRIO** e que a Onda 00 (9.1) verifica:
+> `BREVO_API_KEY` e `DESCADASTRO_WEBHOOK_SEGREDO` nos *secrets* da Edge Function. Sem a primeira, o
+> motivo é gravado e `descadastrado_em` é carimbado, mas **a remoção no ESP não acontece** — a linha
+> fica com `brevo_erro` preenchido, que é a fila de repetição. Sem a segunda, o webhook do caminho de
+> UM CLIQUE responde 401 a todo mundo (fechado por omissão, deliberadamente) e o Sindcom não fica
+> sabendo de quem saiu pelo botão do Gmail. Detalhamento em `docs/copies_campanha_08_14.md` §11.
 
 Objetivo: transformar o descadastro de **perda** em **sinal**. Hoje quem sai da lista some dentro da
 Brevo e o Sindcom não fica sabendo nem quem saiu, nem por quê. Esta subetapa constrói a página que
@@ -1940,11 +1959,59 @@ backup versionado; método de diagnóstico em `orientacoes.md` §1.6. **(b) ✅
 `https://sindcompassos.org/dados/` no ar, respondendo 200**, com o conteúdo conferido na página
 servida (assinatura de Adenilson Antônio Silva, OAB/MG 96.522, e a citação do art. 11, II) — 200 em
 WordPress também é o que uma página vazia devolve, então conferir o conteúdo não é preciosismo.
-**(c) ⬜ redirecionamento HTTP → HTTPS**, **acima** do bloco de cache (§1.5): `http://` ainda
-responde 200 sem redirecionar. **Reintroduzir separadamente, e provar** — foi mexer nesse arquivo
-que derrubou o site. **(d) ⬜ `Reply-To`** da Brevo apontando para `secretaria@sindcompassos.org`.
-**(e) ⬜ os 4 CSVs** importados na Brevo, contagens conferidas (89 / 248 / 613 / 8.236).
-**(f) ⬜ `campanhas.eixo` e `campanhas.assunto`** preenchidos no CRM.
+**(c) ✅ redirecionamento HTTP → HTTPS**, **acima** do bloco de cache (§1.5), nos dois domínios.
+`crm.sindcompassos.org` já estava resolvido (301, medido em 2026-09-02). O site institucional foi
+feito em 2026-09-04: bloco adicionado ao `.htaccess` acima de `# BEGIN NFD EPC`, sem tocar nos
+blocos geridos por software; backup do estado anterior à mudança em
+`docs/htaccess_site_institucional_backup_2026-09-04.txt` (que registrou também um achado à parte —
+o bloco `# BEGIN WordPress` não existe mais no arquivo ao vivo, e o site segue funcionando sem ele;
+não investigado agora, não é assunto deste item). Medido com cache-buster na query
+(`?bypass=$(date +%s)`), porque a home nua ficou presa num cache de borda (`nginx`,
+`X-Proxy-Cache: HIT`) por até 2h — método de diagnóstico e a distinção "regra errada" vs. "cache
+mais velho que a mudança" documentados em `orientacoes.md` §1.7. Confirmado: JS estático e
+`/wp-admin/` já redirecionavam sem cache-buster nenhum; só a home pura ficou presa no TTL.
+**REGRESSÃO ENCONTRADA E CORRIGIDA EM 2026-09-10 — o item (c) tinha voltado ao vermelho sem que
+ninguém soubesse.** Medido: páginas COM snapshot de cache (`/`, `/contato/`, `/dados/`) devolviam
+200 em HTTP puro e **com `X-Proxy-Cache: MISS`** — isto é, chegando à origem —, enquanto páginas
+sem snapshot devolviam 301. Não era o cache do §1.7. A causa: o comentário que escrevemos no topo
+do `.htaccess` **citava o texto literal do marcador do plugin de cache**, o plugin procurou esse
+marcador, achou a cópia dentro do nosso comentário e reescreveu o bloco dele ali — partindo a
+frase em duas e empurrando o redirecionamento para **depois** do cache. A linha resultante ainda
+começava com o marcador de abertura do WordPress, o que faria o próximo "Salvar links permanentes"
+apagar redirecionamento e HSTS silenciosamente (e provavelmente é a causa retroativa das duas
+truncagens do §1.6). Corrigido reconstruindo o arquivo por fatiamento do conteúdo ao vivo, com
+guarda de contagem de marcadores; estado anterior em
+`docs/htaccess_site_institucional_backup_2026-09-10_ANTES.txt`; lição completa em
+`orientacoes.md` §1.9. **Verificado por requisição:** estático 200 (o `.htaccess` é válido),
+`final=200 saltos=1` em `/`, `/contato/` e `/dados/`, HSTS presente só no HTTPS, `/wp-json/` 200
+(o roteamento do WordPress sobreviveu à edição).
+**(d) ✅ `Reply-To`** — configurado em 2026-09-04 no rascunho de campanha que existe hoje na Brevo
+(`TESTE — verificação de autenticação`, em Configurações adicionais → "Use um endereço de resposta
+diferente" → `secretaria@sindcompassos.org`). **As 4 campanhas reais (A/B/C/D) ainda não existem
+como rascunho na Brevo** — só como linhas em `campanhas` no CRM —, então este campo terá de ser
+reconferido quando cada rascunho real for criado (a começar pelo da Onda 00, Subetapa 9.1). DNS
+reconfirmado em 2026-09-02: `envios.sindcompassos.org` continua sem MX, `sindcompassos.org` tem
+`mx1/mx2.titan.email`, `_dmarc.envios` com o **nosso** `rua` (§3.8).
+**(e) ⬜ os 4 CSVs** importados na Brevo, contagens conferidas (89 / 248 / 613 / 8.236) —
+reexportados em 2026-09-02 com a coluna `saida` (link do formulário de descadastro da 9.00), por
+`scripts/reexportar_csvs_09_00.mjs`. **Não bloqueia a Onda 00**: são as listas das ondas reais
+(9.2–9.5); a 9.1 usa uma lista à parte, pequena, com caixas do próprio Maxwell — a montar quando
+chegar lá.
+**(g) ✅ os dois *secrets* da Edge Function `descadastrar`** — `BREVO_API_KEY` e
+`DESCADASTRO_WEBHOOK_SEGREDO` colados no Supabase em 2026-09-04; webhook `sindcom-descadastro-crm`
+criado na Brevo (evento `Inscrição cancelada` — **os demais vinham ligados por padrão** e foram
+desligados um a um, porque qualquer clique/abertura teria disparado o endpoint como se fosse
+descadastro). Provado por efeito observável: um descadastro de teste gravou
+`brevo_removido_em` preenchido (antes, sem a chave, ficava `brevo_erro = "BREVO_API_KEY ausente"`).
+**Uma lacuna real e assumida:** o e-mail de teste nunca existiu como contato na Brevo, então a prova
+não cobre o bloqueio de um contato de verdade — só confirma que a chave passa da autenticação (não
+deu 401). A prova completa, com endereço real, fica para a Onda 00, por decisão do Maxwell.
+Ver `docs/copies_campanha_08_14.md` §11.
+**(f) ✅ `campanhas.eixo`, `campanhas.onda` e `campanhas.assunto`** preenchidos em 2026-09-02 nas 4
+campanhas reais. A trilha B é sequência de três com eixos diferentes e a tabela guarda um eixo só:
+gravou-se o do **primeiro a sair** (`estrutural`, B1), e os três assuntos seguem em
+`docs/copies_campanha_08_14.md` §4, que é a fonte de verdade do texto — desdobrar em três campanhas
+exigiria reassociar 8.236 envios, com ganho nenhum, já que token e destinatário são os mesmos.
 Qualidade: **cada item se prova por requisição ou por resposta que chega, nunca por tela de
 configuração.** Ler "Reply-To: secretaria@" no painel da Brevo não prova que a resposta chega —
 responder ao e-mail e ver a mensagem em `secretaria@` prova.
@@ -1952,7 +2019,36 @@ Evidência: as 6 conferências, cada uma com o resultado medido.
 Esforço máximo: sem teto — é pré-requisito, não entrega.
 Se esgotar: **nenhuma onda sai.** Onda que depende de link quebrado queima base sem aprender nada.
 
-### Subetapa 9.1 — Onda 00: prova ponta a ponta em caixas do próprio Maxwell [Manual] [LLM: Opus] · Status: ⬜
+### Subetapa 9.1 — Onda 00: prova ponta a ponta em caixas do próprio Maxwell [Manual] [LLM: Opus] · Status: 🟡 EM ANDAMENTO
+
+> **Achado da Onda 00, corrigido em 2026-09-08 — a prova já pagou o seu custo.** Testando a
+> revogação de token, apareceu que a contabilidade "perdia o acesso". A medição mostrou que a
+> **reemissão sempre funcionou** (dois ciclos de revogação deixaram exatamente um envio ativo, com
+> token novo); o que não existia era **entrega**: nenhuma tela mostrava o link, o CSV não o trazia e o
+> CRM não dispara e-mail — o substituto nascia invisível. Corrigido com
+> `sql/25_reemissao_token_09_01.sql` (view `v_envios_campanha_mascarada`, token em claro só para
+> Admin, aplicada em produção), mais o diálogo "Link novo emitido" e o botão "Link ativo" em
+> `/cobertura`. Lição em `orientacoes.md` §4.11. **Lacuna conhecida:** empresa isolada (trilha B) não
+> tem tela de cobertura, então não revoga nem reemite pela interface.
+>
+> Dois testes de outras subetapas quebraram por dado de demonstração, não por regressão, e foram
+> reescritos para afirmar o invariante em vez do registro específico (§7.1b/§7.1d/§7.9): o de
+> cobertura sorteava "o primeiro estabelecimento `999999%`" e passou a cair nos 9 novos da Onda 00; os
+> de `remessas` cravavam três CPFs de uma planilha de agosto que não estão mais na base.
+>
+> **Segundo achado da Onda 00, corrigido em 2026-09-08 — a tela de cobertura de empresas abria em ~6
+> segundos.** A causa não era a view: `fn_eh()`, embora `stable`, é avaliada **uma vez por linha**
+> quando usada como filtro de policy, e a tela varre 8.238 estabelecimentos. Embrulhá-la em
+> subconsulta escalar a promove a `InitPlan`, avaliada uma vez por consulta — mesma expressão
+> booleana, mesmos papéis, nenhuma linha nova visível para ninguém. Aplicado em produção como
+> `sql/27_rls_initplan_09_01.sql` (4 policies: `estabelecimentos`, `empresas`, `envios_campanha`,
+> `vinculos_empregaticios`). Medido: `explain analyze` **2.330 ms → ~39 ms**; pelo caminho do app,
+> **~6.000 ms → 130 ms** com contagem exata. O `count` continuou 8.238 e a suíte fechou **291
+> passando, 0 falha** — as duas evidências de que o recorte por papel não mudou. Conferido também por
+> catálogo: total de policies igual (111) e hash das outras 107 idêntico ao de antes. Lição de método
+> em `orientacoes.md` §2.29 (a sessão do painel expirou no meio do `alter`, a aba travou e o DDL não
+> chegou ao banco — sem nenhuma mensagem de erro).
+
 Objetivo: **provar a estrutura inteira com dado real e destinatário controlado, antes de tocar em
 uma única contabilidade de verdade.** É a subetapa que a decisão de 2026-09-01 criou, e é ela que
 transforma a onda 1 de experimento em execução.
@@ -1986,6 +2082,81 @@ qualquer item no vermelho, e repetir a Onda 00 não custa reputação nenhuma.
 ### Subetapa 9.2 — Onda 01: as 89 contabilidades grandes [Manual] [LLM: Opus] · Status: ⬜
 *(era a Subetapa 08.15; movida para cá em 2026-09-01, com o conteúdo preservado)*
 
+> **PREPARO DA 9.2 FEITO EM 2026-09-10 (o disparo em si continua ⬜, e é ordem do Maxwell).**
+>
+> **(1) "Link ativo" e "Revogar token" liberados para a Secretaria** — é ela quem faz o contato
+> direto com as empresas durante as ondas. Aplicado em produção como
+> `sql/28_cobertura_reemissao_atendimento_09_02.sql`: a view `v_envios_campanha_mascarada` deixa de
+> mascarar o token para ela, e `pol_envios_insert`/`pol_envios_update` passam a admiti-la
+> (`delete` segue só Admin). `PODE_REVOGAR` nas duas telas de cobertura acompanha. Medido depois de
+> aplicar: policies conferidas no catálogo, `tests/rls/cobertura.spec.ts` **20/20**, e os dois casos
+> novos falhavam antes da migração pelo motivo certo — prova de que medem a mudança.
+> **Poder novo assumido e registrado:** ela passa a poder emitir link para um e-mail qualquer,
+> porque reemitir é revogar + inserir. O raciocínio de por que isso não é escalada está no cabeçalho
+> do SQL, com o desenho alternativo (RPC transacional) descrito para quando o Maxwell quiser fechar.
+>
+> **(2) Achado de higiene ao conferir a própria migração:** `authenticated` tinha
+> INSERT/UPDATE/DELETE na view, herdados do default ACL (§2.25). Varredura de catálogo em **todas**
+> as views: 17 com o mesmo excedente, mas só 2 são de fato atualizáveis — e `v_fila_parceiro`, a
+> única `security_invoker=off`, **não é**, então o privilégio dela é inerte. Medido também que
+> nenhuma tabela do `public` está com RLS desligada e nenhuma policy de escrita alcança
+> `anon`/`public`. **Não é furo; é superfície de graça.** Revogada a escrita na view desta subetapa;
+> as outras 16 ficam como decisão do Maxwell.
+>
+> **(3) Bloqueio herdado da limpeza de 2026-09-09 — ENCONTRADO E RESOLVIDO no mesmo dia.** A
+> primeira execução completa da suíte depois da limpeza deu **16 falhas** (271 passando). Quinze
+> eram testes que PROCURAVAM dado DEMO removido (`remessas` 8, `coleta` 3, `dashboard` 2,
+> `adversarial/05_comunicacao` 2, `cartas` 1); a décima sexta era legítima — a 9.2 mudou de
+> propósito quem cria envio. Resolvido assim:
+> - **`coleta` e `adversarial/05`** passaram a SEMEAR os três estados de token (válido, expirado,
+>   revogado) por `tests/rls/fixtures/campanhaDemo.ts`, com remoção no `afterAll`.
+> - **`cartas`** deixou de exigir um CNPJ DEMO fixo e usa qualquer estabelecimento com CCT — o
+>   invariante sempre foi o recorte, nunca o registro.
+> - **`dashboard`** parou de afirmar volume (`total_trabalhadores > 0`) e passou a comparar o
+>   recorte por papel com a leitura do Admin; a fotografia por nível só é cobrada quando existe
+>   trabalhador **aprovado**, que é o predicado da própria `fn_snapshot_dashboard`.
+> - **`remessas` (8)** PULA com motivo explícito em produção, em vez de falhar. Não dá para semear:
+>   `remessas_dados` não tem policy de INSERT para papel autenticado (só a Edge Function, com
+>   `service_role`) e o bucket `remessas` não tem policy de DELETE — a evidência é imutável por
+>   desenho, e afrouxar isso por causa de teste seria trocar segurança permanente por conveniência
+>   (§2.30). Cobertura recuperável rodando a suíte contra o bench.
+> - **`formulario-site`** deixava duas pessoas DEMO gravadas a cada execução (desenho da regra
+>   antiga); agora remove no `afterAll`.
+>
+> **Placar final: 284 passando, 0 falhando, 46 pulados** (typecheck e build limpos), e a base
+> conferida depois da execução completa continua idêntica: 1 trabalhador (o Isac), 4 campanhas
+> reais, zero DEMO, 9.186 envios. Método e a armadilha nova do PostgREST em `orientacoes.md`
+> §7.3 e §2.7d.
+>
+> **(4) Deploy feito em 2026-09-10** com a suíte verde. Verificado: `/`, `/dashboard` e
+> `/cobertura` em 200, HTTP→HTTPS em 301, HSTS presente, e o HTML servido idêntico ao `dist/`
+> local (bundle `index-C89j-f6B.js`, 200).
+>
+> **(5) Três defeitos de LEITURA corrigidos em 2026-09-11**, encontrados pelo Maxwell olhando o CRM
+> em produção. Nenhum era erro de cálculo; os três faziam a tela contar uma história falsa.
+> - **Gráfico "Evolução por nível" mostrava 53 pessoas que não existem.** A limpeza de 2026-09-09
+>   apagou os trabalhadores DEMO mas não as fotografias que os contaram. Não era erro de escala do
+>   eixo (a hipótese natural, e a cara): o eixo estava certo e o gráfico era fiel — a história é que
+>   estava errada. Corrigido em `sql/29_snapshots_niveis_09_02.sql`: 18 fotografias da era DEMO
+>   apagadas (dump em `docs/snapshots_demo_apagados_2026-09-11.md`), `fn_snapshot_dashboard` passou
+>   a gravar os três níveis SEMPRE — inclusive com zero, senão nível vazio vira ausência e a linha
+>   parece continuar em vez de cair (§4.5) — e a view passou a zerar o que falta, inclusive nas
+>   fotografias antigas. O frontend passou a agregar por MÊS, o que acaba com o eixo X repetindo
+>   "ago/26, ago/26, ago/26". Medido depois: eixo com jul/26 · ago/26 · set/26 e escala 0..4.
+> - **Dashboard de campanhas somava a Onda 00** (7 enviados, 12 cliques). Aqueles números vêm da
+>   **Brevo**, não do Supabase — a suspeita do Maxwell estava certa. Em vez de apagar as campanhas
+>   na Brevo (o que destruiria a evidência da 9.1), a tela passou a ocultá-las por padrão, com caixa
+>   de seleção visível e o total no rótulo. `ehCampanhaDeTeste` casa por PREFIXO e tem teste
+>   dedicado, porque o modo de falha é assimétrico: deixar teste passar suja o painel; casar com
+>   onda real **esconde resultado de campanha de verdade**.
+> - **"Dashboard" e "Descadastros" pareciam ler fontes contraditórias.** Não liam: são fontes
+>   diferentes por desenho (Brevo × Supabase) e a tela já dizia qual era qual. Mas uma exibia a era
+>   de teste e a outra não, e comparar as duas induzia conclusão errada. Com o filtro acima, as duas
+>   passam a mostrar a mesma realidade — zero até a Onda 01 sair.
+>
+> Suíte: **288 passando, 0 falhando**. Deploy feito e conferido em produção (bundle
+> `index-CoqVtNjr.js`).
+
 Objetivo: o primeiro disparo real — 89 envios que alcançam **3.758 estabelecimentos, 24% da base**.
 Se a copy estiver ruim, descobre-se com 89 e não com 9.000 (D8) — **e agora, com a Onda 00 no
 verde, a copy já foi lida em caixa real antes de chegar aqui.**
@@ -2002,6 +2173,125 @@ Evidência: print do painel do ESP com entregues/rejeitados/spam + `select count
 envios_campanha where enviado_em is not null` = 89 + a primeira leitura de cobertura.
 Esforço máximo: 1 disparo; qualquer anomalia interrompe em vez de reenviar.
 Se esgotar: parar o agendamento no ESP e relatar. **Onda 2 não sai com a onda 1 no vermelho.**
+
+> **PROVISIONADO PARA DEPOIS DA ONDA 01 — baixar o nível do cache do site institucional.**
+> Decidido em 2026-09-09, e a razão de esperar é deliberada: hoje o site está estável e trocar o
+> comportamento de cache no dia do disparo é risco sem necessidade.
+>
+> **O que fazer:** `sindcompassos.org` → WP Admin → Configurações → Geral → **Endurance Cache**,
+> baixar de **`Normal (Level 2)`** para **`Assets Only (Level 1)`**.
+>
+> **Por quê:** o nível 2 é o que faz o plugin *must-use* `Endurance Page Cache 2.3.0` reescrever o
+> bloco `# BEGIN NFD EPC` do `.htaccess` — e essa reescrita corrompeu o arquivo **duas vezes em oito
+> dias** (2026-09-01 e 2026-09-09), derrubando o site inteiro com 500 nas duas
+> (`orientacoes.md` §1.6). O nível 1 mantém o cache de NAVEGADOR, que vem do bloco `mod_expires` e é
+> outra coisa; o que se perde é o cache de página em disco.
+>
+> **O que NÃO fazer, e por que isto está escrito:** até 2026-09-09 a recomendação era *desligar* o
+> cache — e ela teria derrubado o site inteiro para 404, porque o `.htaccess` estava sem o bloco
+> `# BEGIN WordPress` e **quem respondia 200 era o cache, não o WordPress** (§1.8). Esse bloco já foi
+> restaurado e o roteamento está provado por medição, então o caminho agora está livre. Ainda assim,
+> **medir antes e depois com o desvio de cache** continua sendo a regra:
+> ```bash
+> for u in / /contato/ /dados/; do
+>   curl -s -o /dev/null -w "$u?x=1 -> %{http_code}\n" "https://sindcompassos.org$u?x=1"; sleep 5
+> done
+> ```
+>
+> Vale reavaliar junto a migração das páginas do Elementor para HTML puro, que o Maxwell provisionou
+> para depois da ETAPA 09: menos peças móveis reescrevendo arquivo de configuração é menos
+> superfície para este mesmo defeito voltar.
+>
+> **(6) Trocar o e-mail da contabilidade, com token novo no mesmo ato (2026-09-14).** Pedido do
+> Maxwell: contabilidades vêm pedindo mudança de endereço, e havia onde editar o do estabelecimento,
+> mas não o da contabilidade — que costuma atender várias empresas. Entregue em
+> "Campanha » Cobertura por contabilidade" como `alterarEmailEReemitir()` +
+> `useAlterarEmailContabilidade()` (`src/features/cobertura/api.ts`) e o diálogo `AlterarEmailDialog`.
+> **A ordem das guardas é a decisão:** formato → colisão com envio ativo → `update` no cadastro com
+> checagem de zero linhas (RLS barra UPDATE sem erro, §2.6d) → só então revogar e reemitir. O token
+> novo nasce lastreado no endereço novo; o antigo é revogado, não apagado. Commit `7efab1f`.
+>
+> **(7) Painel de REJEIÇÕES — "para quem eu ligo amanhã de manhã" (2026-09-14/15).** Pedido do
+> Maxwell: ver, dentro da aba Dashboard das campanhas, os e-mails recusados no disparo, para começar
+> a abordagem por outra via (SMS, ligação, carta, visita).
+>
+> - **Por que tabela e não consulta à Brevo na hora:** o relatório da campanha só expõe o TOTAL de
+>   `hardBounces`/`softBounces`; a lista nominal sai por `exportRecipients`, que é assíncrono, exige
+>   polling, devolve CSV e **não traz o motivo**. E, sobretudo, um endereço solto não inicia
+>   abordagem nenhuma — o que inicia é nome + CNPJ + **telefone** + município, que só existem aqui.
+>   `sql/31_rejeicoes_campanha_09_02.sql`: tabela com `unique (email, tipo, ocorrido_em)` para a
+>   idempotência que todo webhook exige, RLS espelhando `descadastros_campanha` (leitura para quem
+>   toca campanha; escrita para ninguém autenticado — quem escreve é a Edge Function).
+> - **A view nasceu CEGA no grupo que mais importa, e a medição pegou.** Com duas linhas de
+>   verificação, uma rejeição de contabilidade devolvia nome = o próprio e-mail, e CNPJ, telefone e
+>   município todos nulos. Não é caso de borda: são **951 dos 9.187 envios**, cada um respondendo por
+>   uma carteira inteira. Causa: `contabilidades` nasceu do agrupamento por e-mail da 08.9 — não há
+>   razão social nem telefone, a Receita publica as EMPRESAS do escritório, não o escritório.
+>   `sql/32_rejeicoes_contato_contabilidade_09_02.sql` resolve pelo sinal que estava na carteira: **o
+>   telefone que se REPETE entre os clientes é a linha do escritório.** Medido na primeira carteira
+>   examinada — `35 35611154` em **19 das 31** empresas. A view devolve esse número e diz em quantas
+>   empresas ele aparece (`telefone_em_n_empresas`), porque 1 em 1 é palpite e 19 em 31 é o
+>   escritório; e `telefone_origem` avisa quando o número veio da carteira, para ninguém ligar para
+>   um cliente achando que fala com o contador. Armadilha vencida no caminho: §2.31 (`concat_ws`).
+> - **A tela é FILA, não relatório.** Ordenada por estrago (`estabelecimentos_atendidos`), porque a
+>   rejeição de uma contabilidade de 31 empresas deixa 31 empresas sem o link e a de uma empresa
+>   isolada deixa uma. Quatro contadores no topo: Rejeições · Empresas sem o link · Sem retorno por
+>   e-mail · Sem telefone no cadastro (essas são carta ou visita). O tipo aparece traduzido em AÇÃO,
+>   porque `hard`/`soft` é vocabulário de ESP, não do sindicato.
+> - **Verificado com linha de verdade e limpo em seguida.** Duas linhas semeadas em produção,
+>   conferidas na tela publicada (a de contabilidade com telefone da carteira, nome, município e a
+>   carteira contada), e **removidas** — junto com uma terceira que havia ficado de 2026-09-14 por
+>   causa do erro de método registrado em §7.11. Estado final medido em 2026-09-15 15:17 UTC:
+>   `linhas_na_tabela = 0`, `authenticated = SELECT` apenas, `anon` sem grant, 1 policy,
+>   `security_invoker=on`, 16 colunas.
+> - **`database.types.ts` regenerado** e o cast de dívida declarada removido de `useRejeicoes`.
+> - **Edge Function publicada em 2026-09-15 (version 5).** `descadastrar` passou a despachar o
+>   webhook da Brevo **por tipo de evento**. Antes, aquele ramo tratava QUALQUER evento como
+>   descadastro — foi por isso que todos os outros eventos tiveram de ser desligados um a um no
+>   painel da Brevo, e bastava marcar uma caixa a mais lá para a base começar a se descadastrar
+>   sozinha, sem erro nenhum aparecendo. O despacho desarma essa mina E entrega a 9.2 no MESMO
+>   endpoint: `hard_bounce` e `soft_bounce` podem ser ligados no webhook que já existe.
+>   **Decisões do despacho:** `invalid_email` entra como `hard` (mesma ação: não reenviar nunca);
+>   `deferred` ficou DE FORA de propósito (é adiamento com nova tentativa, e a maioria termina
+>   entregue — o que não se resolve vira `soft_bounce`, e esse nós pegamos); evento **vazio** cai no
+>   ramo de descadastro, porque o webhook em produção foi criado só com esse evento e engolir um
+>   descadastro é o pior desfecho possível deste arquivo; evento desconhecido responde **200 e não
+>   faz nada** (200 porque a Brevo repete a entrega quando não recebe 2xx).
+>   **Rejeição NÃO descadastra:** são fatos diferentes, e tratar um como o outro apagaria do painel
+>   exatamente as pessoas que precisam ser procuradas por telefone.
+>   Publicado pelo editor do painel (o `deploy_edge_function` do MCP foi barrado, e o botão não
+>   responde a automação — §2.32); o conteúdo foi conferido por **SHA-256** antes do clique.
+>   Medido depois, sem escrever nada: `OPTIONS` → 204 (a função sobe), `GET` sem token →
+>   `Link inválido.` (o caminho de saída segue intacto), `POST ?fonte=brevo` com chave errada → 401
+>   (o ramo novo está vivo e guardado). `verify_jwt: false` preservado.
+>   Os eventos foram marcados no painel em 2026-09-15 pelo Maxwell — ver a ressalva abaixo.
+>
+> - **Prova de ponta a ponta do despacho, 2026-09-15** (com o segredo do webhook, lido de
+>   `.env.n8n.test` e nunca impresso). Seis passos, todos verdes:
+>   1. evento **desconhecido** (`delivered`) → `{"tratado":"ignorado"}` e **zero** linhas gravadas.
+>      É esta a prova de que a mina saiu: antes, este mesmo POST teria virado descadastro.
+>   2. `hard_bounce` → `{"tratado":"rejeicao","tipo":"hard","gravou":true}`, 1 linha.
+>   3. o **mesmo** evento repetido → continua **1 linha**. A idempotência do webhook funciona; a
+>      Brevo repete a entrega quando não recebe 2xx, e sem isso a lista mandaria telefonar duas
+>      vezes para a mesma pessoa.
+>   4. `soft_bounce` no MESMO instante → **2 linhas**. O tipo faz parte da chave, então é evento
+>      novo — e tem de ser: a mesma caixa pode falhar de dois jeitos diferentes.
+>   5. a view devolveu `situacao = 'fora da base'`, com motivo do provedor e nome da campanha; e
+>      `ocorrido_em` veio do `ts_event` enviado (19:20:00Z), **não** do `now()` do registro — que é
+>      exatamente o que a chave de idempotência exige.
+>   6. limpeza: 2 linhas apagadas, tabela de volta a **0**.
+>
+> - **NÃO CONFERIDO — os eventos no painel da Brevo.** O Maxwell marcou `hard_bounce` e
+>   `soft_bounce` em 2026-09-15, mas o cartão do webhook continua exibindo *"Última edição
+>   04/09/2026"*. Não sei dizer se a Brevo simplesmente não atualiza esse campo para mudança de
+>   evento, ou se a marcação não chegou a ser salva — a tela de edição (`/webhooks/outbound/update/…`)
+>   não renderiza sob automação e não há API interna alcançável pela sessão do navegador. **Fica
+>   aberto até alguém reabrir o webhook e confirmar visualmente.** O lado do CRM está provado; o que
+>   falta confirmar é se a Brevo vai ENVIAR.
+>
+> - **A rejeição da Onda-Lote 01/01 (11/09) não volta.** A Brevo não reenvia eventos passados: o
+>   webhook só recebe o que acontece depois de estar ligado. Aquele 1 bounce só é recuperável
+>   manualmente, pelo relatório da campanha no painel da Brevo.
 
 ### Subetapa 9.3 — Onda 02: as 248 contabilidades médias [Manual] [LLM: Sonnet] · Status: ⬜
 Objetivo: 248 envios, 2.189 estabelecimentos, levando o alcance acumulado a 38%.
@@ -2054,6 +2344,34 @@ frio e o maior volume, e é onde a reputação construída nas três primeiras p
 · **descumprir o descadastro em um clique** (RFC 8058) por causa do formulário da 9.00 — este é o
 único risco desta etapa cujo dano não aparece em teste nenhum: ele aparece semanas depois, como
 queda de entrega no Gmail, e já terá custado a base.
+
+---
+
+## ETAPA 10 — CONTROLE DE BOLETOS (TAF / CA / CN / PAMED) · Complexidade: ALTA · Status: ✅ CONCLUÍDA (2026-10-26: bench → preview → produção, no ar em crm.sindcompassos.org; merge em main)
+
+Objetivo: tirar da caixa de entrada o controle manual dos boletos — coleta de CNPJ + nº de trabalhadores
+por link permanente (um token por caixa de e-mail), cálculo do valor (só TAF e PAMED: valor-base da
+taxa na convenção × quantidade) e acompanhamento até o pagamento. Sem integração Sicoob; o boleto
+continua manual. Desenho: `docs/superpowers/specs/2026-10-26-controle-boletos-design.md`; plano:
+`docs/superpowers/plans/2026-10-26-controle-boletos.md`.
+
+Estados: `aguardando_dados → fazer → enviar → enviado → pago` (+ `cancelado`); `atrasado` é tag derivada.
+CA e CN: valor digitado pelo operador (congela em enviar/enviado/pago).
+
+| Peça | Onde |
+|---|---|
+| SQL | `sql/33_boletos_10_00.sql` (tabelas, triggers, 6 views `security_invoker`, 4 RPCs, 4 índices de FK) — **aplicado no bench e na produção** (migrations `boletos_10_00_a…d3`; 18 taxas TAF e 8 PAMED etiquetadas) |
+| Edge Function | `supabase/functions/receber-dados-boleto/` (service_role, `verify_jwt:false`) — **no bench e na produção (v1)** |
+| Frontend | `src/features/boletos/` (Visão geral, Ciclos, Dados recebidos, Status, Caixas e links, página pública `/responder/:token`) + aba Taxas (`tipo_boleto`) em `features/convencoes` |
+| Testes | `tests/rls/boletos.spec.ts` (50/50) · `tests/adversarial/07_boletos.spec.ts` (35/35) · `tests/unit/boletos-rotulos-csv.spec.ts` |
+| Preview | build com `.env.bench`, `--base=/preview-boletos/`, FTP só nessa subpasta; página pública provada de ponta a ponta (12 trabalhadores → `fazer`, R$ 150,00 = 12 × 12,50) |
+
+**Verificação (bench `ikculjjvvyajhfxifuga`):** suíte completa com `SINDCOM_ALVO=bench` — 396 passed, 25 skipped,
+14 failed; as 14 são pré-existentes em `cobertura.spec.ts` (12) e `comunicacao.spec.ts` (2), por defasagem do bench
+em relação à produção (SQL 24–32 e dados), sem relação com boletos. Os testes de boletos ficam `skip` em
+produção até o SQL 33 ser aplicado lá. Dado DEMO do módulo removido do bench ao fim da subetapa (por prefixo).
+
+**Produção (2026-10-26, após "está tudo aprovado, inclusive o preview"):** SQL 33 aplicado em 7 migrations; conferência do rodapé OK (6 views `security_invoker=on`, anon sem acesso, só as 4 RPCs executáveis por `authenticated`, zero taxa sem etiqueta); Edge Function publicada e provada por curl (token inválido → mensagem única; token real; boleto alheio recusado; 405; CORS); dado de verificação removido; frontend definitivo publicado (22 arquivos, 0 divergência). Merge em `main` autorizado pelo Maxwell; `/preview-boletos/` removido do servidor; convenções "ACB Adição Express" renomeadas para "ABC" (produção e bench). **Pendente:** criar o primeiro ciclo real.
 
 ---
 
@@ -2132,6 +2450,7 @@ recriação de contêiner.
 | 06 | Alta | Etapa 04 | Base empresarial real: 16.687 empresas + 17.319 estabelecimentos ✅ |
 | 07 | Alta | Etapa 06 | Portão adversarial: 5 falhas reais fechadas ✅ |
 | 08 | Alta | Etapa 07 (portão) + DMARC + nota jurídica | Base de **pessoas**: campanha, coleta por token e rastreio por cobertura |
+| 10 | Alta | Etapa 08 (padrão de token) | Controle de boletos TAF/CA/CN/PAMED: coleta por link, valor calculado, acompanhamento ✅ (produção) |
 | 05 | Variável | Etapa 08 + dados de uso | Refinamentos guiados por evidência |
 
 ---

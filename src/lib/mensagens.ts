@@ -19,7 +19,7 @@ const POR_CODIGO: Record<string, string> = {
   "23514": "Dados inválidos: violam uma regra de validação do sistema.",
   "23502": "Preencha todos os campos obrigatórios.",
   "42501": "Você não tem permissão para esta operação.",
-  "P0001": "", // raise exception dos triggers — usa a própria mensagem (já amigável)
+  "P0001": "", // raise exception dos triggers (e 22023 nas regras dos boletos) — usa a própria mensagem (já amigável)
   PGRST301: "Sessão expirada. Faça login novamente.",
   PGRST116: "Registro não encontrado ou sem permissão de acesso.",
 };
@@ -47,6 +47,10 @@ const POR_TRECHO: Array<[RegExp, string]> = [
     /cartas_oposicao_trabalhador_id_ano_base_key/i,
     "Já existe uma carta de oposição registrada para este trabalhador neste ano-base.",
   ],
+  [
+    /uq_taxas_convencao_tipo_boleto/i,
+    "Já existe uma taxa desta convenção marcada para este tipo de boleto. Desmarque a outra antes.",
+  ],
   [/duplicate key value/i, "Já existe um registro com estes dados (duplicado)."],
 ];
 
@@ -65,7 +69,7 @@ export function mensagemErro(erro: unknown): string {
   const msg = (e.message ?? "").trim();
 
   // 1. Erros de trigger (P0001): a mensagem do SQL já é amigável.
-  if (e.code === "P0001" && msg) return msg;
+  if ((e.code === "P0001" || e.code === "22023") && msg) return msg;
 
   // 2. Trecho conhecido na mensagem — mais específico que o código genérico
   //    (ex.: qual constraint de unicidade foi violada), então vem antes.

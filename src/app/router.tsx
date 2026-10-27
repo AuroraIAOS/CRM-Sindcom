@@ -10,6 +10,7 @@ import { LoginPage } from "@/features/auth/LoginPage";
 import { RecuperarSenhaPage } from "@/features/auth/RecuperarSenhaPage";
 import { GuiaPublicaPage } from "@/features/servicos/GuiaPublicaPage";
 import { EnviarDadosPage } from "@/features/coleta/EnviarDadosPage";
+import { DescadastrarPage } from "@/features/descadastro/DescadastrarPage";
 import { ListaTrabalhadoresPage } from "@/features/trabalhadores/ListaTrabalhadoresPage";
 import { FichaTrabalhadorPage } from "@/features/trabalhadores/FichaTrabalhadorPage";
 import { ListaEmpresasPage } from "@/features/empresas/ListaEmpresasPage";
@@ -34,6 +35,15 @@ import { ListaAtendimentosPage } from "@/features/juridico/ListaAtendimentosPage
 import { ListaCartasPage } from "@/features/cartas/ListaCartasPage";
 import { ListaRemessasPage } from "@/features/remessas/ListaRemessasPage";
 import { CoberturaContabilidadesPage } from "@/features/cobertura/CoberturaContabilidadesPage";
+import { CoberturaEmpresasPage } from "@/features/cobertura/CoberturaEmpresasPage";
+import { DashboardCampanhasPage } from "@/features/campanhas/DashboardCampanhasPage";
+import { ListaDescadastrosPage } from "@/features/descadastros/ListaDescadastrosPage";
+import { VisaoGeralPage } from "@/features/boletos/VisaoGeralPage";
+import { CiclosPage } from "@/features/boletos/CiclosPage";
+import { DadosRecebidosPage } from "@/features/boletos/DadosRecebidosPage";
+import { StatusBoletosPage } from "@/features/boletos/StatusBoletosPage";
+import { CaixasPage } from "@/features/boletos/CaixasPage";
+import { ResponderPage } from "@/features/boletos/ResponderPage";
 import type { PapelUsuario } from "@/lib/supabase";
 
 /**
@@ -84,6 +94,14 @@ const PAGINAS: Partial<Record<string, ReactNode>> = {
   "/cartas": <ListaCartasPage />,
   "/remessas": <ListaRemessasPage />,
   "/cobertura": <CoberturaContabilidadesPage />,
+  "/cobertura-empresas": <CoberturaEmpresasPage />,
+  "/campanhas/dashboard": <DashboardCampanhasPage />,
+  "/descadastros": <ListaDescadastrosPage />,
+  "/boletos": <VisaoGeralPage />,
+  "/boletos/ciclos": <CiclosPage />,
+  "/boletos/dados": <DadosRecebidosPage />,
+  "/boletos/status": <StatusBoletosPage />,
+  "/boletos/caixas": <CaixasPage />,
 };
 const PAGINAS_DETALHE: Partial<Record<string, ReactNode>> = {
   "/trabalhadores/:id": <FichaTrabalhadorPage />,
@@ -116,6 +134,12 @@ export const router = createBrowserRouter(
     // Rota pública da coleta externa (ETAPA 08): fora do AppShell e fora do
     // RoleGate, como a guia do QR. O token é a credencial; não há sessão.
     { path: "/enviar-dados/:token", element: <EnviarDadosPage /> },
+    // Saída da campanha (ETAPA 09 · 9.00), pelo link do CORPO do e-mail. O
+    // botão de UM CLIQUE do Gmail/Outlook (RFC 8058) NÃO passa por aqui — é o
+    // cabeçalho `List-Unsubscribe` da Brevo, e obrigá-lo a abrir esta tela seria
+    // descumprimento com custo em entregabilidade, não em teste.
+    { path: "/descadastrar/:token", element: <DescadastrarPage /> },
+    { path: "/responder/:token", element: <ResponderPage /> },
     {
       // Área interna: exige sessão + perfil ativo (RoleGate sem roles).
       element: (

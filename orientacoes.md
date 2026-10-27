@@ -299,7 +299,293 @@ reescrevendo o bloco no meio do caminho.
 servidor web ainda serve um byte estático?"**. A resposta separa dois mundos de investigação, e ela
 custa uma requisição.
 
+
+**(d) SEGUNDA OCORRÊNCIA — 2026-09-09, oito dias depois. O mesmo defeito, e agora com o culpado
+nomeado.** O site voltou a devolver 500 em tudo, inclusive no estático. O teste de uma requisição
+decidiu de novo em segundos, e o arquivo ao vivo tinha a mesma forma: 1.324 bytes, começando em
+
+```
+ype application/pdf "access plus 1 week"
+```
+
+— o rabo de um `ExpiresByType`. **A contagem de marcadores é o diagnóstico mais rápido que existe
+aqui, e não depende de ler o arquivo inteiro:**
+
+```
+"# BEGIN NFD EPC" .... 1 ocorrência
+"# END NFD EPC" ...... 2 ocorrências
+```
+
+Um `END` a mais que `BEGIN` prova truncamento: o primeiro bloco perdeu o começo e sobreviveu só o
+fim, com um bloco íntegro logo abaixo. Não é preciso interpretar diretiva nenhuma.
+
+**Quem escreve é o `NFD EPC` — Newfold/Endurance Page Cache**, e isso não é dedução: o bloco leva o
+nome dele e é ele que o regenera. Duas corrupções em oito dias, as duas com a mesma assinatura de
+escrita concorrente. **Enquanto esse plugin estiver ativo, isto volta a acontecer** — a pergunta não
+é "se", é "quando", e a próxima pode cair no meio de um disparo de campanha.
+
+**Um segundo efeito do mesmo plugin, que ninguém tinha medido:** a home era servida do cache como
+ARQUIVO ESTÁTICO, com `Last-Modified: 2026-09-01` — snapshot de oito dias. Os cabeçalhos denunciam
+sem precisar entrar no WordPress:
+
+```bash
+curl -sI https://SEU-SITE/ | grep -iE "Last-Modified|Content-Length"
+# Last-Modified antigo + Accept-Ranges: bytes = está vindo do cache em disco, não do PHP
+```
+
+E o desvio para comparar com o PHP já está escrito na própria regra do `.htaccess`
+(`RewriteCond %{QUERY_STRING} !.*=.*`): basta uma query string com `=`.
+
+```bash
+curl -sI "https://SEU-SITE/?x=1" | grep -i Last-Modified   # sem Last-Modified = veio do PHP
+```
+
+Medido: 205.129 bytes pelo cache contra 205.146 pelo PHP — conteúdo equivalente, mas a página que o
+visitante recebe é a de oito dias atrás. Qualquer edição feita nesse intervalo **não estava no ar**.
+
+**Prevenção, na ordem de força:**
+
+1. **Desligar o cache de página do Newfold** (nível de cache = desativado). Remove de uma vez o
+   componente que reescreve o `.htaccess` E o que serve HTML velho. O cache de NAVEGADOR não se
+   perde: ele vem do bloco `mod_expires`, que é outra coisa e continua no arquivo.
+2. Se ele precisar continuar ligado: **nunca salvar página no WP Admin e fechar a aba em seguida** —
+   foi o gatilho medido em 2026-09-01 —, e **guardar backup do `.htaccess` a cada mudança**, porque
+   a recuperação depende dele.
+3. **Monitorar por requisição, não por sensação.** Um `curl` no estático custa nada e distingue os
+   dois mundos:
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' https://SEU-SITE/wp-includes/js/jquery/jquery.min.js
+   ```
+
+### 1.7 Redirecionamento HTTPS "não funcionou" na home — mas era só o cache de borda servindo uma resposta 200 de três dias atrás
+
+**(a) Problema.** Aplicado o mesmo bloco de redirecionamento do §1.5 (acima do bloco de cache,
+provado no CRM) ao `.htaccess` do site institucional (item (c) da Subetapa 9.0, 2026-09-04).
+Confirmado por reabertura do arquivo que a gravação persistiu. Mas a medição por requisição deu
+um resultado contraditório:
+
+```
+GET http://sindcompassos.org/                                    → 200  (sem redirecionar!)
+GET http://sindcompassos.org/wp-includes/js/jquery/jquery.min.js → 301  (redireciona certo)
+GET http://sindcompassos.org/wp-admin/                            → 301 → 200 em https (certo)
+```
+
+Um arquivo estático e o `/wp-admin/` obedeciam à regra nova; só a **home nua** continuava
+respondendo 200 em HTTP puro — o mesmo sintoma que pareceria "a regra não pegou a rota mais
+importante", justo depois de confirmar que o arquivo estava certo.
+
+**(b) Solução.** Não era a regra. Os cabeçalhos da resposta da home mostravam:
+
+```
+Server: nginx/1.29.8
+Last-Modified: Tue, 01 Sep 2026 18:16:00 GMT
+Cache-Control: max-age=7200
+X-Proxy-Cache: HIT
+```
+
+`nginx` na frente do Apache (proxy reverso da própria hospedagem, não é o CRM nem WordPress) e
+`X-Proxy-Cache: HIT` com `Last-Modified` de **três dias antes** da mudança de hoje: a home estava
+sendo servida do **cache de borda**, de uma resposta gravada antes de o `.htaccess` mudar — a
+requisição nem chegava a re-executar o Apache. Um cache-buster na query string prova a diferença:
+
+```bash
+curl -sD - -o /dev/null "http://sindcompassos.org/?bypass=$(date +%s)"
+# HTTP/1.1 301 Moved Permanently
+# Location: https://sindcompassos.org/?bypass=...
+# X-Proxy-Cache: MISS
+```
+
+Com o parâmetro forçando `MISS`, a requisição atravessa o cache, chega ao Apache de verdade, e o
+redirecionamento acontece. **A regra sempre esteve certa** — só a home sem parâmetro nenhum ficava
+presa no cache até o `max-age` (2h) expirar sozinho.
+
+**(c) Como implantar.** Ao medir um redirecionamento (ou qualquer mudança de `.htaccess`) num site
+atrás de cache de borda: teste primeiro com `?<algo>=$(date +%s)` na URL, e SÓ SE isso também
+falhar é que a regra está errada. Teste a rota nua (sem parâmetro) depois, sabendo que ela pode
+ficar presa no `Cache-Control: max-age` declarado no cabeçalho — não é preciso mexer no arquivo de
+novo, é esperar o TTL vencer.
+
+**Regra geral:** medir por requisição prova o Apache, não necessariamente o que o visitante recebe —
+uma camada de cache entre o cliente e a origem (nginx, Cloudflare, proxy da hospedagem) responde
+sem repassar a requisição, e o cabeçalho `X-Proxy-Cache` (ou equivalente do provedor) é o que
+distingue "a regra não pegou" de "a regra pegou, mas essa resposta específica é mais velha que a
+mudança". Ver também §2.6e, sobre o Cloudflare do Supabase "sumir" sem 429/503 — mesma classe de
+armadilha, camada diferente.
+
 ---
+### 1.8 O site respondia 200 em tudo — mas quem respondia era o CACHE, não o WordPress
+
+**(a) Problema.** Achado em 2026-09-09, logo depois de reparar o `.htaccess` (§1.6 item d). Todas as
+11 páginas do sitemap devolviam **200**. O site parecia saudável, e por qualquer medição normal ele
+estava.
+
+Só que o Diagnóstico do WordPress acusava *"A API REST encontrou um resultado inesperado: (404)"*, e
+esse fio puxou o novelo:
+
+```
+/wp-json/                        -> 404      (rota bonita)
+/?rest_route=/                   -> 200      (rota por query string)
+```
+
+API REST viva pela query string e morta pela rota bonita é assinatura de **`.htaccess` sem o bloco
+`# BEGIN WordPress`** — o bloco que manda tudo que não é arquivo nem diretório para o `index.php`.
+Ele realmente não estava lá (ausência já registrada no backup de 2026-09-04, sem ninguém saber o
+efeito).
+
+**Então por que as páginas respondiam 200?** Porque o bloco do cache vinha ANTES e resolvia:
+
+```apache
+RewriteCond %{DOCUMENT_ROOT}/wp-content/endurance-page-cache/$1/_index.html -f
+RewriteRule ^(.*)$ /wp-content/endurance-page-cache/$1/_index.html [L]
+```
+
+O Apache achava o snapshot em disco e servia. O WordPress **nunca era chamado**. O teste que revela
+isso em uma requisição usa o desvio que a própria regra define — `RewriteCond %{QUERY_STRING} !.*=.*`,
+ou seja, qualquer query string com `=` pula o cache:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://SEU-SITE/alguma-pagina/
+curl -s -o /dev/null -w '%{http_code}\n' https://SEU-SITE/alguma-pagina/?x=1
+```
+
+Medido: **200 sem desvio e 404 com desvio**, nas três páginas testadas. O site inteiro estava de pé
+sobre um snapshot de 01/09.
+
+**Por que isso é grave e não curiosidade:** qualquer coisa que limpe o cache — atualizar plugin,
+salvar uma página, clicar em "Purge Cache" — derruba o site inteiro para 404 **na hora**. E o
+sintoma não teria relação aparente com a causa, porque a última ação seria "atualizei um plugin".
+Uma campanha de 9.186 e-mails apontando para esse site estava a um clique de virar 9.186 links
+quebrados. Também explica um mistério menor: `/servicos/` dava 404 enquanto
+`/servicos-sindicais/` dava 200 — o slug foi renomeado, mas só o antigo tem snapshot.
+
+**(b) Solução.** Restaurar o bloco `# BEGIN WordPress`, e deixar o próprio WordPress escrevê-lo:
+**Configurações → Links permanentes → Salvar alterações**. Ele regenera o bloco na forma correta e
+na posição correta (DEPOIS do bloco de cache — o de cache termina em `[L]` e precisa ter a primeira
+palavra). Escrever à mão é possível, mas é o software fazendo o trabalho do software.
+
+Confirmar que a estrutura está em `/%postname%/` antes, e que a tela **não** mostra o aviso "atualize
+seu .htaccess manualmente" — se mostrar, o arquivo não é gravável e a correção é outra.
+
+**(c) Como implantar — e a ordem importa.**
+
+1. **Primeiro o bloco do WordPress**, com o cache ainda ligado. Se algo der errado, o cache continua
+   segurando o site de pé; é a rede de proteção.
+2. **Provar com o desvio**, que é a única medição que separa cache de roteamento:
+   ```bash
+   for u in / /contato/ /dados/; do
+     curl -s -o /dev/null -w "$u?x=1 -> %{http_code}\n" "https://SEU-SITE$u?x=1"; sleep 5
+   done
+   ```
+   Só quando essas derem **200** o WordPress está roteando de verdade.
+3. **Só então** mexer no nível de cache. Fazer o contrário — desligar o cache primeiro — derruba o
+   site inteiro, e foi exatamente o que este achado impediu: a recomendação anterior era desligar o
+   cache para parar a corrupção do `.htaccess` (§1.6 d), e ela teria produzido 404 em tudo.
+
+**Regra transferível:** **200 não prova que a aplicação está viva** — prova que alguém respondeu.
+Onde há cache de página em disco, a pergunta certa é *"quem respondeu?"*, e ela se responde
+desviando o cache, não olhando o código.
+
+---
+### 1.9 Citar o marcador de um bloco gerenciado DENTRO de um comentário faz o software reescrever ali — e foi isso que derrubou o HTTPS do site (três vezes)
+
+**(a) Problema.** Medido em 2026-09-10. O redirecionamento HTTP→HTTPS do site institucional
+"não funcionava", mas de um jeito seletivo que não batia com nenhuma explicação pronta:
+
+```
+http://sindcompassos.org/            -> 200   (não redireciona)
+http://sindcompassos.org/contato/    -> 200   (não redireciona)
+http://sindcompassos.org/servicos/   -> 301   (correto)
+http://sindcompassos.org/nao-existe/ -> 301   (correto)
+```
+
+Não era o cache de borda do §1.7: as páginas que falhavam vinham com `X-Proxy-Cache: MISS`, ou
+seja, a requisição **chegou à origem** e a origem respondeu 200. O padrão real era outro: **página
+que tem snapshot no cache de disco não redirecionava; página sem snapshot redirecionava.**
+
+**O teste que separa "a regra não existe" de "a regra não é alcançada" custa uma requisição** — e
+usa a condição que o próprio bloco de cache declara. Aquele bloco só serve o snapshot quando
+**não** há cookie de sessão do WordPress; então mande um:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://SEU-SITE/contato/
+# 200  -> veio do snapshot
+curl -s -o /dev/null -H "Cookie: wordpress_logged_in_abc=teste" \
+     -w "%{http_code}\n" http://SEU-SITE/contato/
+# 301  -> a MESMA URL, pulando o cache, obedece à regra
+```
+
+Duas respostas diferentes para a mesma URL, decididas por um cookie, provam que a regra existe e
+está **abaixo** do bloco de cache. Nenhuma leitura de código diria isso.
+
+**(b) Solução — e a causa, que não é a que se imagina.** Ao abrir o arquivo, o defeito não era
+"alguém moveu a regra". Era isto:
+
+```
+  9| # Fica tambem FORA de "<marcador de abertura do plugin de cache>" e "
+ 10|
+ 11| <marcador de abertura do plugin de cache>
+ ...| ...o bloco inteiro do plugin, 26 linhas...
+ 36| <marcador de fechamento do plugin>
+ 37| <marcador de abertura do WordPress>": os dois sao
+ 38| # regerados pelos respectivos softwares, e o que estiver entre os marcadores...
+```
+
+A frase original do **nosso comentário** era *`Fica tambem FORA de "<abertura do cache>" e
+"<abertura do WordPress>": os dois sao regerados...`*. O plugin de cache, ao se regenerar,
+**procura o marcador dele no arquivo inteiro** — achou a cópia que estava dentro do nosso
+comentário, tratou aquele ponto como o início do próprio bloco e **escreveu 26 linhas no meio da
+nossa frase**, empurrando o redirecionamento para depois do cache.
+
+Ou seja: **o comentário que explicava a regra foi o que destruiu a regra.** Escrever o texto de um
+marcador gerenciado dentro de um comentário transforma o comentário em delimitador.
+
+**E havia uma bomba-relógio que ninguém tinha visto:** a linha 37 passou a **começar** com o
+marcador de abertura do WordPress. No próximo *Configurações → Links permanentes → Salvar*, o
+WordPress substituiria tudo entre a linha 37 e o fim do arquivo — apagando redirecionamento e HSTS
+sem aviso nenhum. **Isso também explica, retroativamente, as duas truncagens do §1.6** (2026-09-01
+e 2026-09-09): as duas tinham a assinatura de "escrita concorrente", e a causa provável é a mesma
+— dois softwares regenerando blocos cujos marcadores apareciam duplicados no arquivo.
+
+**(c) Como implantar.**
+
+1. **Nunca reproduza o texto de um marcador gerenciado em comentário, em nenhum arquivo que o
+   software dono do marcador leia.** Refira-se a ele por descrição ("o bloco de cache", "o bloco do
+   WordPress"). Vale para `.htaccess`, `hosts`, `crontab`, `sshd_config` — qualquer arquivo com
+   seções `BEGIN…/END…` mantidas por terceiros.
+2. **Reconstrua fatiando o conteúdo ao vivo, não redigitando.** Os blocos gerenciados são
+   preservados byte a byte, sem risco de acento, tabulação ou regex alterados:
+   ```js
+   const L = window.ace.edit('codewindow').getValue().split('\n');
+   const novo = cabecalho.concat(L.slice(inicioCache, fimCache + 1))
+                         .concat([''], L.slice(inicioWP, fimWP + 1));
+   ```
+3. **A guarda que decide se pode gravar é a CONTAGEM de marcadores no resultado** — cada um tem de
+   aparecer **exatamente uma vez**. Foi ela que teria impedido o estrago original, e é ela que
+   impede repeti-lo:
+   ```js
+   if (cont(aberturaCache) !== 1 || cont(fechaCache) !== 1) abortar();
+   if (novo.indexOf('R=301') > novo.indexOf(aberturaCache)) abortar(); // ordem
+   ```
+4. **Verifique por requisição, e nos dois mundos** (§1.6): primeiro um arquivo **estático** (200 =
+   o `.htaccess` é válido e o diretório não foi recusado), depois as rotas, **espaçadas em 5s** para
+   não tomar 503 de excesso, e com `num_redirects`:
+   ```bash
+   curl -s -o /dev/null -w '%{http_code}\n' https://SEU-SITE/wp-includes/js/jquery/jquery.min.js
+   curl -sL -o /dev/null -w "final=%{http_code} saltos=%{num_redirects}\n" http://SEU-SITE/contato/?v=$(date +%s)
+   ```
+   Esperado: `final=200 saltos=1`. Medido depois da correção: 1 salto em `/`, `/contato/` e
+   `/dados/`; 2 em `/servicos/`, porque ali o **próprio WordPress** redireciona o slug antigo —
+   cascata legítima, não laço.
+5. **Uma rota nua pode continuar em 200 por até 2h depois de tudo certo** — é o cache de borda do
+   §1.7 segurando uma resposta anterior. Neste caso a entrada tinha sido criada **pela minha própria
+   medição de diagnóstico** meia hora antes. Confirme com `?v=$(date +%s)` antes de concluir que
+   sobrou defeito.
+
+**Regra transferível:** num arquivo com seções mantidas por software, **o texto do marcador é
+código, mesmo dentro de um comentário**. E quando uma regra funciona em algumas rotas e não em
+outras, a pergunta não é "a regra está certa?", é **"o que decide quais requisições chegam até
+ela?"** — a resposta costuma estar na condição declarada pelo bloco que vem antes.
+
 ## 2. Banco de dados (Postgres/Supabase)
 
 ### 2.1 `least()` ignora NULLs — e cobrou o teto de quem não tinha base
@@ -559,6 +845,193 @@ git show --stat HEAD                   # conferir a lista final
 segundos e a correção depois do push custa reescrita de história.
 
 ---
+
+### 2.7e Corrigir dado que vem de fonte externa: o conserto tem prazo de validade se a origem insistir no erro
+
+**(a) Problema.** Medido em 2026-09-11. Dezoito e-mails com domínio digitado errado (`@gmai.com`,
+`@gmail.con`, `@bolcom.br`) foram corrigidos na véspera — e no dia seguinte continuavam errados na
+tela. **Dois defeitos diferentes, e o segundo é invisível até o mês virar.**
+
+**Defeito 1 — o dado morava em três lugares, e eu corrigi um.**
+
+```
+estabelecimentos.email   ← CADASTRO MESTRE (vem da RFB)
+contabilidades.email     ← cadastro mestre das contabilidades
+envios_campanha.email    ← CÓPIA do disparo   ← só este foi corrigido
+```
+
+A correção foi feita onde o CSV da campanha é montado, que era o objetivo imediato. Mas cadastro é
+o que a tela de cobertura mostra, o que o follow-up telefônico usa e o que uma regeneração de
+campanha leria. **Antes de corrigir, `grep` no catálogo:**
+
+```sql
+select table_name, column_name from information_schema.columns
+ where table_schema='public' and column_name ilike '%email%';
+```
+
+**Defeito 2 — a fonte externa vai reescrever a correção, todo mês, em silêncio.** `email` está na
+lista de colunas que o delta mensal da Receita compara e atualiza. E o endereço errado **não é
+engano nosso**: é o que a empresa declarou à Receita. A Receita vai servir o mesmo valor errado no
+arquivo do mês que vem, e o delta reverteria tudo — **sem erro, sem log, e com um sintoma idêntico
+ao estado anterior**, o que torna o diagnóstico quase impossível na segunda vez.
+
+**(b) Solução — e por que "proteger a coluna" é a resposta errada.** Congelar `email` contra o
+delta destruiria o caso legítimo: empresa que troca de e-mail na Receita PRECISA que o CRM
+acompanhe. A proteção tem de distinguir os dois casos, e para isso precisa lembrar **o que a fonte
+mandava quando corrigimos**:
+
+```sql
+alter table estabelecimentos
+  add column email_rfb_original text,      -- o valor da fonte no momento da correção
+  add column email_corrigido_em timestamptz;
+
+-- o gatilho só age enquanto a fonte insistir NAQUELE valor
+if new.email_corrigido_em is not null
+   and new.email is distinct from old.email
+   and lower(trim(new.email)) is not distinct from lower(trim(old.email_rfb_original))
+then new.email := old.email; end if;
+```
+
+Medido em transação, com os dois cenários:
+
+```
+A) fonte reenvia o valor errado  → reverteu=0  resistiu=18   (correção preservada)
+B) empresa troca de e-mail       → mudou=18                  (mudança legítima passa)
+```
+
+**(c) Como implantar.**
+
+1. **A regra vai no BANCO, não no script de carga.** Um gatilho vale para o delta mensal, para a
+   tela, para o próximo script e para quem rodar SQL à mão — nenhum deles precisa lembrar da regra.
+2. **Guarde o valor da FONTE, não um booleano "corrigido".** Com só um booleano, a escolha seria
+   entre congelar a coluna e não proteger nada; é o valor original que permite a distinção.
+3. **Teste o gatilho.** Ele é a garantia inteira, e é invisível: se sumir num restore de dump ou
+   numa recriação de tabela, nada avisa até o mês seguinte
+   (`tests/rls/email-corrigido.spec.ts`).
+4. **Avise no runbook da carga** por que a coluna continua no update E mesmo assim está protegida —
+   senão alguém "conserta" adicionando `email` à lista de omitidas e quebra a outra metade.
+
+**Regra transferível:** ao corrigir dado importado, pergunte **"a origem vai me mandar isso de novo?"**.
+Se sim, o conserto não é o `update` — é o `update` mais o mecanismo que sobrevive à próxima carga.
+
+### 2.7c A rede de `.gitignore` por palavra sensível engoliu uma MIGRAÇÃO — "secretaria" contém "secret"
+
+**(a) Problema.** Em 2026-09-10, a migração `sql/28_cobertura_secretaria_09_02.sql` foi criada,
+aplicada mentalmente ao plano e referenciada em três arquivos de código — e **não apareceu em
+`git status`**. Nenhum erro, nenhum aviso. O `.gitignore` deste projeto tem um bloco de "termos
+sensíveis (qualquer arquivo que contenha estas palavras no nome)" com `*secret*`, e
+**"**secret**aria" casa com ele**.
+
+É a mesma classe do erro que a limpeza de 2026-09-09 já tinha cometido no banco, filtrando por
+"contém": lá, `demo` pegou `contabilida**demo**ntanari` e `diegomara**demo**rais`, que eram reais.
+Aqui, `secret` pegou a palavra portuguesa mais óbvia do domínio. Os outros termos do bloco têm o
+mesmo problema latente: `*chave*` pega qualquer arquivo sobre "chaves de acesso ao sistema",
+`*senha*` pega "resenha".
+
+**Por que é pior do que parece:** uma migração fora do repositório faz o **banco e o código
+divergirem** — exatamente o defeito do §2.7. O SQL roda em produção, o repositório não tem registro
+dele, e a próxima pessoa a ler `sql/` conclui que aquele objeto não existe.
+
+**(b) Solução.** Renomear o arquivo para fora do padrão (`28_cobertura_reemissao_atendimento_09_02.sql`),
+mantendo a rede de proteção intacta. Enfraquecer a rede para acomodar um nome é trocar segurança
+permanente por conveniência de um arquivo — o mesmo raciocínio do §2.30.
+
+**(c) Como implantar.**
+
+1. **Depois de criar arquivo que PRECISA ser versionado, confirme que o git o vê.** Uma linha, e
+   custa nada:
+   ```bash
+   git check-ignore -v caminho/do/arquivo && echo "IGNORADO — renomeie" || echo "ok"
+   ```
+   Vale especialmente para `sql/`, `scripts/` e `docs/`, onde nome descritivo em português tem
+   chance alta de conter `senha`, `chave`, `secret` ou `credencial` por acidente.
+2. **`git status` silencioso não é prova de "nada a commitar".** Compare com a lista de arquivos que
+   você sabe ter criado; foi assim que este caso apareceu.
+3. Se um dia valer relaxar a regra, o desenho é uma **negação estreita** (`!sql/*.sql`) logo abaixo
+   do bloco, com comentário dizendo por quê — e isso é decisão do Maxwell, não do CODE.
+
+### 2.6f "A borda bloqueou o script" era só LENTIDÃO acima do timeout de 10s do Node
+
+**(a) Problema.** Em 2026-09-10, depois de uma varredura pesada (768 consultas DNS + várias
+leituras), os scripts passaram a abortar no login:
+
+```
+ConnectTimeoutError: Connect Timeout Error
+  (attempted addresses: 172.64.149.246:443, 104.18.38.10:443, timeout: 10000ms)
+ABORTADO: login de Admin falhou — fetch failed
+```
+
+A leitura natural — e a que o §2.6e reforça — é *"a borda do Supabase me bloqueou"*. **Errada.** O
+`curl` no mesmo endpoint, no mesmo instante, respondia normalmente. Isso sugeriria que o bloqueio é
+por cliente, o que é uma conclusão ainda pior, porque leva a mexer em cabeçalho e *user-agent*.
+
+**A medição que desfaz as duas hipóteses** é cronometrar os dois:
+
+```
+node fetch -> 401 em 13.279 ms
+curl       -> 401 em  9.452 ms
+```
+
+Os dois **chegaram**. Ninguém foi bloqueado. O que difere é o teto: o `undici` (o cliente HTTP do
+`fetch` nativo do Node) usa **10 s de timeout de CONEXÃO** por padrão, e o `curl` não. Com a borda
+em ~13 s, o Node desiste e o `curl` passa — e o mesmo host parece "bloqueado para o script e
+liberado para o terminal".
+
+**(b) Solução.** Um `fetch` que repete erro de **transporte** com espera crescente, injetado no
+cliente Supabase (`scripts/lib/fetchResiliente.mjs`):
+
+```js
+createClient(URL, ANON, { global: { fetch: fetchResiliente } });
+```
+
+Repete `UND_ERR_CONNECT_TIMEOUT`, `ECONNRESET`, `ETIMEDOUT`, `EAI_AGAIN` e afins. **Não repete
+401/403/429** — esses são resposta, não falha de transporte, e repeti-los esconderia problema real.
+
+**(c) Como implantar.** Antes de concluir "fui bloqueado", **cronometre com dois clientes
+diferentes**. Se os dois respondem e só um estoura, é teto de timeout, não bloqueio — e a diferença
+importa, porque a resposta a "bloqueado" é esperar (ou mexer onde não deve) e a resposta a "lento" é
+uma linha de configuração. Distinguir isso do §2.6e (bloqueio de verdade, com timeout puro em TODOS
+os clientes) é exatamente o que o cronômetro faz.
+
+### 2.7d `insert` de VÁRIAS linhas no PostgREST manda `null` onde você esperava o DEFAULT
+
+**(a) Problema.** Semeando três envios de campanha numa chamada só — um "válido" (para receber o
+`token_expira_em` DEFAULT do banco), um expirado e um revogado:
+
+```js
+await admin.from("envios_campanha").insert([
+  { ...base },                              // sem token_expira_em: quer o DEFAULT
+  { ...base, token_expira_em: ontem },
+  { ...base, token_revogado_em: ontem },
+]);
+// null value in column "token_expira_em" of relation "envios_campanha"
+//   violates not-null constraint
+```
+
+A leitura natural é "a coluna não tem DEFAULT" — e está errada: ela tem. **O PostgREST monta UMA
+lista de colunas com a UNIÃO das chaves de todas as linhas do array e preenche com `null` o que
+faltar em cada uma.** A primeira linha, que omitia o campo justamente para herdar o DEFAULT, chega
+ao Postgres com `null` explícito — e `null` explícito não aciona DEFAULT, aciona o `not null`.
+
+O sintoma engana duas vezes: aponta para a linha "mais simples" das três, e some se você testar
+aquela linha sozinha.
+
+**(b) Solução.** Um `insert` por linha quando as linhas têm conjuntos de colunas DIFERENTES:
+
+```js
+for (const linha of linhas) {
+  const { error } = await admin.from("envios_campanha").insert(linha).select().single();
+  if (error) throw new Error(error.message);
+}
+```
+
+Alternativa, se o lote importar para o desempenho: preencher explicitamente o valor em todas as
+linhas, em vez de contar com o DEFAULT.
+
+**(c) Como implantar.** Regra prática: **array no `insert` só com linhas homogêneas.** Se alguma
+linha depende de DEFAULT que as outras sobrescrevem, o lote deixa de ser equivalente a N inserts —
+e a diferença só aparece em coluna `not null`, o que faz o erro chegar tarde e mal atribuído. Vale
+também para `upsert`.
 
 ### 2.6e Tráfego automatizado pesado pode fazer o Cloudflare do Supabase "sumir" — sem 429, sem 503, timeout puro
 
@@ -1453,6 +1926,324 @@ revoke usage, select, update on sequence public.<sequencia> from anon, authentic
 o que está fora dele só aparece cruzando o catálogo à mão. E, ao provar um achado que **consome**
 algo (numeração, cota, crédito), procure primeiro a medição que não consome.
 
+### 2.27 Edge Function nova nasce com `verify_jwt: true` — e o endpoint público responde 401 antes de existir
+
+**(a) Problema.** Medido na Subetapa 9.00, ao publicar a Edge Function `descadastrar` pelo MCP do
+Supabase. A função subiu com `status: ACTIVE`, o deploy respondeu sucesso, e a primeira chamada
+devolveu:
+
+```
+GET .../functions/v1/descadastrar?token=... com header apikey
+→ HTTP 401 {"code":"UNAUTHORIZED_NO_AUTH_HEADER","message":"Missing authorization header"}
+```
+
+O código da função nunca rodou. O gateway barrou antes, porque `verify_jwt` é **`true` por padrão**
+e exige `Authorization: Bearer <jwt>` — e uma página pública não tem sessão para produzir um. O
+header `apikey`, que é o que `features/coleta/api.ts` e `features/descadastro/api.ts` mandam, **não
+satisfaz essa checagem**. É irmão do §3.2: lá o `apikey` sozinho executava como `anon`; aqui ele nem
+chega a executar.
+
+O sintoma engana porque parece erro de credencial ou de RLS, e as duas primeiras coisas que se vai
+conferir — a anon key e as policies — estão certas.
+
+**(b) Solução.** Publicar com `verify_jwt: false`, que é o que as outras funções públicas deste
+projeto já tinham (`receber-remessa` e `formulario-filiacao`, ambas `false` desde sempre). Não é
+afrouxamento: **a autorização destes endpoints é o TOKEN no corpo/URL**, validado dentro da função,
+mais os freios em `tentativas_remessa`. O JWT do gateway não teria como autorizar quem, por
+definição, não faz login.
+
+**(c) Como implantar.** No MCP, o parâmetro é obrigatório e o default é o errado para este caso:
+
+```
+deploy_edge_function(project_id, name, entrypoint_path, verify_jwt: false, files: [...])
+```
+
+E **confirme por requisição, nunca pelo retorno do deploy** — o retorno diz `ACTIVE` das duas
+formas. O que separa é uma chamada:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}
+" -H "apikey: $ANON" "$URL/functions/v1/<funcao>?token=lixo"
+# 200 (com {"ok":false}) = público de verdade · 401 = o gateway está barrando antes da função
+```
+
+Confira também o `verify_jwt` das funções que já existem antes de copiar o padrão de uma delas:
+`list_edge_functions` traz o campo. E o `ezbr_sha256` do retorno é útil por outro motivo — publicar
+o mesmo arquivo em bench e produção e comparar o hash **prova** que os dois rodam o mesmo código, o
+que nenhuma leitura de código prova.
+
+### 2.28 Endpoint público que grava no ramo de ERRO precisa do freio ali também
+
+**(a) Problema.** Achado no portão adversarial da própria Subetapa 9.00, atacando o desenho antes de
+ele ir ao ar. A função `descadastrar` tem um ramo deliberado: token que não resolve envio nenhum
+**grava mesmo assim** uma linha em `descadastros_campanha`, sem vínculo, porque o pedido de saída
+existiu e alguém pode reconciliá-lo depois. A regra da subetapa é dura e está certa — *o formulário
+nunca pode virar obstáculo à saída*.
+
+Mas o freio de varredura só valia na CONSULTA. No POST, um laço de token inventado gravava **uma
+linha por chamada, sem teto**: escrita não autenticada e ilimitada num projeto no plano Free. A
+generosidade do caminho de erro é o que o torna atacável, e é justamente o caminho que ninguém
+revisa, porque "é só o caso de falha".
+
+**(b) Solução.** Frear **onde não há saída a proteger**. A fronteira não é GET × POST; é *resolveu
+um envio* × *não resolveu*:
+
+- **token válido → nunca freado.** Quem tem envio de verdade está exercendo a saída.
+- **token que não resolve nada → freado, inclusive no POST.** Quem não tem token válido não tem
+  envio de que sair, então frear ali não custa saída nenhuma.
+
+E a **resposta é idêntica** freado ou não. Dizer "você foi freado" devolveria ao varredor a
+confirmação de que está sendo contado, e assustaria sem motivo quem só tem um link velho.
+
+**(c) Como implantar.** O freio entra DEPOIS de tentar resolver, nunca antes:
+
+```ts
+const envio = await buscarEnvio(token);
+if (!envio) {
+  await registrarTentativa(token, false, motivo, ip);   // sempre conta
+  if (!(await estaFreado(token))) {                     // mas só grava se não estourou
+    await registrarDescadastro({ envioId: null, tokenInformado: token, ... });
+  }
+  return json(req, { ok: true, mensagem: "..." });      // MESMA resposta nos dois casos
+}
+```
+
+Medido depois do conserto, com 14 chamadas seguidas do mesmo token inválido: **9 linhas gravadas**
+(o freio é 10) em vez de 14. O teste de regressão vive em `tests/adversarial/06_descadastro.spec.ts`
+e afirma `gravadas > 0 && gravadas < 14` — o primeiro pedido É registrado, e o laço não escreve à
+vontade.
+
+**Regra transferível:** em endpoint público, **liste os caminhos que ESCREVEM e confira se cada um
+passa por um freio** — inclusive os de erro. O caminho feliz costuma estar protegido porque foi o
+mais pensado; o de recusa grava tão bem quanto ele.
+
+### 2.29 Sessão do painel Supabase expirando no meio de um DDL: a aba trava, e "travou" parece "aplicou"
+
+**(a) Problema.** Na Subetapa 9.1, ao aplicar as quatro `alter policy` de
+`sql/27_rls_initplan_09_01.sql` pelo editor SQL do painel, a aba **congelou** — nem screenshot nem
+leitura de DOM respondiam, por minutos. Nenhuma mensagem de erro, nenhum "failed": só uma aba muda.
+Uma segunda aba revelou a causa: **`Session expired — Please sign in again to continue`**.
+
+O risco não é a sessão expirar; é o que se conclui depois. Sem resposta do painel, as duas leituras
+possíveis são igualmente plausíveis — "aplicou e a UI travou depois" ou "não aplicou" —, e as duas
+são perigosas: a primeira leva a seguir para os testes sobre um banco que não mudou; a segunda, a
+reaplicar um DDL que talvez tenha ido pela metade. Em policy de RLS, nenhuma das duas é aceitável
+como palpite.
+
+**(b) Solução.** Duas medições, e nenhuma delas depende do painel.
+
+**Pelo catálogo, quando houver sessão** — a prova direta, que também serve de conferência do que
+mudou. O truque é o **hash das policies que NÃO deviam mudar**: ele responde de uma vez "aplicou?" e
+"mexeu em mais alguma coisa?".
+
+```sql
+select
+  (select count(*) from pg_policies where schemaname='public') as total,
+  (select md5(string_agg(tablename||'|'||policyname||'|'||coalesce(qual,'')||'|'||coalesce(with_check,''),
+                         chr(10) order by tablename, policyname))
+     from pg_policies where schemaname='public'
+      and policyname not in ('pol_estab_select','pol_empresas_select','pol_envios_select','pol_vinc_select')) as hash_demais,
+  (select count(*) from pg_policies where schemaname='public'
+     and policyname in ('pol_estab_select','pol_empresas_select','pol_envios_select','pol_vinc_select')
+     and qual like '%SELECT%') as com_subconsulta;
+```
+
+Rodado ANTES: `111 · 3004e7ae… · 0`. Rodado DEPOIS do travamento: **exatamente igual** — nada tinha
+sido aplicado. Rodado depois de reaplicar: `111 · 3004e7ae… · 4` — as quatro mudaram, o total é o
+mesmo (nenhuma criada nem removida) e o hash idêntico prova que **as outras 107 não foram tocadas**.
+
+**Pelo efeito, quando não houver sessão nenhuma** — o app não lê `pg_policies`, mas lê a tela. Um
+script Node com a anon key e o login do Admin (`.env.test`) mede o tempo da mesma consulta:
+2.987/2.879/3.067 ms, contra os ~500 ms que a mudança produziria. É indireto, mas quando a diferença
+esperada é de uma ordem de grandeza ele decide.
+
+**(c) Como implantar.** Ao aplicar DDL pelo painel:
+
+1. **Meça o estado antes** (a query acima) e guarde o hash. Sem o "antes", o "depois" não prova nada.
+2. Se a aba travar, **não reaplique no escuro**: abra uma aba NOVA (a travada não volta, nem para
+   fechar) e rode a mesma query. Se o hash e a contagem estiverem iguais aos de antes, nada foi
+   aplicado e reaplicar é seguro.
+3. Sem sessão, meça pelo efeito antes de pedir novo login — assim a conversa já começa com o estado
+   do banco conhecido.
+
+**Duas notas de automação do painel**, medidas no mesmo dia:
+
+- **O grid de resultados não sai em extração de texto de página.** `get_page_text` devolve a sidebar
+  e o editor, e o resultado vem vazio. O conteúdo está no DOM: `document.querySelectorAll('[role="row"]')`
+  e **`textContent`** (não `innerText`, que devolve string vazia ali). O grid é virtualizado em
+  linhas *e* colunas — só o que está visível existe —, então para ler um resultado grande use
+  `string_agg` e traga tudo em **uma célula**, ou `format json` no `explain`.
+- **`Ctrl+Enter` só dispara com o editor focado**; depois de trocar o texto do modelo Monaco por
+  script, clicar no botão **Run** é o caminho que não falha.
+
+**Regra transferível:** *ausência de resposta não é ausência de efeito.* Toda vez que uma ferramenta
+gráfica sumir no meio de uma escrita, o próximo passo é **medir o estado do destino**, nunca repetir
+a escrita nem seguir adiante — é o §7.2 ("passou" ≠ "funcionou") no seu caso mais difícil, o de nem
+sequer haver um "passou".
+
+### 2.30 A RLS do projeto barra o Admin de apagar o que so a Edge Function escreve — e isso esta certo
+
+**(a) Problema.** Na limpeza dos dados DEMO de 2026-09-09, o script autenticado como Admin parou no
+primeiro passo:
+
+```
+permission denied for table descadastros_campanha
+```
+
+A leitura natural e "faltou permissao ao Admin, vamos conceder". Errada. A tabela concede **apenas
+`select`** a `authenticated` (sql/24): a unica escrita prevista e a da Edge Function `descadastrar`,
+com `service_role`. Conceder `delete` ao Admin para desbloquear uma limpeza abriria em definitivo um
+caminho de escrita que a subetapa 9.00 fechou de proposito — trocar seguranca permanente por
+conveniencia de uma tarefa.
+
+**(b) Solucao.** Fazer a limpeza pelo **editor SQL do painel**, que roda como `postgres` e nao passa
+por RLS nem por `grant`. O caminho existe exatamente para isto: manutencao pontual feita por quem
+tem a chave, sem afrouxar o que o app enxerga.
+
+**(c) Como implantar.** Exclusao em massa em producao, em duas passadas:
+
+1. `begin;` … deletes … `select` de conferencia … `rollback;` — mostra os numeros **sem gravar**.
+2. Se baterem, o mesmo bloco com `commit;` e a conferencia **depois** dele, para o que aparece na
+   tela ser o estado real e nao a previsao.
+
+E antes de tudo: **dump do que sera apagado** (77,7 KB no caso), porque `auditoria` registra que a
+linha sumiu, nao o conteudo dela.
+
+**Regra transferivel:** `permission denied` num papel do app raramente e bug de permissao — costuma
+ser a regra funcionando. Antes de conceder privilegio, pergunte **por que aquele papel nao tinha**;
+se a resposta for "porque so o servidor deveria escrever ali", o caminho e outro, nao o `grant`.
+
+### 2.31 `concat_ws` NUNCA devolve null — devolve `''`, e isso mata o `coalesce` que vem depois
+
+**(a) Problema.** Na view de rejeições (sql/32) o telefone era escolhido por preferência:
+
+```sql
+nullif(trim(coalesce(
+  c.telefone,                                                              -- da contabilidade
+  concat_ws(' ', nullif(est.ddd_1, ''), nullif(est.telefone_1, '')),       -- do estabelecimento
+  fone.telefone                                                            -- o mais repetido da carteira
+)), '') as telefone,
+```
+
+Numa rejeição de **contabilidade** (em que `est` é nulo, porque o envio não tem estabelecimento) a
+view devolvia, na MESMA linha:
+
+```
+telefone        = null
+telefone_origem = 'carteira'
+telefone_em_n_empresas = 19
+```
+
+Uma contradição: a view afirmava que havia um telefone da carteira e não o mostrava.
+
+**Causa.** `concat_ws` é a exceção da família: ele **ignora** os argumentos nulos e devolve string
+**vazia** quando todos são nulos — nunca `null`. Então o `coalesce` encontrava `''`, considerava
+"achei um valor", parava ali e **nunca chegava ao terceiro argumento**. O `nullif(..., '')` externo
+convertia esse `''` em `null` já tarde demais.
+
+**(b) Solução.** `nullif` em volta do `concat_ws`, e não só no fim da expressão:
+
+```sql
+nullif(trim(coalesce(
+  c.telefone,
+  nullif(concat_ws(' ', nullif(est.ddd_1, ''), nullif(est.telefone_1, '')), ''),
+  fone.telefone
+)), '') as telefone,
+```
+
+**(c) Como implantar.** Em toda cadeia `coalesce(..., concat_ws(...), ...)`, envolva o `concat_ws`
+em `nullif(..., '')`. Regra geral: **um `coalesce` só funciona se cada alternativa souber devolver
+`null`** — e `concat_ws`, `string_agg` com filtro vazio, `array_to_string` e `format` não sabem.
+
+**Regra transferível, e é ela que vale mais que o conserto:** o defeito só apareceu porque a
+conferência olhou **duas colunas juntas** (`telefone` e `telefone_origem`). Lendo só `telefone` eu
+teria visto um nulo plausível — contabilidade sem telefone é normal — e teria dado por correto.
+Sempre que a view tiver uma coluna que **explica** outra, confira as duas na mesma consulta: a
+contradição entre elas é um detector que nenhuma das duas sozinha oferece.
+
+### 2.32 Painel Supabase: o editor aceita `setValue`, o BOTÃO não aceita clique — publique só depois de conferir por hash
+
+**(a) Problema.** Três fricções distintas, que juntas parecem uma só ("a automação não funciona no
+painel"), e que têm causas e contornos diferentes:
+
+1. **Aba de SQL com edição não salva CONGELA o renderer.** O `beforeunload` do editor faz o
+   `navigate` ser recusado ("Leave site?") e, pior, faz `screenshot` e `Runtime.evaluate`
+   expirarem — a aba fica inútil e parece que a extensão quebrou. Não quebrou: é aquela aba.
+2. **`Run` do editor SQL não responde a clique por coordenada**, mas responde a **Ctrl+Enter** com
+   o foco dentro do editor.
+3. **`Deploy updates` do editor de Edge Function não responde a NADA por automação** — nem clique
+   por coordenada, nem `element.click()`, nem `KeyboardEvent` sintético. Medido em 2026-09-15:
+   `list_edge_functions` continuou devolvendo `version: 4` depois das três tentativas.
+
+**(b) Solução.**
+
+- Fricção 1: **abra uma aba nova** em vez de tentar recuperar a travada. A aba nova funciona
+  normalmente; a velha só será fechada pelo Maxwell.
+- Fricção 2: `setValue` no modelo do Monaco → clicar DENTRO do editor para dar foco → `Ctrl+Enter`.
+- Fricção 3: não há contorno. **Carregue o conteúdo e peça o clique** — é o que o `CLAUDE.md` já
+  previa para botões de painel.
+
+**(c) Como implantar — e a parte que não é opcional: conferir ANTES de pedir o clique.**
+
+Carregar 25 KB de código em Base64 pela automação é transcrição, e transcrição trunca em silêncio
+(aconteceu: um pedaço chegou com 2.244 de 5.544 caracteres, e nada acusou). Então:
+
+1. Prefira **montar sobre o que já está na página**: o editor já contém a versão publicada. Se ela
+   for idêntica ao `git HEAD` — confira o número de caracteres —, aplique ali as MESMAS
+   substituições que você fez localmente e transcreva só os blocos novos. No caso medido isso caiu
+   de 33 KB para 11 KB.
+2. **Confira por SHA-256 antes de publicar**, comparando com o arquivo local:
+
+```js
+// no navegador, depois de montar o conteúdo em `s`:
+const bytes = new TextEncoder().encode(s);
+const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))]
+  .map(b => b.toString(16).padStart(2, '0')).join('');
+```
+
+```bash
+# local, para comparar:
+node -e "const c=require('crypto'),f=require('fs');console.log(c.createHash('sha256').update(f.readFileSync(process.argv[1])).digest('hex'))" caminho/do/arquivo
+```
+
+3. Só depois `setValue` e peça o clique. **Confira o efeito pelo lado de fora** (`list_edge_functions`
+   → o `version` subiu?), nunca pela aparência da tela.
+
+**Regra transferível:** quando o canal de entrega é frágil, a integridade tem de ser verificada
+**no destino**, não presumida da origem. Um hash custa uma linha e transforma "acho que colei certo"
+em "é o mesmo arquivo".
+
+### 2.33 ETAPA 10 (boletos): quatro armadilhas de banco que custaram tempo — limpeza, índice de FK, GRANT e CHECK
+
+**(a) Problema.** (1) `respostas_boleto` é imutável (trigger barra UPDATE/DELETE até para `service_role`) e
+`boletos.quantidade_resposta_id` aponta para ela, enquanto `respostas_boleto.boleto_id` aponta para
+`boletos`: **FK circular**. Limpar o DEMO falhou duas vezes (`23503`), primeiro de um lado, depois do outro.
+(2) O linter acusa FK sem índice mesmo havendo índice composto `(ciclo_id, caixa_id)`: ele não cobre
+`caixa_id`, que está atrás. (3) Teste "DELETE sem GRANT" que filtrava por coluna inexistente recebeu
+`42703` (coluna não existe), não `42501` (sem permissão) — passou por motivo errado. (4) Em TAF/PAMED,
+editar `valor` direto não chega ao CHECK: o trigger reverte antes, então o teste "CHECK barra" ficava
+verde sem testar o CHECK.
+
+**(b) Solução.**
+```sql
+-- (1) limpeza como postgres, num único statement (atômico), quebrando o ciclo antes de apagar
+alter table respostas_boleto disable trigger user;  alter table boletos disable trigger user;
+update boletos set quantidade_resposta_id = null where ciclo_id in (select id from ciclos_boleto where nome like 'DEMO%');
+delete from respostas_boleto where boleto_id in (select b.id from boletos b join ciclos_boleto c on c.id=b.ciclo_id where c.nome like 'DEMO%');
+delete from boletos where ciclo_id in (select id from ciclos_boleto where nome like 'DEMO%');
+alter table respostas_boleto enable trigger user;   alter table boletos enable trigger user;
+-- (2) um índice por FK, com a coluna da FK na frente
+create index if not exists idx_ciclo_caixas_caixa on ciclo_caixas (caixa_id);
+```
+(3) filtre por coluna que **existe** e confira o `code` (`42501`), não só "deu erro". (4) teste o CHECK em
+CA/CN, onde o valor é digitado e nenhum trigger o corrige.
+
+**(c) Como implantar.** `execute_sql` do MCP às vezes devolve "Invalid or expired requestState" em blocos
+grandes (e `DO $$` longo): reenvie em blocos menores; ele só mostra o resultado do último `select`.
+`generate_typescript_types` do bench vem defasado em relação à produção — **mescle só os acréscimos** em
+`database.types.ts`, nunca sobrescreva. Coluna de tabela temporária com o mesmo nome de variável plpgsql
+gera ambiguidade: prefixe as variáveis (`v_`).
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo
@@ -1689,6 +2480,95 @@ _dmarc.envios   TXT   v=DMARC1; p=none; rua=mailto:deploycrm@sindcompassos.org; 
 ser lido antes de colado. O que ele otimiza é a operação dele, não a nossa observabilidade.
 
 ---
+### 3.9 Responsividade de e-mail só existe enquanto o `<style>` sobrevive — teste com ele removido
+
+**(a) Problema.** Na Onda 00, o relato foi que as copies da trilha B "não se adaptam ao celular". A
+primeira medição contrariou o relato: os quatro HTML (`copy_A`, `copy_B1..B3`) têm `viewport`, têm
+`@media only screen and (max-width:620px)` e, renderizados a 320/360/390 px, davam **zero transbordo
+horizontal**. Pela leitura do arquivo, estava tudo certo.
+
+O que estava errado só aparece quando se testa o cenário que o navegador nunca reproduz sozinho: **o
+cliente de e-mail que descarta o bloco `<style>`**. Isso não é hipótese exótica — o app do Gmail em
+conta não-Gmail (GANGA) faz isso, e o editor arrasta-e-solta da Brevo reescreve o markup e pode
+descartar o `<head>`. Removido o `<style>`, a media query some e sobra só o inline:
+
+```
+                 com <style>      sem <style>
+copy_B1 @390       375 px            454 px   ← transborda 64 px
+copy_B2 @390       375 px            375 px
+copy_B3 @390       375 px            375 px
+```
+
+O B1 quebrava porque tem uma tabela de duas colunas (setores × e-mail) que **só empilha pela media
+query**; sem ela, `secretaria@sindcompassos.org` não cabe em meia tela, a tabela estica e o e-mail
+inteiro passa a exigir rolagem lateral — exatamente o sintoma relatado. B2 e B3 não têm tabela de
+duas colunas e por isso sobreviveram.
+
+**(b) Solução.** Duas linhas, e nenhuma delas mexe no desktop:
+
+- **`word-break:break-word` INLINE** na célula do e-mail (não só dentro da media query, que é onde
+  estava). Com a media query viva não muda nada — o valor é o mesmo; sem ela, o endereço quebra em
+  vez de esticar a tabela. Medido: **454 → 375 px**, sem transbordo, e a célula do desktop continua
+  com os mesmos 238 px.
+- **`<meta name="x-apple-disable-message-reformatting">`** no `<head>`, que impede o iOS Mail de
+  reescalar a mensagem por conta própria.
+
+A variante que também dava certo — fixar `width="44%"/"56%"` nas colunas — foi **descartada por
+medição**: conserta o celular mas alarga a célula do desktop de 238 para 298 px. Corrigir o pior
+caso não justifica mudar o caso comum.
+
+**(c) Como implantar.** Antes de aprovar qualquer HTML de e-mail, meça **os dois** cenários. O
+segundo é o que ninguém testa:
+
+```js
+// no navegador, iframe de largura fixa (flex encolhe o iframe e falseia a medida: use flex:0 0 auto)
+const sem = html.replace(/<style[\s\S]*?<\/style>/gi, '');   // simula o cliente que descarta
+// para cada um, a 320/360/390 px:
+Math.max(doc.documentElement.scrollWidth, doc.body.scrollWidth) > largura   // true = transborda
+```
+
+**Regra transferível:** em e-mail, `<style>` é uma **melhoria**, nunca uma dependência. Tudo o que a
+mensagem precisa para ser legível tem de estar no inline; a media query só refina. E o teste que
+prova isso é o de remover o `<style>` — não o de abrir no navegador, onde ele sempre sobrevive.
+
+### 3.10 Os webhooks da Brevo MUDARAM de lugar — hoje vivem em "Plug-ins e integrações"
+
+**(a) Problema.** Em 2026-09-15 nem o Maxwell nem eu achamos onde ligar `hard_bounce` e
+`soft_bounce`. Os caminhos "óbvios" respondem página de erro:
+
+```
+https://app.brevo.com/webhook/list       -> "Não foi possível exibir esta página"
+https://app.brevo.com/settings/webhook   -> "Ocorreu um problema"
+```
+
+E não há link com "webhook" no menu principal nem em `/settings` — a busca por `a[href*=webhook]`
+devolve lista vazia, porque os itens do menu são `div`, não âncora.
+
+**(b) Solução.** O caminho real, verificado:
+
+**Configurações » (seção Marketing) Campanhas » cartão "Webhooks" » Configurar**
+
+que leva a **`https://app.brevo.com/app-store/webhooks`**, aba **Webhooks**. A própria Brevo avisa
+lá: *"Seus webhooks existentes foram movidos para esta página."* O webhook do projeto é o
+`sindcom-descadastro-crm` (Ativo · Marketing).
+
+**(c) Como implantar.** Vá direto a `app.brevo.com/app-store/webhooks`. Duas armadilhas de
+automação que vêm junto, e que valem a pena saber antes de tentar:
+
+1. **A tela de edição não renderiza sob automação.** Clicar no cartão muda a URL para
+   `/webhooks/outbound/update/<id>`, mas o `body` fica com ~26 caracteres e zero `input` — e
+   navegar direto para essa URL também não pinta nada. É rota de SPA que só monta a partir da
+   lista, com gesto real. **Peça o clique.**
+2. **A credencial do webhook mora DENTRO da URL configurada** (`…?fonte=brevo&chave=<segredo>`).
+   Então essa tela é uma tela de segredo: não tire screenshot dela, não leia o `innerText` sem
+   máscara, e não peça para colarem a URL no chat. O caminho limpo é o segredo ir para um `.env`
+   já ignorado pelo Git, e o código lê de lá.
+
+**Cuidado com "Última edição" como prova:** o cartão continuou exibindo `04/09/2026` depois de uma
+alteração de eventos feita no mesmo dia. Ou a Brevo não atualiza esse campo para esse tipo de
+mudança, ou a alteração não foi salva — o campo não distingue os dois casos, então **ele não serve
+como confirmação**. Confirme abrindo o webhook, ou pelo efeito (um evento real chegando).
+
 ## 4. Frontend e React
 
 ### 4.1 Falta de `key` faz o estado grudar entre entidades
@@ -1943,6 +2823,117 @@ duas, o sintoma é o mesmo: ele acusa algo que você sabe estar certo. Quando is
 **suspeite do guarda antes de suspeitar do código** — e leia a lista inteira de achados dele, não só
 o primeiro.
 
+### 4.11 Revogar credencial sem ENTREGAR a substituta é uma ação sem saída — e o sintoma acusa a metade errada
+
+**(a) Problema.** Relatado na Subetapa 9.1: *"quando a contabilidade pede a revogação do token, não
+há geração de um novo token e o solicitante perde o acesso"*. A leitura natural é que faltava a
+reemissão.
+
+**A medição disse o contrário.** Na campanha DEMO da Onda 00, para a mesma contabilidade:
+
+```
+71f68d10…  REVOGADO em 06/09 23:38:22   (criado 05/09)
+c31a75e8…  REVOGADO em 06/09 23:51:41   (criado 06/09 23:38)
+e01ccdf3…  ATIVO                        (criado 06/09 23:51)
+```
+
+Duas revogações, dois tokens novos, exatamente **um** ativo ao final. A reemissão nunca falhou:
+`useRevogarToken` marcava a linha antiga e inseria outra, que recebe token por DEFAULT do banco.
+
+O que não existia era **entrega**. A tela `/cobertura` não mostrava o token (decisão deliberada da
+08.11, com teste de guarda para impedir a leitura), o CSV dela não trazia link, e o CRM não dispara
+e-mail — quem envia é a Brevo, a partir de CSV exportado por script. O link novo nascia **invisível**:
+existia no banco e não havia caminho para chegar a ninguém. Do lado de fora, isso é indistinguível de
+"não gerou".
+
+**(b) Solução.** Tratar a reemissão como um ato de **três** passos, não de dois: revogar → emitir →
+**devolver o valor a quem vai reenviá-lo**. No CRM: `useRevogarToken` passou a ler o token recém-criado
+e a tela abre um diálogo "Link novo emitido" com botão de copiar; e um botão "Link ativo" por linha
+resolve o caso mais comum, que é reenviar sem revogar nada.
+
+Para a leitura não afrouxar a regra da 08.11, ela passa por `v_envios_campanha_mascarada`
+(`sql/25_reemissao_token_09_01.sql`): `case when fn_eh('admin') then e.token else null end`. **Quem
+decide é o Postgres, não a condição de papel na UI** — a tela só evita oferecer um botão que não
+traria valor. Medido depois de aplicar: `security_invoker=on`, `anon` sem acesso, Admin lê o token e a
+Secretaria lê a MESMA linha com `null` (§2.6b: a view não nega, ela apaga o valor).
+
+**(c) Como implantar.** Ao construir qualquer ação que **invalide uma credencial** (token de link,
+PIN de recepcionista, chave de integração), a pergunta que fecha a funcionalidade não é "o substituto
+foi criado?", é **"por qual caminho concreto o substituto chega ao dono?"**. Se a resposta for "está
+no banco", a ação está pela metade. Um teste que ajuda a não repetir:
+
+```ts
+// não basta afirmar que nasceu outro token…
+expect(ativosDepois.length).toBe(1);
+expect(ativosDepois[0].token).not.toBe(tokenAntigo);
+// …é preciso afirmar que alguém CONSEGUE LÊ-LO — e que o papel errado, não.
+expect(typeof comoAdmin?.token).toBe("string");
+expect(comoSecretaria?.token).toBeNull();
+```
+
+**Sinal de alerta transferível:** quando um guarda de código proíbe ler um valor "para sempre" e a
+funcionalidade nova precisa desse valor, a saída não é furar o guarda no frontend nem renomear a
+coluna para escapar do `grep` — é **mover a regra para o banco** e reescrever o guarda para a
+fronteira que continua valendo (aqui: nunca ler a credencial da TABELA CRUA; pela view mascarada,
+pode). Guarda que só sabe negar também precisa de um caso que falhe se a leitura legítima
+desaparecer — senão a regressão seguinte passa verde.
+
+### 4.12 `useMemo` sobre o array de `watch()` NUNCA recalcula — o objeto é o mesmo, mutado no lugar
+
+**(a) Problema.** Relatado nos testes finais da Onda 00: na tela pública da empresa
+(`/enviar-dados/:token`), o empreendedor preenchia o primeiro funcionário e o botão **"Enviar
+cadastro" continuava inativo**, com a mensagem "Preencha ao menos um funcionário sem erro". O botão
+só acordava ao clicar em **"Adicionar outro funcionário"** — ou seja, quem tem UM funcionário, que é
+a maioria desta trilha, tinha todo motivo para achar que a ferramenta não funciona e fechar a aba.
+
+Duas hipóteses explicavam o sintoma, e elas pedem correções opostas: (1) o componente não
+re-renderiza ao digitar; (2) ele re-renderiza e o cálculo é que não refaz. Um contador de
+renderização temporário decidiu em um minuto:
+
+```
+[diag] render  7  mesmaRef: true  nome0: "A"
+[diag] render  9  mesmaRef: true  nome0: "An"
+[diag] render 11  mesmaRef: true  nome0: "Ana"
+```
+
+**Re-renderiza a cada tecla** — `watch` faz a sua parte. Mas `form.watch("linhas")` devolve
+**sempre o mesmo objeto de array**, mutado no lugar (`mesmaRef: true`). O preview vinha de um
+`useMemo(..., [linhasObservadas])`, que compara dependência por **referência**: mesma referência,
+resultado em cache — o da primeira renderização, quando os campos estavam vazios. `append()` troca o
+array por um objeto novo, a referência muda, e só então o memo recalcula. Daí o contorno absurdo de
+"adicionar outro funcionário para poder enviar o primeiro".
+
+**(b) Solução.** Tirar o `useMemo`. A conta é uma passada por um punhado de linhas digitadas à mão —
+refazê-la a cada tecla não custa nada mensurável, e memoizar sobre referência mutável custou o envio
+de quem tem um funcionário só.
+
+```ts
+// ERRADO — a referência nunca muda, o memo nunca recalcula
+const linhas = form.watch("linhas");
+const preview = useMemo(() => validar(linhas), [linhas]);
+
+// CERTO — sem memo (ou, se o custo justificasse, com uma chave por VALOR)
+const linhas = form.watch("linhas");
+const preview = validar(linhas);
+```
+
+**(c) Como implantar.** A regra prática: **`useMemo` só é seguro sobre dependências imutáveis.**
+Antes de memoizar sobre algo que vem de uma biblioteca de formulário, de um `ref`, ou de qualquer
+store que mute estado interno, confirme que a referência troca — um `console.log` comparando com a
+referência anterior responde na hora e não exige ferramenta nenhuma.
+
+E o teste que pega isto **não é de unidade**: a suíte estava 100% verde com o botão morto em
+produção. O que pegou foi abrir a tela e digitar. Toda tela cuja habilitação de botão dependa de
+cálculo derivado merece esse minuto de teclado antes de subir.
+
+**Achado de tabela junto:** o mesmo arquivo tinha duas réguas divergentes sobre o mesmo dado — o
+`zod` do formulário exigia `piso` (`min(1)`), enquanto `validarTrabalhadores`, usada no caminho da
+planilha, trata piso vazio como **aviso** e deixa a linha seguir. Com o botão consertado, isso
+produziria um clique morto: liberado pelo `aproveitaveis > 0` e barrado pelo resolver, sem
+explicação visível além de um "Obrigatório" discreto. O zod passou a garantir só FORMATO; quem
+decide o que é obrigatório é a validação compartilhada. **Duas conferências sobre o mesmo campo é
+uma a mais** — vale para CPF, vale para piso, vale para o que vier.
+
 ## 5. Ambiente de desenvolvimento (Windows)
 
 ### 5.1 Backticks e crases quebram scripts no shell
@@ -2065,6 +3056,23 @@ alfanuméricos. Extraia assim, preservando o valor literal:
 const linha = texto.split('\n').find(l => l.trim().startsWith('SMTP_PASS'));
 const valor = linha.slice(linha.indexOf('SMTP_PASS') + 'SMTP_PASS'.length).trim();
 ```
+
+### 5.5 Git Bash converte `--base=/pasta/` em caminho do Windows — o preview sobe com a base errada
+
+**(a) Problema.** `npx vite build --base=/preview-boletos/` no Git Bash gerou todos os assets apontando para
+`/Program Files/Git/preview-boletos/` (o MSYS trata argumento que começa com `/` como caminho Unix). O preview
+subiu, mas em branco. Segunda pegadinha: o `.htaccess` do build, sem `RewriteBase` da subpasta, devolve o
+`index.html` da raiz em vez do da subpasta.
+
+**(b) Solução / (c) Como implantar.**
+```bash
+MSYS_NO_PATHCONV=1 npx vite build --mode bench --base=/preview-boletos/ --outDir dist-preview
+# no .htaccess do dist-preview: RewriteBase /preview-boletos/   (e X-Robots-Tag: noindex, nofollow)
+```
+`--mode bench` carrega `.env.bench`; só as variáveis `VITE_*` entram no bundle (a `service_role` não).
+O router já usa `basename: import.meta.env.BASE_URL`. Suba por FTP **só** a subpasta e confira com `curl -I`
+o `index.html` e um asset. O PWA de produção (service worker no escopo `/`) pode interceptar o preview:
+teste em janela anônima ou com recarga forçada.
 
 ---
 
@@ -2401,18 +3409,139 @@ contagem de itens processados, valor gravado no banco, tamanho do arquivo,
 carimbo de data. Nos testes, asserte **números esperados**, não só
 `expect(error).toBeNull()`.
 
-### 7.3 Dados de demonstração ficam gravados
+### 7.2b Guarda dentro de uma transação cujo resultado você NÃO VÊ não é guarda
 
-**(a) Problema.** Apagar os registros de teste ao fim da sessão faz Maxwell
-perder a visão incremental do sistema funcionando.
+**(a) Problema.** Em 2026-09-10, corrigindo 18 e-mails com domínio digitado errado, o bloco foi
+escrito com todo o cuidado aparente: `begin`, tabela temporária, **duas guardas** (uma contando os
+alvos, outra procurando colisão com endereços já existentes), o `update`, a conferência e `commit`.
 
-**(b) Solução.** Manter os dados de demonstração, claramente nomeados.
+O bloco voltou com **uma linha só**: `corrigidos_confirmados: 24`. Esperado: 18.
 
-**(c) Como implantar.** Prefixe com `DEMO —` e um nome que descreva o caso
-coberto (ex.: `DEMO — Ouro com carta (não regride, regra 5.2)`). Fixtures de
-suíte automatizada são outra coisa: use prefixo da subetapa (`02.6 teste —`) e
-remova no `afterAll`. Só apague dado DEMO por reparo técnico ou segurança — e
-avise o que foi removido e por quê.
+**A causa não foi o SQL — foi o CANAL.** A ferramenta de execução devolve o resultado do **último**
+comando do lote. As duas guardas rodaram, produziram os números certos e **foram descartadas antes
+de chegar aos meus olhos**, dentro de uma transação que já tinha commitado quando o desvio apareceu.
+Seis dos endereços "corrigidos" já existiam na base para outro estabelecimento (o contador era o
+mesmo, e a versão com typo era uma duplicata dele), e o `commit` criou 6 e-mails repetidos numa base
+cujo invariante era "um e-mail, um envio".
+
+**Por que isso era pior do que parecia:** a Brevo **deduplica contato por endereço na importação**.
+Duas linhas com o mesmo e-mail viram UM contato, e o `link` de uma delas desaparece — sem erro, sem
+aviso, e o estabelecimento correspondente fica sem caminho de envio sem ninguém perceber.
+
+**(b) Solução.** Duas mudanças, e a primeira é de método:
+
+1. **Guarda que decide roda ANTES, sozinha, e o resultado é lido.** Se a guarda vive no mesmo lote
+   do `commit`, ela não protege nada — apenas produz um número que ninguém leu.
+2. **A guarda que sobrevive é a que mora no código, não no turno.** A verificação de e-mail repetido
+   passou para `reexportar_csvs_09_00.mjs`, onde roda em toda exportação futura e aborta com a lista
+   dos repetidos.
+
+A reversão das 6 foi gravada em `auditoria` com o motivo — e aí apareceu um segundo achado:
+**`envios_campanha` não tem trigger de auditoria**, então o endereço original só sobrevive se for
+gravado de propósito. Corrigir e-mail sem isso apaga a evidência de qual era o endereço de origem.
+
+**(c) Como implantar.**
+
+- Em qualquer lote SQL, pergunte: *"se esta guarda falhar, eu vou ver?"*. Se a resposta depender de
+  a ferramenta devolver um resultado intermediário, **quebre em duas chamadas**.
+- Alternativa quando não dá para quebrar: faça a guarda **levantar exceção** em vez de devolver
+  linha (`raise exception when ... `). Erro atravessa qualquer canal; `select` não.
+- Ao alterar dado que outro sistema usa como CHAVE (e-mail é chave na Brevo, CPF no CRM), verifique
+  colisão **antes**, e trate "já existe" como caso normal, não como exceção improvável.
+
+### 7.3 Dado de verificação sai ao fim da subetapa — a regra VIROU em 2026-09-09
+
+> **Esta entrada dizia o oposto até 2026-09-09** ("dados de demonstração ficam
+> gravados"), e ficou obsoleta com o início da Onda 01. Corrigida em vez de
+> mantida ao lado da nova, para o arquivo não acumular contradição.
+
+**(a) Problema.** Enquanto o CRM era vitrine, apagar o registro de teste ao fim da sessão fazia
+Maxwell perder a visão incremental do sistema funcionando — e essa foi a regra por meses. Com a
+Onda 01, a base passou a receber cadastro real de 9.186 caixas, e o custo inverteu: dado fictício
+convivendo com dado real deixou de ser demonstração e virou **poluição de indicador**. Cobertura,
+remessas e contagens são o que decide para quem se liga; um estabelecimento DEMO contado como
+coberto muda a lista de ligações.
+
+**(b) Solução.** Dado de verificação criado numa subetapa é **removido ao final dela, no mesmo
+turno em que foi criado**, e o relatório diz o que foi criado e o que foi removido. Se algum caso
+exigir que fique, é decisão do Maxwell, **pedida explicitamente** — não presumida.
+
+**(c) Como implantar.**
+
+- **O prefixo `DEMO —` continua obrigatório enquanto o registro existir.** Não é decoração: é ele
+  que torna a limpeza possível por **prefixo** (`nome like 'DEMO%'`), e **nunca por "contém"**.
+  Filtrar por conteúdo na limpeza de 2026-09-09 pegava `contabilidademontanari` e
+  `diegomarademorais` — os dois reais, os dois com `demo` no meio da palavra.
+- **Fixture de suíte automatizada tem de semear o que usa.** Prefixo da subetapa (`9.2 teste —`) e
+  remoção no `afterAll`, como sempre — mas o que a limpeza de 2026-09-09 acrescentou é que **não há
+  mais contabilidade `DEMO%`, remessa, token DEMO nem pessoa de planilha na base**. Teste que
+  procurava uma e fazia `if (!achou) return` passou a passar sem medir nada: verde por ausência de
+  dado, que é o falso verde do §7.2. Foi o caso da matriz de escrita em
+  `tests/rls/cobertura.spec.ts`, reescrita na 9.2 para semear o próprio envio.
+
+- **O CUSTO REAL, MEDIDO EM 2026-09-10 — e ele é maior do que parecia quando a regra mudou.** A
+  primeira execução completa da suíte depois da limpeza deu **16 falhas em 6 arquivos**
+  (271 passando, 330 no total). **Quinze delas são baixas da limpeza**, e as mensagens dizem isso
+  sozinhas: *"estabelecimento DEMO 99999901000191 não encontrado"*, *"token DEMO revogado não
+  encontrado em produção"*, *"sem remessa DEMO — rode a 08.5 antes"*, *"nenhuma pessoa de planilha
+  DEMO na base"*, além de `remessas[0].id` estourando porque `remessas_dados` ficou vazia. Arquivos
+  atingidos: `remessas` (8), `coleta` (3), `dashboard` (2), `adversarial/05_comunicacao` (2),
+  `cartas` (1). A décima sexta era legítima — a 9.2 mudou de propósito quem cria envio — e foi
+  corrigida no mesmo turno.
+
+  **Duas consequências que precisam estar escritas:**
+  1. **A regra de deploy do `CLAUDE.md` ("nunca publicar com a suíte quebrada") fica bloqueada até
+     isso ser resolvido.** Não é opinião: 15 vermelhos permanentes travam todo deploy futuro.
+  2. **Apagar dado compartilhado é mudança de infraestrutura de teste, não só de conteúdo** — é o
+     §2.9 outra vez. Quem apaga precisa rodar a suíte **antes e depois** e converter cada fixture
+     órfã em fixture que semeia o que usa. Fazer isso no mesmo turno da limpeza custa uma fração do
+     que custa descobrir depois, com o vermelho já sem dono.
+
+- **COMO FOI RESOLVIDO, e o que a solução ensina (2026-09-10, placar final 284/0/46).** Não existe
+  uma receita só — a fixture órfã se conserta de **três** maneiras, e escolher a errada custa caro:
+
+  1. **SEMEAR o que usa** — quando o dado é criável e apagável pelo papel do teste. Foi o caso de
+     `coleta` e `adversarial/05`, que precisavam de token válido/expirado/revogado: virou a fixture
+     compartilhada `tests/rls/fixtures/campanhaDemo.ts`, com remoção no `afterAll`.
+  2. **AFIRMAR O INVARIANTE em vez do registro** — quando o teste nunca precisou daquele dado
+     específico. `cartas` exigia o CNPJ DEMO `99999901000191`; passou a usar *qualquer*
+     estabelecimento com CCT. `dashboard` exigia `total_trabalhadores > 0`; passou a comparar o
+     recorte de Presidente/Secretaria com o do Admin — que continua valendo com a base vazia OU
+     cheia. **Este é o conserto mais barato e o mais duradouro; tente-o primeiro.**
+  3. **PULAR COM MOTIVO** — quando semear exigiria afrouxar uma regra de segurança. `remessas` (8
+     casos) precisa de uma remessa real, e (a) `remessas_dados` não tem policy de INSERT para papel
+     autenticado nenhum, (b) o bucket não tem policy de DELETE, porque a evidência é imutável por
+     desenho. Semear pelo endpoint deixaria um arquivo órfão no bucket a cada execução. Então os
+     casos chamam `ctx.skip()` com o motivo escrito — **pular declarando é honesto; passar vazio
+     seria o falso verde do §7.2.**
+
+  **E um vazamento que só apareceu porque a base ficou pequena:** `formulario-site.spec.ts` gravava
+  duas pessoas DEMO por execução **de propósito**, seguindo a regra ANTIGA — o comentário do arquivo
+  dizia isso com todas as letras. Numa base de 55 trabalhadores ninguém via; numa base de UM, salta.
+  Quando uma regra de dados muda, **os comentários que citam a regra antiga são a lista de tarefas**:
+  `git grep -n "dados de demonstração permanecem"` acha os que faltam.
+- **Exceção nominal:** `Isac Henrique Machado Rufino` — real, veio do formulário do site. (Aprovado
+  pelo Maxwell em 2026-09-11; é o primeiro trabalhador real da base.)
+
+- **DADO DERIVADO DE DADO DEMO TAMBÉM É DADO DEMO — e ele sobrevive à limpeza (2026-09-11).** A
+  limpeza de 2026-09-09 apagou os 55 trabalhadores fictícios, mas **não** apagou as fotografias de
+  `snapshots_dashboard` que os haviam contado. Dois dias depois, o gráfico "Evolução por nível" do
+  dashboard ainda desenhava uma população de **53 pessoas** num CRM cujo cartão de KPI dizia
+  "Trabalhadores: 1".
+
+  **E o sintoma aponta para o lugar errado.** Quem olha vê linhas em 40 e 13 com o eixo Y em 0..40 e
+  conclui "erro de escala do gráfico". Não era: o eixo estava certo e o gráfico era fiel. **O que
+  estava errado era a história.** Perseguir a escala teria custado horas num componente sem defeito.
+
+  **Ao apagar dado, faça a pergunta:** *"o que mais foi calculado A PARTIR disto?"* — snapshots,
+  agregados, contadores materializados, exportações já geradas, e o painel do ESP. A linha some; o
+  que ela alimentou, não.
+
+  ```sql
+  -- o teste de uma linha: sobrou agregado contando gente que não existe mais?
+  select max(qtd_trabalhadores) from snapshots_dashboard where nivel is not null;
+  -- maior que o total real de aprovados = a limpeza ficou pela metade
+  ```
 
 ### 7.8 Resposta não-JSON num teste de endpoint pode ser a BORDA, não o seu código
 
@@ -2497,3 +3626,98 @@ E, ao escrever teste sobre view com `join` por chave opcional (`convencao_id`, `
 qualquer FK anulável), lembre que **`join` interno some com a linha em silêncio**. Se o número
 esperado for zero, o teste não distingue "não há dado" de "o join derrubou tudo" — a não ser que a
 fixture do próprio teste esteja garantidamente do lado certo do join.
+
+### 7.10 Rodar a suíte várias vezes seguidas ACIONA o freio de tentativas — e o vermelho parece defeito
+
+**(a) Problema.** Na Subetapa 9.1, depois de três execuções de `npm run test` em ~20 minutos, dois
+casos de `coleta.spec.ts` ficaram vermelhos:
+
+```
+expected 'Muitas tentativas com este link. Agua…' to match /secretaria/i
+```
+
+Os casos afirmam a mensagem que a Edge Function devolve para token **revogado** e **expirado**. O que
+chegou foi a mensagem do **freio de varredura** (10 falhas por token em janela de 15 minutos,
+`supabase/functions/receber-remessa`). Nada tinha piorado: cada rodada da suíte bate no MESMO token
+revogado, e três rodadas seguidas somam mais de 10 falhas na mesma janela.
+
+**(b) Solução.** Reconhecer a mensagem do freio como o que ela é — a proteção funcionando, medida a
+partir de dentro — e não "consertar" o teste nem a função. A própria mensagem é a evidência: ela só
+existe no ramo `estaFreado()`. A tabela `tentativas_remessa` não ajuda a confirmar de fora, porque é
+`service_role` (`permission denied for table tentativas_remessa` como Admin — e isso está certo).
+
+**(c) Como implantar.** Ao ver um caso de token inválido/revogado/expirado falhar **pela mensagem de
+excesso de tentativas**, espere a janela de 15 minutos e rode só aquele arquivo:
+
+```bash
+npx vitest run tests/rls/coleta.spec.ts
+```
+
+E espace as rodadas da suíte completa em vez de repeti-la "só para conferir" — é a mesma disciplina
+do §7.4 (cota de `signInWithPassword`) e do §2.6e (proteção de borda do Supabase), aplicada ao freio
+que nós mesmos escrevemos. **Regra transferível:** todo teste que exercita um rate limit é
+auto-interferente por construção; o intervalo entre execuções faz parte do procedimento, não é
+detalhe de ambiente.
+
+### 7.11 "A ferramenta falhou" NÃO é prova de que o efeito não aconteceu — confira o efeito
+
+**(a) Problema.** Na sessão de 2026-09-14 tentei semear uma linha de teste em `rejeicoes_campanha`
+pelo navegador. A chamada expirou (`CDP sendCommand "Runtime.evaluate" timed out`), a grade continuou
+mostrando o resultado anterior, e eu relatei ao Maxwell, textualmente, que **"o insert nunca rodou"**.
+
+No dia seguinte, ao listar a tabela pelo PostgREST, lá estava ela:
+
+```json
+{ "email": "dulceterra.s@bol.com.br", "tipo": "hard",
+  "campanha": "9.2 teste", "created_at": "2026-09-14T17:48:43.690054+00:00" }
+```
+
+O insert **rodou**. O que falhou foi só o canal que me traria a resposta — e eu tratei o silêncio do
+canal como silêncio do banco. O custo: um relatório errado, e uma linha de teste que ficou 21 horas
+em produção contrariando a regra de que dado de verificação sai no fim da própria subetapa.
+
+**(b) Solução.** Timeout, erro de transporte, aba congelada e sessão expirada dizem **"não sei o que
+aconteceu"**, nunca "não aconteceu nada". A diferença importa porque quase toda escrita é enviada
+antes de a resposta voltar. Depois de qualquer falha de canal numa operação que ESCREVE, a próxima
+ação é obrigatoriamente **medir o estado pelo outro lado**, por um caminho independente:
+
+```bash
+# o canal que falhou foi o navegador → meça pelo PostgREST, que não passa por ele
+curl -s "$URL/rest/v1/rejeicoes_campanha?select=id,email,created_at" \
+     -H "apikey: $CHAVE" -H "Authorization: Bearer $CHAVE"
+```
+
+**(c) Como implantar.** Três regras, e a terceira é a que fecha o buraco:
+
+1. **Nunca escreva "não rodou" sem ter medido.** O vocabulário honesto é "não sei se rodou" — e
+   então vá medir.
+2. **Meça por um canal diferente do que falhou.** Se o navegador travou, use REST/CLI/MCP; se o MCP
+   caiu, use REST. Repetir o canal quebrado não é medição.
+3. **Se a operação que falhou criava dado de verificação, a limpeza tem de rodar mesmo assim** — ela
+   é `delete` por critério (prefixo/campanha), então é inofensiva quando não há o que apagar. Rodar
+   a limpeza "à toa" custa um comando; não rodá-la deixou lixo em produção.
+
+**Regra transferível:** este é o §7.2 ("passou não é o mesmo que funcionou") no espelho — **"falhou"
+também não é o mesmo que "não fez"**. Os dois erros têm a mesma raiz: tomar o que a ferramenta
+*disse* pelo que o sistema *fez*. Só o efeito observado decide, nos dois sentidos.
+
+### 7.12 Rodar o vitest SEM `SINDCOM_ALVO=bench` autentica na PRODUÇÃO
+
+**(a) Problema.** O `globalSetup` (`tests/rls/globalSetup.ts`) loga os 5 papéis no alvo configurado; sem a
+variável, o alvo é a produção. Aconteceu uma vez na ETAPA 10 (vitest unitário): só 5 logins, nenhuma escrita —
+mas gasta a cota do §7.4 e contraria a regra de que teste destrutivo só roda no bench.
+
+**(b) Solução / (c) Como implantar.** Sempre `SINDCOM_ALVO=bench npm run test` (e `npx vitest run <arquivo>`
+idem). Os testes que escrevem usam `exigirBench()` e os de módulo ainda não aplicado em produção ficam `skip`
+(`ehProducao() ? describe.skip : describe`). Conferir o alvo antes de rodar é mais barato que desfazer.
+
+### 7.13 Teste adversarial de endpoint público: 403 com cara de SQL é a borda, e "freio" não pode contar token válido
+
+**(a) Problema.** Payloads com texto de injeção SQL voltaram `403` antes de chegar na Edge Function (WAF do
+Supabase) — o primeiro teste tratou isso como falha da função (falso achado; ver também §7.8). Outro erro de
+desenho: contar toda tentativa no freio travaria a própria caixa que acerta o link.
+
+**(b) Solução / (c) Como implantar.** O teste aceita `4xx` sem dado como defesa válida e asserta o que importa:
+nenhum dado vazou e nada foi gravado. No freio (5 falhas/15 min por token) **só falha de token conta**;
+token válido nunca é freado, e a mensagem é única ("Link inválido…") para ausente/malformado/inexistente/
+expirado, para a resposta não virar oráculo de token.

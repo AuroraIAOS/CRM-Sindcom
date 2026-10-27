@@ -64,23 +64,40 @@ const ESTILO_TOOLTIP = {
 export function GraficoEvolucaoNiveis({ habilitado = true }: { habilitado?: boolean }) {
   const { data, isPending, error } = useEvolucaoNiveis(habilitado);
 
-  // A view devolve uma linha por (data_ref, nível) — o gráfico quer uma linha
-  // por data com as três séries lado a lado.
+  /**
+   * A view devolve uma linha por (data_ref, nível); o gráfico quer uma linha
+   * por MÊS com as três séries lado a lado.
+   *
+   * POR QUE AGREGAR POR MÊS, E NÃO DESENHAR CADA FOTOGRAFIA (corrigido na 9.2)
+   * O título diz "12 meses" e o subtítulo diz "fotografia mensal", mas a série
+   * é gravada por DATA: além do job do dia 1, qualquer execução manual de
+   * `fn_snapshot_dashboard` — inclusive a da suíte de testes — acrescenta um
+   * ponto. Em produção isso produzia um eixo X com o mesmo rótulo repetido
+   * ("ago/26, ago/26, ago/26, set/26, set/26, set/26"), o que faz o leitor
+   * comparar pontos que ele acredita serem meses diferentes.
+   *
+   * De cada mês fica a fotografia MAIS RECENTE — é a que descreve o estado em
+   * que o mês terminou. Usar a primeira (a do dia 1) descartaria tudo que
+   * aconteceu no mês, e o mês corrente ficaria congelado no dia 1.
+   */
   const { serie, datas } = useMemo(() => {
-    const porData = new Map<string, { mes: string; bronze: number; prata: number; ouro: number }>();
+    const porData = new Map<string, { bronze: number; prata: number; ouro: number }>();
     for (const l of data ?? []) {
       if (!l.data_ref || !l.nivel) continue;
-      const atual = porData.get(l.data_ref) ?? {
-        mes: rotuloMes(l.data_ref),
-        bronze: 0,
-        prata: 0,
-        ouro: 0,
-      };
+      const atual = porData.get(l.data_ref) ?? { bronze: 0, prata: 0, ouro: 0 };
       atual[l.nivel] = l.qtd_trabalhadores ?? 0;
       porData.set(l.data_ref, atual);
     }
     const datas = [...porData.keys()].sort();
-    return { serie: datas.map((d) => porData.get(d)!), datas };
+
+    // Uma entrada por mês; como `datas` está em ordem crescente, a última
+    // atribuição de cada mês é justamente a fotografia mais recente dele.
+    const porMes = new Map<string, { mes: string; bronze: number; prata: number; ouro: number }>();
+    for (const d of datas) {
+      porMes.set(d.slice(0, 7), { mes: rotuloMes(d), ...porData.get(d)! });
+    }
+    const meses = [...porMes.keys()].sort();
+    return { serie: meses.map((m) => porMes.get(m)!), datas };
   }, [data]);
 
   // Uma fotografia só não faz história: com 1 snapshot não há evolução a
@@ -91,7 +108,7 @@ export function GraficoEvolucaoNiveis({ habilitado = true }: { habilitado?: bool
   return (
     <ChartCard
       titulo="Evolução por nível (12 meses)"
-      descricao="Fotografia mensal da base — job automático no dia 1, às 04h"
+      descricao="Uma fotografia por mês — a mais recente de cada um. O job automático roda no dia 1, às 04h"
       carregando={isPending}
       erro={error}
       vazio={semHistorico}

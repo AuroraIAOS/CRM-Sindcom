@@ -26,17 +26,32 @@ import type { EstabelecimentoDoToken, useEnviarRemessa } from "./api";
  *  · as linhas digitadas viram um `.xlsx` de verdade
  *    (`gerarPlanilhaDoFormulario`) e passam pela MESMA `useEnviarRemessa` —
  *    mesma Edge Function, mesma remessa, mesma revisão humana na 08.10;
- *  · quem valida CPF e mapeia a situação sindical é `validarTrabalhadores`,
- *    a mesma função do caminho da planilha — o zod aqui só garante que os
- *    campos obrigatórios não ficaram vazios, nunca reimplementa o dígito
- *    verificador.
+ *  · quem valida CPF, exige o que é exigível e mapeia a situação sindical é
+ *    `validarTrabalhadores`, a mesma função do caminho da planilha. O zod
+ *    aqui garante só o FORMATO dos campos — não reimplementa o dígito
+ *    verificador nem decide o que é obrigatório (ver o comentário do schema).
  */
 
+/**
+ * O zod aqui garante FORMATO, e nada além disso — quem julga conteúdo é
+ * `validarTrabalhadores`, a mesma função do caminho da planilha.
+ *
+ * Ele já não exige `nome`, `cpf` nem `piso`, e isso é correção de um
+ * desalinhamento real: para a planilha do contador, piso vazio é **aviso**
+ * ("sem ele não há base de cálculo") e a linha segue; aqui era `min(1)`, ou
+ * seja, bloqueio. As duas regras convivendo no mesmo envio produziam um botão
+ * ativo cujo clique morria num "Obrigatório" — o `aproveitaveis > 0` liberava
+ * e o resolver barrava. Duas conferências divergentes sobre o mesmo dado é
+ * exatamente o que este arquivo se propôs a não ter.
+ *
+ * Linha totalmente vazia não vira erro: ela é descartada antes de virar
+ * planilha, do mesmo modo que `descartarLinhasSemPessoa` faz no outro caminho.
+ */
 const linhaSchema = z.object({
-  nome: z.string().trim().min(1, "Obrigatório"),
-  cpf: z.string().trim().min(1, "Obrigatório"),
+  nome: z.string().trim(),
+  cpf: z.string().trim(),
   telefone: z.string().trim(),
-  piso: z.string().trim().min(1, "Obrigatório"),
+  piso: z.string().trim(),
   status: z.enum(["sindicalizado", "oposicao"]),
 });
 const formularioSchema = z.object({
@@ -83,28 +98,48 @@ export function FormularioDireto({
     [estabelecimento.cnpj],
   );
 
-  const preview = useMemo(() => {
-    const parse = descartarLinhasSemPessoa({
-      cabecalhos: ["cnpj_estabelecimento", "nome", "cpf", "telefone", "piso", "status"],
-      linhas: linhasObservadas.map((l) => ({
-        cnpj_estabelecimento: estabelecimento.cnpj,
-        nome: l.nome,
-        cpf: l.cpf,
-        telefone: l.telefone,
-        piso: l.piso,
-        status: l.status,
-      })),
-    });
-    return validarTrabalhadores(parse, contextoValidacao, "ignorar");
-  }, [linhasObservadas, estabelecimento.cnpj, contextoValidacao]);
+  /**
+   * SEM `useMemo` — de propósito, e o motivo foi medido (orientacoes.md §4.12).
+   *
+   * `form.watch("linhas")` devolve SEMPRE O MESMO objeto de array, mutado no
+   * lugar a cada tecla. O componente re-renderiza (o `watch` faz a sua parte),
+   * mas um `useMemo` com `[linhasObservadas]` na lista de dependências compara
+   * por REFERÊNCIA, encontra a mesma, e devolve o preview em cache — o da
+   * primeira renderização, quando os campos estavam vazios. O resultado era o
+   * botão "Enviar cadastro" ficar morto para quem tem UM funcionário, e só
+   * acordar ao clicar em "Adicionar outro funcionário", porque `append()`
+   * troca o array por um objeto novo e a referência finalmente muda.
+   *
+   * Recalcular a cada renderização custa uma passada por um punhado de linhas
+   * digitadas à mão. Memoizar sobre uma referência mutável custou o envio de
+   * quem tem um funcionário só — que é justamente a maioria desta trilha.
+   */
+  const parse = descartarLinhasSemPessoa({
+    cabecalhos: ["cnpj_estabelecimento", "nome", "cpf", "telefone", "piso", "status"],
+    linhas: linhasObservadas.map((l) => ({
+      cnpj_estabelecimento: estabelecimento.cnpj,
+      nome: l.nome,
+      cpf: l.cpf,
+      telefone: l.telefone,
+      piso: l.piso,
+      status: l.status,
+    })),
+  });
+  const preview = validarTrabalhadores(parse, contextoValidacao, "ignorar");
 
   const contagem = contarPorStatus(preview);
   const aproveitaveis = contagem.total - contagem.rejeitadas;
 
   async function enviarFormulario(valores: FormularioValues) {
     setErroGeracao(null);
+    // Mesma régua de `descartarLinhasSemPessoa`: linha sem nome E sem CPF não
+    // é dado, é caixa que o empreendedor abriu e não usou. Ela não entra na
+    // planilha gerada — senão chegaria à revisão da Denise como linha morta.
+    const linhasComGente = valores.linhas.filter(
+      (l) => l.nome.trim() !== "" || l.cpf.trim() !== "",
+    );
     try {
-      const buffer = await gerarPlanilhaDoFormulario(estabelecimento.cnpj, valores.linhas);
+      const buffer = await gerarPlanilhaDoFormulario(estabelecimento.cnpj, linhasComGente);
       const arquivo = new File([buffer], "cadastro.xlsx", {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       });
@@ -133,7 +168,6 @@ export function FormularioDireto({
 
       <div className="flex flex-col gap-4">
         {campos.fields.map((campo, indice) => {
-          const erros = form.formState.errors.linhas?.[indice];
           return (
             <div key={campo.id} className="flex flex-col gap-3 rounded-lg border p-3">
               <div className="flex items-center justify-between">
@@ -153,12 +187,10 @@ export function FormularioDireto({
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="text-texto-1">Nome completo</span>
                   <input className="rounded-md border p-2 text-sm" {...form.register(`linhas.${indice}.nome`)} />
-                  {erros?.nome && <span className="text-xs text-estado-erro">{erros.nome.message}</span>}
                 </label>
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="text-texto-1">CPF</span>
                   <input className="rounded-md border p-2 text-sm" {...form.register(`linhas.${indice}.cpf`)} />
-                  {erros?.cpf && <span className="text-xs text-estado-erro">{erros.cpf.message}</span>}
                 </label>
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="text-texto-1">Telefone (WhatsApp, opcional)</span>
@@ -167,7 +199,6 @@ export function FormularioDireto({
                 <label className="flex flex-col gap-1 text-sm">
                   <span className="text-texto-1">Piso salarial pago (R$)</span>
                   <input className="rounded-md border p-2 text-sm" {...form.register(`linhas.${indice}.piso`)} />
-                  {erros?.piso && <span className="text-xs text-estado-erro">{erros.piso.message}</span>}
                 </label>
                 <label className="flex flex-col gap-1 text-sm sm:col-span-2">
                   <span className="text-texto-1">Situação sindical</span>
