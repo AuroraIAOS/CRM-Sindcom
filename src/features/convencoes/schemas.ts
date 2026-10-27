@@ -34,6 +34,7 @@ export const taxaSchema = z.object({
     z.number().nonnegative().optional(),
   ),
   observacoes: z.string().trim().optional(),
+  tipo_boleto: z.enum(["", "taf", "pamed"]),
 });
 
 export type TaxaFormValues = z.infer<typeof taxaSchema>;

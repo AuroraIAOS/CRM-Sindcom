@@ -2009,6 +2009,7 @@ export type Database = {
           id: string
           nome: string
           observacoes: string | null
+          tipo_boleto: string | null
           valor: number | null
         }
         Insert: {
@@ -2017,6 +2018,7 @@ export type Database = {
           id?: string
           nome: string
           observacoes?: string | null
+          tipo_boleto?: string | null
           valor?: number | null
         }
         Update: {
@@ -2025,6 +2027,7 @@ export type Database = {
           id?: string
           nome?: string
           observacoes?: string | null
+          tipo_boleto?: string | null
           valor?: number | null
         }
         Relationships: [
@@ -2290,6 +2293,444 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "v_relatorio_convencao"
             referencedColumns: ["trabalhador_id"]
+          },
+        ]
+      }
+      boletos: {
+        Row: {
+          boleto_enviado_em: string | null
+          boleto_feito_em: string | null
+          caixa_id: string | null
+          ciclo_id: string
+          convencao_id: string
+          created_at: string
+          dados_recebidos_em: string | null
+          estabelecimento_id: string
+          estado: string
+          id: string
+          motivo_cancelamento: string | null
+          numero_boleto: string | null
+          pago_em: string | null
+          quantidade: number | null
+          quantidade_resposta_id: string | null
+          updated_at: string
+          valor: number | null
+          valor_base: number | null
+          vencimento: string | null
+        }
+        Insert: {
+          boleto_enviado_em?: string | null
+          boleto_feito_em?: string | null
+          caixa_id?: string | null
+          ciclo_id: string
+          convencao_id: string
+          created_at?: string
+          dados_recebidos_em?: string | null
+          estabelecimento_id: string
+          estado?: string
+          id?: string
+          motivo_cancelamento?: string | null
+          numero_boleto?: string | null
+          pago_em?: string | null
+          quantidade?: number | null
+          quantidade_resposta_id?: string | null
+          updated_at?: string
+          valor?: number | null
+          valor_base?: number | null
+          vencimento?: string | null
+        }
+        Update: {
+          boleto_enviado_em?: string | null
+          boleto_feito_em?: string | null
+          caixa_id?: string | null
+          ciclo_id?: string
+          convencao_id?: string
+          created_at?: string
+          dados_recebidos_em?: string | null
+          estabelecimento_id?: string
+          estado?: string
+          id?: string
+          motivo_cancelamento?: string | null
+          numero_boleto?: string | null
+          pago_em?: string | null
+          quantidade?: number | null
+          quantidade_resposta_id?: string | null
+          updated_at?: string
+          valor?: number | null
+          valor_base?: number | null
+          vencimento?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boletos_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas_boleto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boletos_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "ciclos_boleto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boletos_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "v_ciclos_funil"
+            referencedColumns: ["ciclo_id"]
+          },
+          {
+            foreignKeyName: "boletos_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "convencoes_coletivas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boletos_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["convencao_id"]
+          },
+          {
+            foreignKeyName: "boletos_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "v_relatorio_convencao"
+            referencedColumns: ["convencao_id"]
+          },
+          {
+            foreignKeyName: "boletos_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_estabelecimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boletos_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "estabelecimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boletos_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["estabelecimento_id"]
+          },
+          {
+            foreignKeyName: "boletos_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_relatorio_convencao"
+            referencedColumns: ["estabelecimento_id"]
+          },
+          {
+            foreignKeyName: "boletos_quantidade_resposta_id_fkey"
+            columns: ["quantidade_resposta_id"]
+            isOneToOne: false
+            referencedRelation: "respostas_boleto"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      caixas_boleto: {
+        Row: {
+          brevo_atualizada_em: string | null
+          created_at: string
+          email: string
+          id: string
+          token_reemitido_em: string | null
+          ultimo_acesso_em: string | null
+          updated_at: string
+        }
+        Insert: {
+          brevo_atualizada_em?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          token_reemitido_em?: string | null
+          ultimo_acesso_em?: string | null
+          updated_at?: string
+        }
+        Update: {
+          brevo_atualizada_em?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          token_reemitido_em?: string | null
+          ultimo_acesso_em?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ciclo_caixas: {
+        Row: {
+          aviso_enviado_em: string | null
+          caixa_id: string
+          ciclo_id: string
+          cobranca_enviada_em: string | null
+        }
+        Insert: {
+          aviso_enviado_em?: string | null
+          caixa_id: string
+          ciclo_id: string
+          cobranca_enviada_em?: string | null
+        }
+        Update: {
+          aviso_enviado_em?: string | null
+          caixa_id?: string
+          ciclo_id?: string
+          cobranca_enviada_em?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ciclo_caixas_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas_boleto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ciclo_caixas_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "ciclos_boleto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ciclo_caixas_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "v_ciclos_funil"
+            referencedColumns: ["ciclo_id"]
+          },
+        ]
+      }
+      ciclo_convencoes: {
+        Row: {
+          ciclo_id: string
+          convencao_id: string
+        }
+        Insert: {
+          ciclo_id: string
+          convencao_id: string
+        }
+        Update: {
+          ciclo_id?: string
+          convencao_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ciclo_convencoes_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "ciclos_boleto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ciclo_convencoes_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "v_ciclos_funil"
+            referencedColumns: ["ciclo_id"]
+          },
+          {
+            foreignKeyName: "ciclo_convencoes_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "convencoes_coletivas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ciclo_convencoes_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["convencao_id"]
+          },
+          {
+            foreignKeyName: "ciclo_convencoes_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "v_relatorio_convencao"
+            referencedColumns: ["convencao_id"]
+          },
+        ]
+      }
+      ciclos_boleto: {
+        Row: {
+          cnaes: string[]
+          created_at: string
+          created_by: string | null
+          data_vencimento: string
+          encerrado_em: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          prazo_resposta: string | null
+          referencia: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          cnaes?: string[]
+          created_at?: string
+          created_by?: string | null
+          data_vencimento: string
+          encerrado_em?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          prazo_resposta?: string | null
+          referencia?: string | null
+          tipo: string
+          updated_at?: string
+        }
+        Update: {
+          cnaes?: string[]
+          created_at?: string
+          created_by?: string | null
+          data_vencimento?: string
+          encerrado_em?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          prazo_resposta?: string | null
+          referencia?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ciclos_boleto_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "perfis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      respostas_boleto: {
+        Row: {
+          boleto_id: string
+          cnpj_confirmado: boolean
+          cnpj_incorreto_obs: string | null
+          id: string
+          ip_origem: unknown
+          origem: string
+          quantidade: number
+          recebida_em: string
+          registrada_por: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          boleto_id: string
+          cnpj_confirmado?: boolean
+          cnpj_incorreto_obs?: string | null
+          id?: string
+          ip_origem?: unknown
+          origem: string
+          quantidade: number
+          recebida_em?: string
+          registrada_por?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          boleto_id?: string
+          cnpj_confirmado?: boolean
+          cnpj_incorreto_obs?: string | null
+          id?: string
+          ip_origem?: unknown
+          origem?: string
+          quantidade?: number
+          recebida_em?: string
+          registrada_por?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "respostas_boleto_boleto_id_fkey"
+            columns: ["boleto_id"]
+            isOneToOne: false
+            referencedRelation: "boletos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "respostas_boleto_boleto_id_fkey"
+            columns: ["boleto_id"]
+            isOneToOne: false
+            referencedRelation: "v_boletos_status"
+            referencedColumns: ["boleto_id"]
+          },
+          {
+            foreignKeyName: "respostas_boleto_registrada_por_fkey"
+            columns: ["registrada_por"]
+            isOneToOne: false
+            referencedRelation: "perfis"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tentativas_boleto: {
+        Row: {
+          id: number
+          ip_origem: unknown
+          motivo: string | null
+          ocorrida_em: string
+          sucesso: boolean
+          token_alvo: string
+        }
+        Insert: {
+          id?: number
+          ip_origem?: unknown
+          motivo?: string | null
+          ocorrida_em?: string
+          sucesso: boolean
+          token_alvo: string
+        }
+        Update: {
+          id?: number
+          ip_origem?: unknown
+          motivo?: string | null
+          ocorrida_em?: string
+          sucesso?: boolean
+          token_alvo?: string
+        }
+        Relationships: []
+      }
+      tokens_boleto: {
+        Row: {
+          caixa_id: string
+          created_at: string
+          token: string
+          token_expira_em: string
+        }
+        Insert: {
+          caixa_id: string
+          created_at?: string
+          token?: string
+          token_expira_em?: string
+        }
+        Update: {
+          caixa_id?: string
+          created_at?: string
+          token?: string
+          token_expira_em?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tokens_boleto_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: true
+            referencedRelation: "caixas_boleto"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -2815,6 +3256,319 @@ export type Database = {
           },
         ]
       }
+      v_boletos_caixas: {
+        Row: {
+          aviso_enviado_em: string | null
+          brevo_atualizada_em: string | null
+          brevo_pendente: boolean | null
+          caixa_id: string | null
+          ciclo_id: string | null
+          cnpj_respondidos: number | null
+          cobranca_enviada_em: string | null
+          completo: boolean | null
+          convencao_ids: string[] | null
+          convencoes: string | null
+          email: string | null
+          nome_contato: string | null
+          pendentes: number | null
+          token_reemitido_em: string | null
+          total_cnpj: number | null
+          ultimo_acesso_em: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ciclo_caixas_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas_boleto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ciclo_caixas_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "ciclos_boleto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ciclo_caixas_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "v_ciclos_funil"
+            referencedColumns: ["ciclo_id"]
+          },
+        ]
+      }
+      v_boletos_envio: {
+        Row: {
+          aviso_enviado_em: string | null
+          brevo_atualizada_em: string | null
+          brevo_pendente: boolean | null
+          caixa_id: string | null
+          ciclo_id: string | null
+          cnpj_respondidos: number | null
+          cobranca_enviada_em: string | null
+          completo: boolean | null
+          convencao_ids: string[] | null
+          convencoes: string | null
+          email: string | null
+          nome_contato: string | null
+          pendentes: number | null
+          token: string | null
+          token_expira_em: string | null
+          token_reemitido_em: string | null
+          total_cnpj: number | null
+          ultimo_acesso_em: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ciclo_caixas_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas_boleto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ciclo_caixas_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "ciclos_boleto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ciclo_caixas_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "v_ciclos_funil"
+            referencedColumns: ["ciclo_id"]
+          },
+        ]
+      }
+      v_boletos_links: {
+        Row: {
+          brevo_atualizada_em: string | null
+          brevo_pendente: boolean | null
+          caixa_id: string | null
+          cnpj_em_ciclo_aberto: number | null
+          cnpj_total: number | null
+          email: string | null
+          expira_em_breve: boolean | null
+          expirado: boolean | null
+          token: string | null
+          token_expira_em: string | null
+          token_reemitido_em: string | null
+          ultimo_acesso_em: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tokens_boleto_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: true
+            referencedRelation: "caixas_boleto"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_boletos_status: {
+        Row: {
+          boleto_enviado_em: string | null
+          boleto_feito_em: string | null
+          boleto_id: string | null
+          caixa_email: string | null
+          caixa_id: string | null
+          ciclo_encerrado: boolean | null
+          ciclo_id: string | null
+          ciclo_nome: string | null
+          cnpj_completo: string | null
+          cnpj_incorreto: boolean | null
+          cnpj_incorreto_obs: string | null
+          convencao_id: string | null
+          convencao_nome: string | null
+          dados_recebidos_em: string | null
+          descadastrado: boolean | null
+          estabelecimento_id: string | null
+          estado: string | null
+          motivo_cancelamento: string | null
+          municipio_id: number | null
+          nome_fantasia: string | null
+          numero_boleto: string | null
+          pago_em: string | null
+          quantidade: number | null
+          razao_social: string | null
+          referencia: string | null
+          sem_valor: boolean | null
+          sem_valor_base: boolean | null
+          situacao_contato: string | null
+          tag: string | null
+          tipo: string | null
+          valor: number | null
+          valor_base: number | null
+          valor_manual: boolean | null
+          vencimento: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "boletos_caixa_id_fkey"
+            columns: ["caixa_id"]
+            isOneToOne: false
+            referencedRelation: "caixas_boleto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boletos_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "ciclos_boleto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boletos_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "v_ciclos_funil"
+            referencedColumns: ["ciclo_id"]
+          },
+          {
+            foreignKeyName: "boletos_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "convencoes_coletivas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boletos_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["convencao_id"]
+          },
+          {
+            foreignKeyName: "boletos_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "v_relatorio_convencao"
+            referencedColumns: ["convencao_id"]
+          },
+          {
+            foreignKeyName: "boletos_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "empresas_estabelecimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boletos_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "estabelecimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "boletos_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["estabelecimento_id"]
+          },
+          {
+            foreignKeyName: "boletos_estabelecimento_id_fkey"
+            columns: ["estabelecimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_relatorio_convencao"
+            referencedColumns: ["estabelecimento_id"]
+          },
+          {
+            foreignKeyName: "estabelecimentos_municipio_id_fkey"
+            columns: ["municipio_id"]
+            isOneToOne: false
+            referencedRelation: "municipios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "estabelecimentos_municipio_id_fkey"
+            columns: ["municipio_id"]
+            isOneToOne: false
+            referencedRelation: "v_dash_mapa"
+            referencedColumns: ["municipio_id"]
+          },
+        ]
+      }
+      v_ciclos_funil: {
+        Row: {
+          aguardando_dados: number | null
+          atrasado: number | null
+          caixas_avisadas: number | null
+          caixas_cobradas: number | null
+          caixas_completas: number | null
+          caixas_total: number | null
+          cancelado: number | null
+          ciclo_id: string | null
+          data_vencimento: string | null
+          email_invalido: number | null
+          encerrado_em: string | null
+          enviado: number | null
+          enviar: number | null
+          fazer: number | null
+          nome: string | null
+          pago: number | null
+          prazo_resposta: string | null
+          referencia: string | null
+          sem_email: number | null
+          sem_valor: number | null
+          sem_valor_base: number | null
+          tipo: string | null
+          total: number | null
+        }
+        Relationships: []
+      }
+      v_ciclos_sem_valor_base: {
+        Row: {
+          boletos: number | null
+          ciclo_id: string | null
+          ciclo_nome: string | null
+          convencao_id: string | null
+          convencao_nome: string | null
+          encerrado_em: string | null
+          tipo: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ciclo_convencoes_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "ciclos_boleto"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ciclo_convencoes_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "v_ciclos_funil"
+            referencedColumns: ["ciclo_id"]
+          },
+          {
+            foreignKeyName: "ciclo_convencoes_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "convencoes_coletivas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ciclo_convencoes_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "v_cartas_ano_base"
+            referencedColumns: ["convencao_id"]
+          },
+          {
+            foreignKeyName: "ciclo_convencoes_convencao_id_fkey"
+            columns: ["convencao_id"]
+            isOneToOne: false
+            referencedRelation: "v_relatorio_convencao"
+            referencedColumns: ["convencao_id"]
+          },
+        ]
+      }
     }
     Functions: {
       fn_config: {
@@ -2921,6 +3675,16 @@ export type Database = {
         }
         Returns: boolean
       }
+      fn_recalcular_valores_ciclo_boleto: {
+        Args: { p_ciclo: string }
+        Returns: number
+      }
+      fn_reemitir_token_boleto: {
+        Args: { p_caixa: string }
+        Returns: undefined
+      }
+      fn_renovar_token_boleto: { Args: { p_caixa: string }; Returns: undefined }
+      fn_semear_ciclo_boleto: { Args: { p_ciclo: string }; Returns: Json }
     }
     Enums: {
       forma_cobranca: "holerite" | "boleto_direto"

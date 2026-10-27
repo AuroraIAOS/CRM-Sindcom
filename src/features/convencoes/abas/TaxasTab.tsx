@@ -19,6 +19,14 @@ import {
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { EntityForm } from "@/components/shared/EntityForm";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { formatarMoeda } from "@/lib/formatters";
@@ -33,6 +41,9 @@ import {
 import { taxaSchema, type TaxaFormValues } from "../schemas";
 
 const PODE_ESCREVER = ["admin", "juridico"] as const;
+
+const ROTULO_TIPO_BOLETO: Record<string, string> = { taf: "TAF", pamed: "PAMED" };
+const SEM_TIPO = "nenhuma";
 
 /** Multas/acordos/taxas adicionais previstas na CCT — base de valores para as
  *  faturas excepcionais da Secretaria (Etapa 02); aqui é só o cadastro. */
@@ -66,6 +77,8 @@ export function TaxasTab({ convencaoId }: { convencaoId: string }) {
         </div>
       )}
 
+      <PainelBoleto taxas={linhas} />
+
       {linhas.length === 0 ? (
         <p className="text-sm text-texto-2">Nenhuma taxa cadastrada.</p>
       ) : (
@@ -74,6 +87,7 @@ export function TaxasTab({ convencaoId }: { convencaoId: string }) {
             <TableRow>
               <TableHead>Nome</TableHead>
               <TableHead>Valor</TableHead>
+              <TableHead>Boleto</TableHead>
               <TableHead>Observações</TableHead>
               {podeEscrever && <TableHead className="w-24">Ações</TableHead>}
             </TableRow>
@@ -83,6 +97,13 @@ export function TaxasTab({ convencaoId }: { convencaoId: string }) {
               <TableRow key={t.id}>
                 <TableCell>{t.nome}</TableCell>
                 <TableCell>{t.valor != null ? formatarMoeda(t.valor) : "—"}</TableCell>
+                <TableCell>
+                  {t.tipo_boleto ? (
+                    <Badge variant="outline">{ROTULO_TIPO_BOLETO[t.tipo_boleto] ?? t.tipo_boleto}</Badge>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
                 <TableCell>{t.observacoes ?? "—"}</TableCell>
                 {podeEscrever && (
                   <TableCell>
@@ -126,6 +147,24 @@ export function TaxasTab({ convencaoId }: { convencaoId: string }) {
   );
 }
 
+function PainelBoleto({ taxas }: { taxas: Taxa[] }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-md border border-borda bg-fundo-2 p-3 text-sm">
+      <span className="font-semibold text-texto-2">Valor-base dos boletos:</span>
+      {(["taf", "pamed"] as const).map((tipo) => {
+        const taxa = taxas.find((x) => x.tipo_boleto === tipo);
+        const ok = taxa?.valor != null;
+        return (
+          <Badge key={tipo} variant="outline" className={ok ? "" : "border-estado-alerta text-estado-alerta"}>
+            {ROTULO_TIPO_BOLETO[tipo]}: {ok ? formatarMoeda(taxa.valor as number) : "não cadastrada"}
+          </Badge>
+        );
+      })}
+      <span className="text-xs text-texto-2">CA e CN: valor digitado por boleto.</span>
+    </div>
+  );
+}
+
 function TaxaFormDialog({
   convencaoId,
   taxa,
@@ -144,6 +183,7 @@ function TaxaFormDialog({
     nome: taxa?.nome ?? "",
     valor: taxa?.valor ?? undefined,
     observacoes: taxa?.observacoes ?? "",
+    tipo_boleto: taxa?.tipo_boleto === "taf" || taxa?.tipo_boleto === "pamed" ? taxa.tipo_boleto : "",
   };
 
   async function salvar(valores: TaxaFormValues) {
@@ -187,7 +227,7 @@ function TaxaFormDialog({
                 name="valor"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Valor (opcional)</FormLabel>
+                    <FormLabel>Valor (opcional) — por trabalhador, se usada em boleto</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -196,6 +236,33 @@ function TaxaFormDialog({
                         onChange={(e) => field.onChange(e.target.value)}
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="tipo_boleto"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Usada para boleto de</FormLabel>
+                    <Select
+                      value={field.value === "" ? SEM_TIPO : field.value}
+                      onValueChange={(v) => field.onChange(v === SEM_TIPO ? "" : v)}
+                    >
+                      <FormControl>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value={SEM_TIPO}>Nenhuma</SelectItem>
+                        <SelectItem value="taf">TAF</SelectItem>
+                        <SelectItem value="pamed">PAMED</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-texto-2">
+                      O boleto de TAF ou PAMED é calculado como este valor × nº de trabalhadores. CA e CN têm
+                      o valor digitado em cada boleto.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}

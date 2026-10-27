@@ -14,6 +14,7 @@ const GRUPOS: Array<{ id: NavItem["grupo"]; titulo: string }> = [
   { id: "principal", titulo: "" },
   { id: "financeiro", titulo: "Financeiro" },
   { id: "campanhas", titulo: "Campanhas" },
+  { id: "boletos", titulo: "Boletos" },
   { id: "administracao", titulo: "Administração" },
   { id: "portal", titulo: "Portal do parceiro" },
 ];

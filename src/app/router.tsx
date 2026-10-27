@@ -38,6 +38,12 @@ import { CoberturaContabilidadesPage } from "@/features/cobertura/CoberturaConta
 import { CoberturaEmpresasPage } from "@/features/cobertura/CoberturaEmpresasPage";
 import { DashboardCampanhasPage } from "@/features/campanhas/DashboardCampanhasPage";
 import { ListaDescadastrosPage } from "@/features/descadastros/ListaDescadastrosPage";
+import { VisaoGeralPage } from "@/features/boletos/VisaoGeralPage";
+import { CiclosPage } from "@/features/boletos/CiclosPage";
+import { DadosRecebidosPage } from "@/features/boletos/DadosRecebidosPage";
+import { StatusBoletosPage } from "@/features/boletos/StatusBoletosPage";
+import { CaixasPage } from "@/features/boletos/CaixasPage";
+import { ResponderPage } from "@/features/boletos/ResponderPage";
 import type { PapelUsuario } from "@/lib/supabase";
 
 /**
@@ -91,6 +97,11 @@ const PAGINAS: Partial<Record<string, ReactNode>> = {
   "/cobertura-empresas": <CoberturaEmpresasPage />,
   "/campanhas/dashboard": <DashboardCampanhasPage />,
   "/descadastros": <ListaDescadastrosPage />,
+  "/boletos": <VisaoGeralPage />,
+  "/boletos/ciclos": <CiclosPage />,
+  "/boletos/dados": <DadosRecebidosPage />,
+  "/boletos/status": <StatusBoletosPage />,
+  "/boletos/caixas": <CaixasPage />,
 };
 const PAGINAS_DETALHE: Partial<Record<string, ReactNode>> = {
   "/trabalhadores/:id": <FichaTrabalhadorPage />,
@@ -128,6 +139,7 @@ export const router = createBrowserRouter(
     // cabeçalho `List-Unsubscribe` da Brevo, e obrigá-lo a abrir esta tela seria
     // descumprimento com custo em entregabilidade, não em teste.
     { path: "/descadastrar/:token", element: <DescadastrarPage /> },
+    { path: "/responder/:token", element: <ResponderPage /> },
     {
       // Área interna: exige sessão + perfil ativo (RoleGate sem roles).
       element: (

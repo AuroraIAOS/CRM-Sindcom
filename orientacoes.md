@@ -2213,6 +2213,37 @@ node -e "const c=require('crypto'),f=require('fs');console.log(c.createHash('sha
 **no destino**, não presumida da origem. Um hash custa uma linha e transforma "acho que colei certo"
 em "é o mesmo arquivo".
 
+### 2.33 ETAPA 10 (boletos): quatro armadilhas de banco que custaram tempo — limpeza, índice de FK, GRANT e CHECK
+
+**(a) Problema.** (1) `respostas_boleto` é imutável (trigger barra UPDATE/DELETE até para `service_role`) e
+`boletos.quantidade_resposta_id` aponta para ela, enquanto `respostas_boleto.boleto_id` aponta para
+`boletos`: **FK circular**. Limpar o DEMO falhou duas vezes (`23503`), primeiro de um lado, depois do outro.
+(2) O linter acusa FK sem índice mesmo havendo índice composto `(ciclo_id, caixa_id)`: ele não cobre
+`caixa_id`, que está atrás. (3) Teste "DELETE sem GRANT" que filtrava por coluna inexistente recebeu
+`42703` (coluna não existe), não `42501` (sem permissão) — passou por motivo errado. (4) Em TAF/PAMED,
+editar `valor` direto não chega ao CHECK: o trigger reverte antes, então o teste "CHECK barra" ficava
+verde sem testar o CHECK.
+
+**(b) Solução.**
+```sql
+-- (1) limpeza como postgres, num único statement (atômico), quebrando o ciclo antes de apagar
+alter table respostas_boleto disable trigger user;  alter table boletos disable trigger user;
+update boletos set quantidade_resposta_id = null where ciclo_id in (select id from ciclos_boleto where nome like 'DEMO%');
+delete from respostas_boleto where boleto_id in (select b.id from boletos b join ciclos_boleto c on c.id=b.ciclo_id where c.nome like 'DEMO%');
+delete from boletos where ciclo_id in (select id from ciclos_boleto where nome like 'DEMO%');
+alter table respostas_boleto enable trigger user;   alter table boletos enable trigger user;
+-- (2) um índice por FK, com a coluna da FK na frente
+create index if not exists idx_ciclo_caixas_caixa on ciclo_caixas (caixa_id);
+```
+(3) filtre por coluna que **existe** e confira o `code` (`42501`), não só "deu erro". (4) teste o CHECK em
+CA/CN, onde o valor é digitado e nenhum trigger o corrige.
+
+**(c) Como implantar.** `execute_sql` do MCP às vezes devolve "Invalid or expired requestState" em blocos
+grandes (e `DO $$` longo): reenvie em blocos menores; ele só mostra o resultado do último `select`.
+`generate_typescript_types` do bench vem defasado em relação à produção — **mescle só os acréscimos** em
+`database.types.ts`, nunca sobrescreva. Coluna de tabela temporária com o mesmo nome de variável plpgsql
+gera ambiguidade: prefixe as variáveis (`v_`).
+
 ## 3. Integrações (n8n, e-mail, Docker)
 
 ### 3.1 Titan grátis não faz SMTP externo
@@ -3026,6 +3057,23 @@ const linha = texto.split('\n').find(l => l.trim().startsWith('SMTP_PASS'));
 const valor = linha.slice(linha.indexOf('SMTP_PASS') + 'SMTP_PASS'.length).trim();
 ```
 
+### 5.5 Git Bash converte `--base=/pasta/` em caminho do Windows — o preview sobe com a base errada
+
+**(a) Problema.** `npx vite build --base=/preview-boletos/` no Git Bash gerou todos os assets apontando para
+`/Program Files/Git/preview-boletos/` (o MSYS trata argumento que começa com `/` como caminho Unix). O preview
+subiu, mas em branco. Segunda pegadinha: o `.htaccess` do build, sem `RewriteBase` da subpasta, devolve o
+`index.html` da raiz em vez do da subpasta.
+
+**(b) Solução / (c) Como implantar.**
+```bash
+MSYS_NO_PATHCONV=1 npx vite build --mode bench --base=/preview-boletos/ --outDir dist-preview
+# no .htaccess do dist-preview: RewriteBase /preview-boletos/   (e X-Robots-Tag: noindex, nofollow)
+```
+`--mode bench` carrega `.env.bench`; só as variáveis `VITE_*` entram no bundle (a `service_role` não).
+O router já usa `basename: import.meta.env.BASE_URL`. Suba por FTP **só** a subpasta e confira com `curl -I`
+o `index.html` e um asset. O PWA de produção (service worker no escopo `/`) pode interceptar o preview:
+teste em janela anônima ou com recarga forçada.
+
 ---
 
 ## 6. Segurança e credenciais
@@ -3652,3 +3700,24 @@ curl -s "$URL/rest/v1/rejeicoes_campanha?select=id,email,created_at" \
 **Regra transferível:** este é o §7.2 ("passou não é o mesmo que funcionou") no espelho — **"falhou"
 também não é o mesmo que "não fez"**. Os dois erros têm a mesma raiz: tomar o que a ferramenta
 *disse* pelo que o sistema *fez*. Só o efeito observado decide, nos dois sentidos.
+
+### 7.12 Rodar o vitest SEM `SINDCOM_ALVO=bench` autentica na PRODUÇÃO
+
+**(a) Problema.** O `globalSetup` (`tests/rls/globalSetup.ts`) loga os 5 papéis no alvo configurado; sem a
+variável, o alvo é a produção. Aconteceu uma vez na ETAPA 10 (vitest unitário): só 5 logins, nenhuma escrita —
+mas gasta a cota do §7.4 e contraria a regra de que teste destrutivo só roda no bench.
+
+**(b) Solução / (c) Como implantar.** Sempre `SINDCOM_ALVO=bench npm run test` (e `npx vitest run <arquivo>`
+idem). Os testes que escrevem usam `exigirBench()` e os de módulo ainda não aplicado em produção ficam `skip`
+(`ehProducao() ? describe.skip : describe`). Conferir o alvo antes de rodar é mais barato que desfazer.
+
+### 7.13 Teste adversarial de endpoint público: 403 com cara de SQL é a borda, e "freio" não pode contar token válido
+
+**(a) Problema.** Payloads com texto de injeção SQL voltaram `403` antes de chegar na Edge Function (WAF do
+Supabase) — o primeiro teste tratou isso como falha da função (falso achado; ver também §7.8). Outro erro de
+desenho: contar toda tentativa no freio travaria a própria caixa que acerta o link.
+
+**(b) Solução / (c) Como implantar.** O teste aceita `4xx` sem dado como defesa válida e asserta o que importa:
+nenhum dado vazou e nada foi gravado. No freio (5 falhas/15 min por token) **só falha de token conta**;
+token válido nunca é freado, e a mensagem é única ("Link inválido…") para ausente/malformado/inexistente/
+expirado, para a resposta não virar oráculo de token.

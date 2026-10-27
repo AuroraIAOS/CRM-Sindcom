@@ -2347,6 +2347,34 @@ queda de entrega no Gmail, e já terá custado a base.
 
 ---
 
+## ETAPA 10 — CONTROLE DE BOLETOS (TAF / CA / CN / PAMED) · Complexidade: ALTA · Status: ✅ CONCLUÍDA (2026-10-26: bench → preview → produção, no ar em crm.sindcompassos.org; merge em main)
+
+Objetivo: tirar da caixa de entrada o controle manual dos boletos — coleta de CNPJ + nº de trabalhadores
+por link permanente (um token por caixa de e-mail), cálculo do valor (só TAF e PAMED: valor-base da
+taxa na convenção × quantidade) e acompanhamento até o pagamento. Sem integração Sicoob; o boleto
+continua manual. Desenho: `docs/superpowers/specs/2026-10-26-controle-boletos-design.md`; plano:
+`docs/superpowers/plans/2026-10-26-controle-boletos.md`.
+
+Estados: `aguardando_dados → fazer → enviar → enviado → pago` (+ `cancelado`); `atrasado` é tag derivada.
+CA e CN: valor digitado pelo operador (congela em enviar/enviado/pago).
+
+| Peça | Onde |
+|---|---|
+| SQL | `sql/33_boletos_10_00.sql` (tabelas, triggers, 6 views `security_invoker`, 4 RPCs, 4 índices de FK) — **aplicado no bench e na produção** (migrations `boletos_10_00_a…d3`; 18 taxas TAF e 8 PAMED etiquetadas) |
+| Edge Function | `supabase/functions/receber-dados-boleto/` (service_role, `verify_jwt:false`) — **no bench e na produção (v1)** |
+| Frontend | `src/features/boletos/` (Visão geral, Ciclos, Dados recebidos, Status, Caixas e links, página pública `/responder/:token`) + aba Taxas (`tipo_boleto`) em `features/convencoes` |
+| Testes | `tests/rls/boletos.spec.ts` (50/50) · `tests/adversarial/07_boletos.spec.ts` (35/35) · `tests/unit/boletos-rotulos-csv.spec.ts` |
+| Preview | build com `.env.bench`, `--base=/preview-boletos/`, FTP só nessa subpasta; página pública provada de ponta a ponta (12 trabalhadores → `fazer`, R$ 150,00 = 12 × 12,50) |
+
+**Verificação (bench `ikculjjvvyajhfxifuga`):** suíte completa com `SINDCOM_ALVO=bench` — 396 passed, 25 skipped,
+14 failed; as 14 são pré-existentes em `cobertura.spec.ts` (12) e `comunicacao.spec.ts` (2), por defasagem do bench
+em relação à produção (SQL 24–32 e dados), sem relação com boletos. Os testes de boletos ficam `skip` em
+produção até o SQL 33 ser aplicado lá. Dado DEMO do módulo removido do bench ao fim da subetapa (por prefixo).
+
+**Produção (2026-10-26, após "está tudo aprovado, inclusive o preview"):** SQL 33 aplicado em 7 migrations; conferência do rodapé OK (6 views `security_invoker=on`, anon sem acesso, só as 4 RPCs executáveis por `authenticated`, zero taxa sem etiqueta); Edge Function publicada e provada por curl (token inválido → mensagem única; token real; boleto alheio recusado; 405; CORS); dado de verificação removido; frontend definitivo publicado (22 arquivos, 0 divergência). Merge em `main` autorizado pelo Maxwell; `/preview-boletos/` removido do servidor; convenções "ACB Adição Express" renomeadas para "ABC" (produção e bench). **Pendente:** criar o primeiro ciclo real.
+
+---
+
 ## ETAPA 05 — BACKLOG PÓS-MVP (prioriza-se com dado real, não com opinião) · Status: ⬜
 
 Objetivo geral: refinamentos guiados por evidência sobre o produto lançado.
@@ -2422,6 +2450,7 @@ recriação de contêiner.
 | 06 | Alta | Etapa 04 | Base empresarial real: 16.687 empresas + 17.319 estabelecimentos ✅ |
 | 07 | Alta | Etapa 06 | Portão adversarial: 5 falhas reais fechadas ✅ |
 | 08 | Alta | Etapa 07 (portão) + DMARC + nota jurídica | Base de **pessoas**: campanha, coleta por token e rastreio por cobertura |
+| 10 | Alta | Etapa 08 (padrão de token) | Controle de boletos TAF/CA/CN/PAMED: coleta por link, valor calculado, acompanhamento ✅ (produção) |
 | 05 | Variável | Etapa 08 + dados de uso | Refinamentos guiados por evidência |
 
 ---

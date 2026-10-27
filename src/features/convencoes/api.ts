@@ -217,6 +217,7 @@ export function useCriarTaxa(convencaoId: string) {
         nome: valores.nome.trim(),
         valor: valores.valor ?? null,
         observacoes: vazio(valores.observacoes),
+        tipo_boleto: vazio(valores.tipo_boleto),
       });
       if (error) throw error;
     },
@@ -236,6 +237,7 @@ export function useAtualizarTaxa(convencaoId: string) {
           nome: valores.nome.trim(),
           valor: valores.valor ?? null,
           observacoes: vazio(valores.observacoes),
+          tipo_boleto: vazio(valores.tipo_boleto),
         })
         .eq("id", id);
       if (error) throw error;

@@ -19,6 +19,10 @@ import {
   Settings,
   Gauge,
   UserMinus,
+  CalendarClock,
+  ClipboardList,
+  ListChecks,
+  Mail,
   type LucideIcon,
 } from "lucide-react";
 import type { PapelUsuario } from "@/lib/supabase";
@@ -28,7 +32,7 @@ export type NavItem = {
   label: string;
   roles: PapelUsuario[];
   icon: LucideIcon;
-  grupo: "principal" | "financeiro" | "campanhas" | "administracao" | "portal";
+  grupo: "principal" | "financeiro" | "campanhas" | "boletos" | "administracao" | "portal";
 };
 
 const TODOS_INTERNOS: PapelUsuario[] = ["admin", "presidente", "secretaria", "juridico"];
@@ -72,6 +76,15 @@ export const NAV: NavItem[] = [
   // Secretaria. O Presidente entra porque a leitura desta tela é de gestão —
   // taxa de saída e motivo dirigem decisão de campanha, não operação.
   { path: "/descadastros", label: "Descadastros", roles: ["admin", "presidente", "secretaria"], icon: UserMinus, grupo: "campanhas" },
+
+  // ETAPA 10: controle manual dos boletos TAF/CA/CN/PAMED. Admin e Secretaria operam;
+  // o Presidente só lê (e nunca vê o link — a RLS de tokens_boleto o barra).
+  // Jurídico e Parceiro não veem nada.
+  { path: "/boletos", label: "Visão geral", roles: ["admin", "presidente", "secretaria"], icon: Gauge, grupo: "boletos" },
+  { path: "/boletos/ciclos", label: "Ciclos", roles: ["admin", "presidente", "secretaria"], icon: CalendarClock, grupo: "boletos" },
+  { path: "/boletos/dados", label: "Dados recebidos", roles: ["admin", "presidente", "secretaria"], icon: ClipboardList, grupo: "boletos" },
+  { path: "/boletos/status", label: "Status dos boletos", roles: ["admin", "presidente", "secretaria"], icon: ListChecks, grupo: "boletos" },
+  { path: "/boletos/caixas", label: "Caixas de e-mail", roles: ["admin", "presidente", "secretaria"], icon: Mail, grupo: "boletos" },
 
   { path: "/aprovacoes", label: "Aprovações", roles: ["admin", "secretaria"], icon: ClipboardCheck, grupo: "administracao" },
   { path: "/fila-admin", label: "Fila do Admin", roles: ["admin", "presidente", "secretaria", "juridico", "parceiro"], icon: Inbox, grupo: "administracao" },
