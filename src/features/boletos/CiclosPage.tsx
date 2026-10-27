@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Download, Plus } from "lucide-react";
+import { Download, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +30,7 @@ import {
   useCiclos,
   useCriarCiclo,
   useEncerrarCiclo,
+  useExcluirCiclo,
   useExportarEmails,
   useFunilCiclos,
   useMarcarEnviadas,
@@ -41,7 +42,7 @@ import {
   type RelatorioSemeadura,
 } from "./api";
 import { gerarCsvEmails } from "./csvEmails";
-import { ROTULO_CONTATO, SeletorCiclo, usePodeOperarBoletos } from "./comum";
+import { ROTULO_CONTATO, SeletorCiclo, useEhAdminBoletos, usePodeOperarBoletos } from "./comum";
 import { rotuloTipo, ROTULO_TIPO, TIPOS_BOLETO, type TipoBoleto } from "./rotulos";
 
 const TODAS = "todas";
@@ -49,15 +50,18 @@ const TODAS = "todas";
 /** `/boletos/ciclos` — criar, semear, encerrar, recalcular e exportar a lista de e-mails. */
 export function CiclosPage() {
   const podeOperar = usePodeOperarBoletos();
+  const ehAdmin = useEhAdminBoletos();
   const ciclos = useCiclos();
   const funil = useFunilCiclos();
   const [criando, setCriando] = useState(false);
   const [paraEncerrar, setParaEncerrar] = useState<Ciclo | null>(null);
+  const [paraExcluir, setParaExcluir] = useState<Ciclo | null>(null);
   const [exportando, setExportando] = useState<Ciclo | null>(null);
   const [cicloSemEmail, setCicloSemEmail] = useState<string | undefined>();
   const semear = useSemearCiclo();
   const recalcular = useRecalcularValores();
   const encerrar = useEncerrarCiclo();
+  const excluir = useExcluirCiclo();
 
   const lista = ciclos.data ?? [];
   const idSemEmail = cicloSemEmail ?? lista.find((c) => !c.encerrado_em)?.id ?? lista[0]?.id;
@@ -86,6 +90,17 @@ export function CiclosPage() {
       await encerrar.mutateAsync(paraEncerrar.id);
       toast.success("Ciclo encerrado. Os links das caixas continuam válidos.");
       setParaEncerrar(null);
+    } catch (e) {
+      toast.error(mensagemErro(e));
+    }
+  }
+
+  async function aoExcluir() {
+    if (!paraExcluir) return;
+    try {
+      const r = await excluir.mutateAsync(paraExcluir.id);
+      toast.success(`Ciclo excluído (${r.boletos} boletos e ${r.respostas} respostas apagados).`);
+      setParaExcluir(null);
     } catch (e) {
       toast.error(mensagemErro(e));
     }
@@ -140,8 +155,9 @@ export function CiclosPage() {
                     </TableCell>
                     {podeOperar && (
                       <TableCell>
-                        {!c.encerrado_em && (
-                          <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1">
+                          {!c.encerrado_em && (
+                            <>
                             <Button size="sm" variant="outline" onClick={() => aoSemear(c)} disabled={semear.isPending}>
                               Semear
                             </Button>
@@ -159,8 +175,19 @@ export function CiclosPage() {
                             <Button size="sm" variant="ghost" onClick={() => setParaEncerrar(c)}>
                               Encerrar
                             </Button>
-                          </div>
-                        )}
+                            </>
+                          )}
+                          {ehAdmin && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-estado-erro"
+                              onClick={() => setParaExcluir(c)}
+                            >
+                              <Trash2 className="mr-1 h-3.5 w-3.5" /> Excluir
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     )}
                   </TableRow>
@@ -189,6 +216,16 @@ export function CiclosPage() {
         textoConfirmar="Encerrar"
         carregando={encerrar.isPending}
         onConfirmar={aoEncerrar}
+      />
+      <ConfirmDialog
+        open={!!paraExcluir}
+        onOpenChange={(o) => !o && setParaExcluir(null)}
+        titulo="Excluir ciclo"
+        descricao={`Excluir “${paraExcluir?.nome ?? ""}” para sempre? Todos os boletos do ciclo e as respostas recebidas serão apagados, mesmo os já pagos. As caixas de e-mail e seus links continuam. Esta ação não pode ser desfeita.`}
+        textoConfirmar="Excluir ciclo"
+        destrutivo
+        carregando={excluir.isPending}
+        onConfirmar={aoExcluir}
       />
     </div>
   );

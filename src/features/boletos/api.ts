@@ -143,6 +143,18 @@ export function useEncerrarCiclo() {
   });
 }
 
+export function useExcluirCiclo() {
+  const invalidar = usarInvalidar();
+  return useMutation({
+    mutationFn: async (cicloId: string) => {
+      const { data, error } = await supabase.rpc("fn_excluir_ciclo_boleto", { p_ciclo: cicloId });
+      if (error) throw error;
+      return data as unknown as { boletos: number; respostas: number };
+    },
+    onSuccess: invalidar,
+  });
+}
+
 export function useRecalcularValores() {
   const invalidar = usarInvalidar();
   return useMutation({

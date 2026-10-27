@@ -2371,7 +2371,7 @@ CA e CN: valor digitado pelo operador (congela em enviar/enviado/pago).
 em relação à produção (SQL 24–32 e dados), sem relação com boletos. Os testes de boletos ficam `skip` em
 produção até o SQL 33 ser aplicado lá. Dado DEMO do módulo removido do bench ao fim da subetapa (por prefixo).
 
-**Produção (2026-10-26, após "está tudo aprovado, inclusive o preview"):** SQL 33 aplicado em 7 migrations; conferência do rodapé OK (6 views `security_invoker=on`, anon sem acesso, só as 4 RPCs executáveis por `authenticated`, zero taxa sem etiqueta); Edge Function publicada e provada por curl (token inválido → mensagem única; token real; boleto alheio recusado; 405; CORS); dado de verificação removido; frontend definitivo publicado (22 arquivos, 0 divergência). Merge em `main` autorizado pelo Maxwell; `/preview-boletos/` removido do servidor; convenções "ACB Adição Express" renomeadas para "ABC" (produção e bench). **Pendente:** criar o primeiro ciclo real.
+**Produção (2026-10-26, após "está tudo aprovado, inclusive o preview"):** SQL 33 aplicado em 7 migrations; conferência do rodapé OK (6 views `security_invoker=on`, anon sem acesso, só as 4 RPCs executáveis por `authenticated`, zero taxa sem etiqueta); Edge Function publicada e provada por curl (token inválido → mensagem única; token real; boleto alheio recusado; 405; CORS); dado de verificação removido; frontend definitivo publicado (22 arquivos, 0 divergência). Merge em `main` autorizado pelo Maxwell; `/preview-boletos/` removido do servidor; convenções "ACB Adição Express" renomeadas para "ABC" (produção e bench). Em 2026-10-27 entrou o botão **Excluir ciclo** (só Admin; SQL 34, produção e bench). **Pendente:** criar o primeiro ciclo real.
 
 ---
 

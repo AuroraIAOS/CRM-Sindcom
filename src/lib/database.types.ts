@@ -3679,6 +3679,7 @@ export type Database = {
         Args: { p_ciclo: string }
         Returns: number
       }
+      fn_excluir_ciclo_boleto: { Args: { p_ciclo: string }; Returns: Json }
       fn_reemitir_token_boleto: {
         Args: { p_caixa: string }
         Returns: undefined

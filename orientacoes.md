@@ -3721,3 +3721,9 @@ desenho: contar toda tentativa no freio travaria a própria caixa que acerta o l
 nenhum dado vazou e nada foi gravado. No freio (5 falhas/15 min por token) **só falha de token conta**;
 token válido nunca é freado, e a mensagem é única ("Link inválido…") para ausente/malformado/inexistente/
 expirado, para a resposta não virar oráculo de token.
+
+### 7.14 Não dá para excluir ciclo de boletos: a tabela imutável barra até o DELETE em cascata
+
+**(a) Problema.** Na tela não havia botão de excluir ciclo e, no Supabase, o DELETE de ciclo/boletos falhava. Causas somadas: o operador não tem GRANT de DELETE em `ciclos_boleto`/`boletos`; `respostas_boleto` tem trigger `BEFORE DELETE` que sempre levanta 42501 (vale até para cascata e para o postgres); e `boletos.quantidade_resposta_id` aponta para a resposta (FK circular).
+**(b) Solução.** `sql/34_boletos_excluir_ciclo.sql`: RPC `fn_excluir_ciclo_boleto(uuid)`, SECURITY DEFINER, só `fn_eh('admin')`. Dentro dela: `set_config('app.excluindo_ciclo','1',true)`, zera `quantidade_resposta_id`, apaga respostas → boletos → ciclo (cascata leva `ciclo_convencoes`/`ciclo_caixas`) e grava auditoria com contagens. `fn_resposta_imutavel` passou a deixar o DELETE passar só com essa bandeira ligada; a bandeira vale só na transação. As caixas e os links ficam.
+**(c) Como implantar.** Aplicar o SQL 34 (em 2 `apply_migration` — um só grande dá "Invalid or expired requestState"; e não rodar duas chamadas MCP em paralelo). Botão "Excluir" na aba Ciclos (só Admin, também em ciclo encerrado). Teste: `SINDCOM_ALVO=bench npx vitest run tests/rls/boletos-excluir.spec.ts`. Para limpar DEMO no bench por SQL, ligar a mesma bandeira antes do DELETE.

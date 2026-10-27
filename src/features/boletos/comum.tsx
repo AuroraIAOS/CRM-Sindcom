@@ -12,6 +12,11 @@ import { useCiclos } from "./api";
 import { rotuloTipo, TAG, type TomTag } from "./rotulos";
 
 /** Botões de escrita só para Admin e Secretaria. A segurança real é a RLS. */
+export function useEhAdminBoletos(): boolean {
+  const { role } = useAuth();
+  return role === "admin";
+}
+
 export function usePodeOperarBoletos(): boolean {
   const { role } = useAuth();
   return role === "admin" || role === "secretaria";
