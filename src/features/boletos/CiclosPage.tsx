@@ -45,7 +45,6 @@ import { gerarCsvEmails } from "./csvEmails";
 import { ROTULO_CONTATO, SeletorCiclo, useEhAdminBoletos, usePodeOperarBoletos } from "./comum";
 import { rotuloTipo, ROTULO_TIPO, TIPOS_BOLETO, type TipoBoleto } from "./rotulos";
 
-const TODAS = "todas";
 
 /** `/boletos/ciclos` — criar, semear, encerrar, recalcular e exportar a lista de e-mails. */
 export function CiclosPage() {
@@ -407,11 +406,9 @@ function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode
 }
 
 function ExportarEmailsDialog({ ciclo, onFechar }: { ciclo: Ciclo; onFechar: () => void }) {
-  const convencoes = useConvencoes();
   const exportar = useExportarEmails();
   const marcar = useMarcarEnviadas();
   const [modo, setModo] = useState<ModoEnvio>("aviso");
-  const [convencaoId, setConvencaoId] = useState(TODAS);
   const [gerado, setGerado] = useState<ExportacaoEmails | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -421,10 +418,9 @@ function ExportarEmailsDialog({ ciclo, onFechar }: { ciclo: Ciclo; onFechar: () 
       const r = await exportar.mutateAsync({
         cicloId: ciclo.id,
         modo,
-        convencaoId: convencaoId === TODAS ? undefined : convencaoId,
       });
       if (r.linhas.length === 0) {
-        setErro(modo === "aviso" ? "Nenhuma caixa ainda sem aviso neste ciclo." : "Nenhuma caixa com CNPJ pendente.");
+        setErro(modo === "aviso" ? "Nenhuma caixa ainda sem o primeiro envio neste ciclo." : "Nenhuma caixa com CNPJ ainda sem resposta.");
         return;
       }
       baixarCsv(`emails-${modo}-${ciclo.nome.replace(/[^\w-]+/g, "_")}`, gerarCsvEmails(r.linhas));
@@ -438,7 +434,7 @@ function ExportarEmailsDialog({ ciclo, onFechar }: { ciclo: Ciclo; onFechar: () 
     if (!gerado) return;
     try {
       await marcar.mutateAsync({ cicloId: ciclo.id, caixaIds: gerado.caixaIds, modo });
-      toast.success(`${gerado.caixaIds.length} caixas marcadas como ${modo === "aviso" ? "avisadas" : "cobradas"}.`);
+      toast.success(`${gerado.caixaIds.length} caixas marcadas como ${modo === "aviso" ? "avisadas (primeiro envio)" : "reenviadas"}.`);
       onFechar();
     } catch (e) {
       setErro(mensagemErro(e));
@@ -451,7 +447,7 @@ function ExportarEmailsDialog({ ciclo, onFechar }: { ciclo: Ciclo; onFechar: () 
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Marcar estas {gerado.caixaIds.length} caixas como {modo === "aviso" ? "avisadas" : "cobradas"}?
+              Marcar estas {gerado.caixaIds.length} caixas como {modo === "aviso" ? "avisadas (primeiro envio)" : "reenviadas"}?
             </DialogTitle>
             <DialogDescription>
               O arquivo foi baixado. Importe-o na Brevo e dispare o e-mail; depois marque aqui, para que a próxima
@@ -478,7 +474,7 @@ function ExportarEmailsDialog({ ciclo, onFechar }: { ciclo: Ciclo; onFechar: () 
         <DialogHeader>
           <DialogTitle>Lista de e-mails — {ciclo.nome}</DialogTitle>
           <DialogDescription>
-            Gera o CSV (nome, e-mail, link, convenções, nº de CNPJs) para importar na Brevo.
+            Gera o CSV (nome, e-mail, link, convenções, nº de CNPJs) das convenções e CNAEs deste ciclo, para importar na Brevo.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3 text-sm">
@@ -488,23 +484,8 @@ function ExportarEmailsDialog({ ciclo, onFechar }: { ciclo: Ciclo; onFechar: () 
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="aviso">Aviso — caixas ainda não avisadas</SelectItem>
-                <SelectItem value="cobranca">Cobrança — caixas com CNPJ pendente</SelectItem>
-              </SelectContent>
-            </Select>
-          </Campo>
-          <Campo rotulo="Convenção">
-            <Select value={convencaoId} onValueChange={setConvencaoId}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={TODAS}>Todas do ciclo</SelectItem>
-                {(convencoes.data ?? []).map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.nome}
-                  </SelectItem>
-                ))}
+                <SelectItem value="aviso">Primeiro envio — quem ainda não foi avisado</SelectItem>
+                <SelectItem value="cobranca">Reenvio — só quem ainda não respondeu</SelectItem>
               </SelectContent>
             </Select>
           </Campo>
