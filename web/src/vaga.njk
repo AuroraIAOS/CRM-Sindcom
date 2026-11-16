@@ -1,0 +1,47 @@
+---
+layout: base.njk
+titulo: Vagas e Oportunidades
+descricao: Empreendedor, cadastre as vagas da sua empresa. Trabalhador, encontre oportunidades no comércio de Passos e região com o SINDCOM.
+permalink: /vaga/
+css: [vaga, formulario]
+scripts: [validacao, formulario]
+---
+<section class="hero"><div class="container duas-col" id="cadastroV">
+  <div data-revelar>
+    <h1>Vagas e Oportunidades</h1>
+    <p class="lead">Empreendedor, cadastre aqui suas vagas e oportunidades de trabalho.</p>
+    <a class="botao" href="#formulario">Cadastrar vaga</a>
+  </div>
+  <div class="lottie" data-lottie="/assets/lottie/documentos.json" role="img" aria-label="Animação de documentos, representando o cadastro de vagas"></div>
+</div></section>
+
+<section class="secao"><div class="container">
+  {% set formNome = "vaga" %}{% include "formulario.njk" %}
+</div></section>
+
+<section class="secao secao--alt" id="bancoV"><div class="container chamada" data-revelar>
+  <h2>Trabalhador, encontre aqui vagas e oportunidades do seu interesse</h2>
+  <p class="lead">Oportunidades à vista!</p>
+  <p>Aqui, o SINDCOM conecta trabalhadores e empresas do comércio de Passos e Região através do cadastro e oferta de <strong>vagas de emprego.</strong></p>
+  <p>Nosso banco de vagas é organizado por áreas do comércio, facilitando sua busca.</p>
+  <p>Consulte vagas atualizadas. Encontre oportunidades alinhadas ao seu perfil.</p>
+  <a class="botao" href="/curriculo/">Cadastrar meu currículo</a>
+</div></section>
+
+{# TODO Etapa 3: a listagem de vagas aprovadas virá do CRM (moderadas por Admin/Secretaria) e será renderizada
+   nesta seção; remover o atributo "hidden" quando houver dados. Currículos nunca são listados publicamente. #}
+<section id="vagas-abertas" hidden>
+  <div class="container">
+    <h2>Vagas abertas</h2>
+  </div>
+</section>
+
+<section class="secao"><div class="container duas-col">
+  <div class="lottie" data-lottie="/assets/lottie/denuncia.json" role="img" aria-label="Animação de alerta, representando a denúncia de irregularidades"></div>
+  <div data-revelar>
+    <h2>Denúncia anônima</h2>
+    <p>Direitos trabalhistas não são favores. São garantias legais.</p>
+    <p>Caso você tenha identificado possíveis irregularidades, registre sua denúncia de forma segura e anônima.</p>
+    <a class="botao" href="/denuncie/">Denuncie aqui!</a>
+  </div>
+</div></section>

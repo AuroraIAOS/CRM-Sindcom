@@ -1,0 +1,223 @@
+---
+layout: base.njk
+titulo: Serviços
+descricao: Convenções coletivas, assistência jurídica, homologações, taxas e boletos, vagas e currículos. Tudo o que o trabalhador do comércio precisa para proteger seus direitos.
+permalink: /servicos/
+css: [comum, servicos]
+---
+{% set ccts = [
+  { titulo: "CCT 2026 — Fecomércio Atacadista — Passos", arquivo: "cct-2026-fecomercio-atacadista-passos.pdf", mb: "0,5" },
+  { titulo: "CCT 2026 — Fecomércio Atacadista & Varejista — Região", arquivo: "cct-2026-fecomercio-atacadista-varejista-regiao.pdf", mb: "3,4" },
+  { titulo: "CCT 2026 — Sincovaga Alimentício — Região", arquivo: "cct-2026-sincovaga-alimenticio-regiao.pdf", mb: "7,5" },
+  { titulo: "CCT 2026 — SindPass Varejista — Passos", arquivo: "cct-2026-sindpass-varejista-passos.pdf", mb: "5,2" },
+  { titulo: "CCT 2026 — SindSuper Varejista — Região", arquivo: "cct-2026-sindsuper-varejista-regiao.pdf", mb: "2,1" }
+] %}
+{% set niveis = ["Bronze", "Prata", "Ouro"] %}
+{% set linhas = [
+  { t: "Piso salarial", v: [1,1,1] },
+  { t: "Reajustes salariais", v: [1,1,1] },
+  { t: "Proteção coletiva", v: [1,1,1] },
+  { t: "Convenções coletivas", v: [1,1,1] },
+  { t: "Homologação", v: [0,1,1] },
+  { t: "Assistência sindical individual", v: [0,1,1] },
+  { t: "Assistência jurídica individual", v: [0,1,1] },
+  { t: "Convênio de descontos", v: [0,0,1] },
+  { t: "Convênio de benefícios", v: [0,0,1] },
+  { t: "Cobertura dos dependentes", v: [0,0,1] }
+] %}
+
+<section class="hero"><div class="container hero__grade">
+  <div data-revelar>
+    <p class="sobretitulo">Nossos Serviços</p>
+    <h1>Tudo o que o trabalhador do comércio precisa para proteger seus direitos</h1>
+    <p class="lead">Do acesso a documentos e convenções coletivas até suporte jurídico, vagas de emprego e orientação trabalhista: o SINDCOM oferece serviços que facilitam sua vida, fortalecem sua segurança no trabalho e cuidam da sua família.</p>
+    <p><em>Menos dúvidas. Mais clareza. Mais proteção.</em></p>
+    <a class="botao" href="/filie-se/">Quero garantir meus direitos</a>
+  </div>
+  {% imagem "Sindcom-Passos-Trabalhadores-do-Comercio-horizontal-27.jpg", "Trabalhadores do comércio de Passos reunidos, representados pelo SINDCOM", "(min-width: 900px) 520px, 100vw", "hero__img", true %}
+</div></section>
+
+<section class="secao" id="atalhos"><div class="container">
+  <h2>Atalhos: vá direto ao que você precisa</h2>
+  <p>Reunimos aqui os caminhos mais usados do site, divididos por quem você é.</p>
+  <div class="atalhos-grupo">
+    <h3>Para o trabalhador</h3>
+    <div class="grade grade--3">
+      <article class="cartao atalho" data-revelar>
+        <span class="atalho__icone" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3l7 3v5c0 5-3 8-7 10-4-2-7-5-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg></span>
+        <h4>Filie-se</h4>
+        <p>Escolha seu nível de proteção e passe a contar com o SINDCOM no dia a dia.</p>
+        <a class="botao botao--sec" href="/filie-se/">Quero me filiar<span class="so-leitor"> — Filie-se</span></a>
+      </article>
+      <article class="cartao atalho" data-revelar>
+        <span class="atalho__icone" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M20 12v8H4v-8"/><path d="M2 7h20v5H2z"/><path d="M12 22V7"/><path d="M12 7c-3 0-5-1-5-3s3-2 5 3c2-5 5-5 5-3s-2 3-5 3z"/></svg></span>
+        <h4>Convênio e benefícios</h4>
+        <p>Descontos em saúde, educação, serviços e lazer para você e sua família.</p>
+        <a class="botao botao--sec" href="/beneficios/">Ver benefícios<span class="so-leitor"> — Convênio e benefícios</span></a>
+      </article>
+      <article class="cartao atalho" data-revelar>
+        <span class="atalho__icone" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 13h6M9 17h6"/></svg></span>
+        <h4>Convenções coletivas</h4>
+        <p>Baixe as convenções coletivas de 2026 e confira piso, reajustes e regras da sua categoria.</p>
+        <a class="botao botao--sec" href="#convencao">Ir para os downloads<span class="so-leitor"> — Convenções coletivas</span></a>
+      </article>
+      <article class="cartao atalho" data-revelar>
+        <span class="atalho__icone" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg></span>
+        <h4>Fale com o Advogado</h4>
+        <p>Tire dúvidas sobre seus direitos trabalhistas pelo WhatsApp.</p>
+        <a class="botao botao--sec" href="https://wa.me/5535988270406?text=Ol%C3%A1%20Dr.%20Adenilson.%20Eu%20gostaria%20de%20solicitar%20algumas%20informa%C3%A7%C3%B5es." rel="noopener">Chamar no WhatsApp<span class="so-leitor"> — Fale com o Advogado</span></a>
+      </article>
+      <article class="cartao atalho" data-revelar>
+        <span class="atalho__icone" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 3l10 18H2z"/><path d="M12 10v5"/><path d="M12 18v.01"/></svg></span>
+        <h4>Denuncie</h4>
+        <p>Registre uma irregularidade de forma segura e anônima.</p>
+        <a class="botao botao--sec" href="/denuncie/">Fazer denúncia<span class="so-leitor"> — Denuncie</span></a>
+      </article>
+      <article class="cartao atalho" data-revelar>
+        <span class="atalho__icone" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></span>
+        <h4>Cadastro de Currículo</h4>
+        <p>Cadastre seu currículo e deixe seus dados com o SINDCOM.</p>
+        <a class="botao botao--sec" href="/curriculo/">Cadastrar currículo<span class="so-leitor"> — Cadastro de Currículo</span></a>
+      </article>
+    </div>
+  </div>
+  <div class="atalhos-grupo">
+    <h3>Para o empregador / empresa</h3>
+    <div class="grade grade--3">
+      <article class="cartao atalho" data-revelar>
+        <span class="atalho__icone" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V4h6v3"/><path d="M3 13h18"/></svg></span>
+        <h4>Cadastro de Vaga</h4>
+        <p>Tem uma vaga no comércio de Passos e Região? Envie os dados para o SINDCOM.</p>
+        <a class="botao botao--sec" href="/vaga/">Cadastrar vaga<span class="so-leitor"> — Cadastro de Vaga</span></a>
+      </article>
+      <article class="cartao atalho" data-revelar>
+        <span class="atalho__icone" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 20V4"/><path d="M4 20h16"/><path d="M8 16v-5M12 16V8M16 16v-3"/></svg></span>
+        <h4>Dados e Nota Técnica</h4>
+        <p>Consulte os números e a nota técnica sobre a categoria.</p>
+        <a class="botao botao--sec" href="/dados/">Ver dados<span class="so-leitor"> — Dados e Nota Técnica</span></a>
+      </article>
+      <article class="cartao atalho" data-revelar>
+        <span class="atalho__icone" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 13h6M9 17h6"/></svg></span>
+        <h4>Convenções coletivas</h4>
+        <p>Conheça as regras da categoria que valem para sua empresa.</p>
+        <a class="botao botao--sec" href="#convencao">Ir para os downloads<span class="so-leitor"> — Convenções coletivas</span></a>
+      </article>
+      <article class="cartao atalho" data-revelar>
+        <span class="atalho__icone" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg></span>
+        <h4>Contato</h4>
+        <p>Fale com o SINDCOM sobre dúvidas da sua empresa, como as ACTs.</p>
+        <a class="botao botao--sec" href="/contato/">Falar com o SINDCOM<span class="so-leitor"> — Contato</span></a>
+      </article>
+    </div>
+  </div>
+</div></section>
+
+<section class="secao secao--alt" id="protecao"><div class="container">
+  <h2>Qual é o seu nível de proteção?</h2>
+  <div class="tabela-rolagem">
+  <table class="niveis">
+    <caption class="so-leitor">Serviços incluídos em cada nível de proteção</caption>
+    <thead><tr><th scope="col"><span class="so-leitor">Serviço</span></th>
+      <th scope="col">{% imagem "Sindcom-Representado-Bronze.png", "Selo Representado Bronze", "72px", "selo", false %}Bronze</th>
+      <th scope="col">{% imagem "Sindcom-Sindicalizado-Prata.png", "Selo Sindicalizado Prata", "72px", "selo", false %}Prata</th>
+      <th scope="col">{% imagem "Sindcom-Filiado-Ouro.png", "Selo Filiado Ouro", "72px", "selo", false %}Ouro</th></tr></thead>
+    <tbody>
+    {% for l in linhas %}<tr><th scope="row">{{ l.t }}</th>
+      {% for x in l.v %}<td class="{{ 'sim' if x else 'nao' }}"><span aria-hidden="true">{{ '✓' if x else '✗' }}</span><span class="so-leitor">{{ niveis[loop.index0] }}: {{ 'incluído' if x else 'não incluído' }}</span></td>{% endfor %}
+    </tr>{% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div></section>
+
+<section class="secao secao--alt"><div class="container">
+  <h2>Serviços jurídicos e administrativos</h2>
+
+  <div class="bloco" id="convencao" data-revelar>
+    <h3>Convenções coletivas e documentos</h3>
+    <p>Aqui você encontra os documentos que regulam os direitos da sua categoria.</p>
+    <p>As convenções coletivas definem regras importantes como salários, jornadas, benefícios e condições de trabalho.</p>
+    <p>É por meio delas que o Sindicato garante avanços reais para os trabalhadores do comércio.</p>
+    <p>Consulte, baixe e acompanhe os documentos atualizados da sua categoria.</p>
+
+    <ul class="downloads" aria-label="Convenções Coletivas de Trabalho 2026 para download">
+      {% for c in ccts %}<li>
+        <span class="downloads__titulo">{{ c.titulo }}</span>
+        <span class="downloads__meta">PDF · {{ c.mb }} MB</span>
+        <a class="botao botao--sec" href="/downloads/cct/{{ c.arquivo }}" download>Baixar<span class="so-leitor"> {{ c.titulo }}</span></a>
+      </li>{% endfor %}
+    </ul>
+
+    <aside class="aviso-act">
+      <p><strong>Acordos coletivos por empresa (ACT).</strong> As ACTs não são publicadas neste site: são enviadas por e-mail mediante solicitação.</p>
+      <a class="botao" href="/contato/?assunto=ACT">Solicitar ACT</a>
+    </aside>
+
+    <div class="lottie" data-lottie="/assets/lottie/documentos.json" role="img" aria-label="Animação de documentos e papéis"></div>
+    <p class="centro"><a class="botao" href="https://wa.me/5535988270406?text=Ol%C3%A1%20Dr.%20Adenilson.%20Eu%20gostaria%20de%20solicitar%20algumas%20informa%C3%A7%C3%B5es.">Fale com o Advogado</a></p>
+  </div>
+
+  <div class="bloco" id="consultas" data-revelar>
+    <h3>Consultas Jurídicas e Homologações</h3>
+    <p>Tem dúvidas sobre seus direitos trabalhistas? Deseja fazer a homologação da sua rescisão contratual?</p>
+    <p>O SINDCOM oferece orientações jurídicas especializadas para ajudar você a entender sua situação e tomar decisões mais seguras sobre sua vida laboral.</p>
+    <p>Evite prejuízos por falta de informação. Receba orientação profissional preventiva.</p>
+  </div>
+
+  <div class="bloco" id="taxas" data-revelar>
+    <h3>Taxas e boletos</h3>
+    <p>Aqui você pode acessar informações sobre contribuições, taxas e emitir boletos de forma simples e rápida.</p>
+    <p>Manter sua contribuição em dia fortalece o Sindicato e garante a continuidade das conquistas coletivas para os trabalhadores e seus familiares.</p>
+    <p>Acesse seus boletos e mantenha sua participação ativa.</p>
+    <div class="grade grade--2">
+      <div class="cartao"><h4>Taxa de Contribuição Sindical (ANUAL)</h4>
+        <ul><li>5% do salário-base até o limite de R$100,00/ANO</li></ul></div>
+      <div class="cartao"><h4>Mensalidade do Convênio Sindcom (MENSAL)</h4>
+        <ul>
+          <li><strong>Titular e Beneficiados Diretos:</strong> 1% do salário-base do titular</li>
+          <li><strong>Beneficiados Indiretos:</strong> adicional de 0,5% do salário-base do titular/adicional</li>
+          <li><strong>Beneficiados Adicionais:</strong> adicional de 1% do salário-base do titular/adicional</li>
+        </ul></div>
+    </div>
+  </div>
+</div></section>
+
+<section class="secao"><div class="container">
+  <h2>Serviços de suporte</h2>
+
+  <div class="grade grade--2">
+    <div class="cartao" id="vagas" data-revelar>
+      <h3>Vagas</h3>
+      <p>Aqui, o SINDCOM conecta trabalhadores e empresas do comércio de Passos e Região através do cadastro e oferta de <strong>vagas de emprego.</strong></p>
+      <p><strong>Os empregadores e empresas podem:</strong></p>
+      <ul><li>Cadastrar suas vagas de forma rápida</li><li>Alcançar candidatos qualificados da região</li></ul>
+      <a class="botao botao--sec" href="/vaga/">Cadastro de Vagas</a>
+    </div>
+    <div class="cartao" id="curriculos" data-revelar>
+      <h3>Currículos</h3>
+      <p>Aqui, o SINDCOM conecta os profissionais e empreendedores do comércio de Passos e Região através do <strong>cadastro de currículos.</strong></p>
+      <p>Cadastre seu currículo no banco de talentos do SINDCOM.</p>
+      <p><strong>Os profissionais e trabalhadores podem:</strong></p>
+      <ul><li>Cadastrar seus currículos de forma rápida</li><li>Receber propostas valiosas na região</li></ul>
+      <a class="botao botao--sec" href="/curriculo/">Cadastro de Currículo</a>
+    </div>
+  </div>
+</div></section>
+
+<section class="secao secao--alt chamada"><div class="container centro" data-revelar>
+  <h2>Ter acesso a serviços é bom.</h2>
+  <h2>Ter proteção completa é melhor ainda.</h2>
+  <p class="lead">O SINDCOM está aqui para te apoiar em todas as etapas da sua vida profissional. Mas quem é filiado vai além:</p>
+  <p class="realce">tem mais segurança, mais suporte e mais força.</p>
+  <a class="botao" href="/filie-se/">Fortaleça seus direitos. Faça parte do SINDCOM</a>
+</div></section>
+
+<section class="secao"><div class="container grade grade--2 centro-v">
+  <div class="lottie" data-lottie="/assets/lottie/denuncia.json" role="img" aria-label="Animação de alerta de denúncia"></div>
+  <div data-revelar>
+    <h2>Denúncia anônima</h2>
+    <p>Direitos trabalhistas não são favores. São garantias legais.</p>
+    <p>Caso você tenha identificado possíveis irregularidades, clique no botão abaixo e registre sua denúncia de forma segura e anônima.</p>
+    <a class="botao" href="/denuncie/">Denuncie aqui!</a>
+  </div>
+</div></section>

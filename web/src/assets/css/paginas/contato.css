@@ -1,0 +1,15 @@
+.slot-form h2{margin-top:0}
+.slot-form__canais{display:flex;flex-wrap:wrap;gap:var(--e-sm);margin-top:var(--e-sm)}
+.duas-col{display:grid;gap:var(--e-md);align-items:center}
+@media (min-width:800px){.duas-col{grid-template-columns:1fr 1fr}}
+.duas-col img{border-radius:var(--r-lg);width:100%}
+.lista-check{list-style:none;padding:0}.lista-check li{padding-left:1.6em;position:relative;margin-block:.4em}
+.lista-check li::before{content:"✓";position:absolute;left:0;color:var(--cor-realce);font-weight:700}
+.chamada{text-align:center}.chamada .botao{margin-top:var(--e-sm)}
+.contatos dt{font-weight:700}.contatos dd{margin:0 0 var(--e-sm)}
+.logo-rodape{max-width:200px;margin-inline:auto}
+.municipios{columns:2;list-style:none;padding:0}
+@media (min-width:700px){.municipios{columns:3}}
+@media (min-width:1000px){.municipios{columns:4}}
+.municipios li{break-inside:avoid;margin-block:.2em}
+.assunto-aviso{background:var(--cor-branco);border-left:4px solid var(--cor-realce);padding:var(--e-xs) var(--e-sm);border-radius:var(--r-sm)}

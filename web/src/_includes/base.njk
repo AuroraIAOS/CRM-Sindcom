@@ -1,0 +1,72 @@
+{%- set tituloCompleto = (titulo + " · " if titulo else "") + site.nome + " — " + site.nomeCompleto -%}
+{%- set desc = descricao or site.nomeCompleto -%}
+{%- set urlCanonica = site.url + (canonico or page.url) -%}
+{%- set imgOg = site.url + (imagemCompartilhar or site.imagemPadrao) -%}
+<!doctype html>
+<html lang="pt-BR" class="sem-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ tituloCompleto }}</title>
+  <meta name="description" content="{{ desc }}">
+  <meta name="theme-color" content="{{ site.corTema }}">
+  {% if semIndexar or staging %}<meta name="robots" content="noindex, nofollow">
+  {% else %}<link rel="canonical" href="{{ urlCanonica }}">
+  {% endif %}
+  <link rel="icon" type="image/png" sizes="192x192" href="/assets/img/icon_pwa_vermelho_192x192.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/assets/img/icon_touch_vermelho_180x180.png">
+
+  <meta property="og:type" content="{{ tipoOg or 'website' }}">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:site_name" content="{{ site.nome }}">
+  <meta property="og:title" content="{{ tituloCompleto }}">
+  <meta property="og:description" content="{{ desc }}">
+  <meta property="og:url" content="{{ urlCanonica }}">
+  <meta property="og:image" content="{{ imgOg }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="{{ site.nomeCompleto }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{ tituloCompleto }}">
+  <meta name="twitter:description" content="{{ desc }}">
+  <meta name="twitter:image" content="{{ imgOg }}">
+
+  <script type="application/ld+json">{{ {
+    "@context": "https://schema.org",
+    "@type": ["Organization", "LocalBusiness"],
+    "@id": site.url + "/#organizacao",
+    "name": site.nomeCompleto,
+    "alternateName": site.nome,
+    "slogan": site.slogan,
+    "url": site.url + "/",
+    "logo": site.url + "/assets/img/icon_pwa_vermelho_192x192.png",
+    "image": site.url + site.imagemPadrao,
+    "telephone": site.telefoneInternacional,
+    "email": site.email,
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": site.enderecoEstruturado.rua,
+      "addressLocality": site.enderecoEstruturado.cidade,
+      "addressRegion": site.enderecoEstruturado.estado,
+      "addressCountry": site.enderecoEstruturado.pais
+    },
+    "areaServed": "Passos e região, Minas Gerais"
+  } | dump | safe }}</script>
+
+  <script>document.documentElement.classList.remove('sem-js')</script>
+  <link rel="preload" href="/assets/fonts/lato-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/fonts/lato-latin-300-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/fonts/playfair-display-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+  {% set _css = ["site", "menu"] %}{% for c in css %}{% set _ = _css.push("paginas/" + c) %}{% endfor %}
+  {% cssInline _css %}
+</head>
+<body>
+  <a class="pular" href="#conteudo">Pular para o conteúdo</a>
+  {% include "cabecalho.njk" %}
+  <main id="conteudo">{{ content | safe }}</main>
+  {% include "rodape.njk" %}
+  <script src="/assets/js/site.js" defer></script>
+  <script src="/assets/js/menu.js" defer></script>
+  {% for s in scripts %}<script src="/assets/js/{{ s }}.js" defer></script>
+  {% endfor %}</body>
+</html>

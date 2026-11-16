@@ -1,0 +1,334 @@
+---
+layout: base.njk
+titulo: Início
+descricao: O SINDCOM protege, orienta e luta por melhores salários, condições de trabalho e benefícios para quem move o comércio de Passos e Região.
+permalink: /
+css: [home, rodape-completo]
+rodapeCompleto: true
+---
+{% include "icones.njk" %}
+{% set fotos = [
+  "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-10.jpg",
+  "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-02.jpg",
+  "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-12.jpg",
+  "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-22.jpg",
+  "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-14.jpg",
+  "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-19.jpg",
+  "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-07.jpg",
+  "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-15.jpg"
+] %}
+{% set alts = [
+  "Farmacêutica sorridente, de óculos e jaleco branco, com os braços cruzados diante das prateleiras de uma farmácia",
+  "Vendedor sorridente carregando jaquetas jeans e peças de roupa dobradas dentro de uma loja de vestuário",
+  "Balconista de avental verde, com os braços cruzados, atrás do balcão de uma doceria",
+  "Jovem funcionário de boné vermelho segurando uma maçã diante de uma pilha de frutas no supermercado",
+  "Vendedora de terno escuro apoiada em uma pilha de pneus em uma loja de autopeças",
+  "Vendedor de loja de roupas mostrando uma blusa preta a uma cliente, entre os cabides",
+  "Artesã sorridente de avental amarelo segurando um vaso de cerâmica pintado e um pincel",
+  "Alfaiate de barba grisalha tomando a medida da cintura de um cliente em um ateliê cheio de tecidos"
+] %}
+
+<div class="home">
+
+<section class="hero-home" aria-labelledby="hero-titulo">
+  <div class="container">
+    <div class="tp">
+      <h1 class="tp__titulo"><span class="tp__nome">SINDCOM</span><span class="so-leitor"> — </span><span class="tp__sub">Sindicato dos Empregados no Comércio de Passos e Região</span></h1>
+    </div>
+    <div class="hero-home__grade">
+      <div class="hero-home__texto" data-revelar>
+        <h2 class="st" id="hero-titulo">Se você trabalha no comércio, seus direitos precisam do SINDCOM</h2>
+        <p>O SINDCOM protege, orienta e luta por melhores salários, condições de trabalho e benefícios para quem move o comércio de Passos e Região.</p>
+        <p class="chamada-v">Sozinho você é vulnerável. Mas juntos, somos força.</p>
+        <p class="chamada-v">Junte-se ao SINDCOM e fortaleça seus direitos, benefícios e condições de trabalho.</p>
+        <p><a class="botao" href="/servicos/">Conheça seus direitos</a></p>
+      </div>
+      <div class="hero-fotos" role="region" aria-roledescription="carrossel" aria-label="Fotos de trabalhadores do comércio">
+        <div class="hero-fotos__moldura" aria-hidden="true"></div>
+        <ul class="hero-fotos__pilha">
+          {%- for f in fotos %}
+          <li style="--i:{{ loop.index0 }}"{% if loop.index0 > 0 %} aria-hidden="true"{% endif %}>{% imagem f, (alts[loop.index0] if loop.index0 == 0 else ""), "(min-width: 900px) 400px, 80vw", "", loop.index0 == 0 %}</li>
+          {%- endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="representamos" class="secao secao--alt">
+  <div class="container">
+    <h2 class="st">Quem representamos?</h2>
+    <p>Você faz parte do comércio de Passos e Região? Então o SINDCOM é o seu Sindicato.</p>
+    <p>Nós representamos trabalhadores das seguintes atividades comerciais:</p>
+    <div class="atividades">
+      <article class="atividade" data-revelar>
+        <div class="atividade__marca"><svg class="ic" aria-hidden="true"><use href="#i-carro"/></svg><h3 class="sb">Comércio de Veículos Automotores</h3></div>
+        <ul>
+          <li>Comércio de veículos automotores e motocicletas</li>
+          <li>Comércio de peças e acessórios para veículos automotores e motocicletas</li>
+          <li>Manutenção e reparação de veículos automotores e motocicletas</li>
+        </ul>
+      </article>
+      <article class="atividade" data-revelar>
+        <div class="atividade__marca"><svg class="ic" aria-hidden="true"><use href="#i-carrinho"/></svg><h3 class="sb">Comércio Atacadista</h3></div>
+        <ul>
+          <li>Representantes comerciais e agentes do comércio</li>
+          <li>Comércio de matérias-primas agrícolas e animais vivos</li>
+          <li>Comércio especializado em produtos alimentícios, bebidas e fumo</li>
+          <li>Comércio de produtos de consumo não alimentar</li>
+          <li>Comércio especializado em outros produtos</li>
+          <li>Comércio atacadista não especializado</li>
+          <li>Comércio de equipamentos e produtos de tecnologias de informação e comunicação</li>
+          <li>Comércio de máquinas, aparelhos e equipamentos</li>
+          <li>Comércio de madeira, ferragens, ferramentas, material elétrico e material de construção</li>
+        </ul>
+      </article>
+      <article class="atividade" data-revelar>
+        <div class="atividade__marca"><svg class="ic" aria-hidden="true"><use href="#i-loja"/></svg><h3 class="sb">Comércio Varejista</h3></div>
+        <ul>
+          <li>Comércio de produtos alimentícios, bebidas e fumo</li>
+          <li>Comércio de combustíveis para veículos automotores</li>
+          <li>Comércio de material de construção</li>
+          <li>Comércio de equipamentos de informática e comunicação</li>
+          <li>Comércio de equipamentos e artigos de uso doméstico</li>
+          <li>Comércio de artigos culturais, recreativos e esportivos</li>
+          <li>Comércio de produtos farmacêuticos, perfumaria e cosméticos</li>
+          <li>Comércio de produtos e artigos médicos, ópticos e ortopédicos</li>
+          <li>Comércio de produtos novos não especificados</li>
+          <li>Comércio de produtos usados não especificados</li>
+        </ul>
+      </article>
+    </div>
+
+    <h3 class="sb numeros-titulo">Nossos números</h3>
+    <div class="numeros-bloco">
+      <ul class="numeros" data-revelar>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-predio"/></svg><span class="numero" data-contador="29">29</span><span class="numeros__rotulo">Municípios cobertos</span></li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-pessoas"/></svg><span class="numero" data-contador="21" data-prefixo="+">+21</span><span class="numeros__rotulo">Classes representadas</span></li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-rede"/></svg><span class="numero" data-contador="226" data-prefixo="+">+226</span><span class="numeros__rotulo">Atividades representadas</span></li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-loja"/></svg><span class="numero" data-contador="17500" data-prefixo="+">+17.500</span><span class="numeros__rotulo">Empresas envolvidas</span></li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-pessoa"/></svg><span class="numero" data-contador="27500" data-prefixo="+">+27.500</span><span class="numeros__rotulo">Trabalhadores protegidos</span></li>
+        <li><svg class="ic" aria-hidden="true"><use href="#i-familia"/></svg><span class="numero" data-contador="115000" data-prefixo="+">+115.000</span><span class="numeros__rotulo">Familiares atendidos</span></li>
+      </ul>
+      <p class="chamada-v numeros-bloco__texto">Nossos números representam pessoas reais protegidas.<br>Este é o resultado de anos de lutas e esforço coletivo!</p>
+    </div>
+  </div>
+</section>
+
+<section id="protecao" class="secao">
+  <div class="container">
+    <h2 class="st">Qual é o seu nível de proteção?</h2>
+    <div class="niveis">
+      <article class="nivel" data-revelar>
+        {% imagem "Sindcom-Representado-Bronze.png", "Selo do nível Bronze, trabalhador representado", "96px", "nivel__selo", false %}
+        <h3 class="sb">Bronze</h3>
+        <ul class="nivel__linhas">
+          <li><svg class="ic" aria-hidden="true"><use href="#i-pessoa"/></svg>Representado</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-balanca"/></svg>Direito Coletivo</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-moeda"/></svg>Sem custo</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-pessoa"/></svg>Titular</li>
+        </ul>
+      </article>
+      <article class="nivel" data-revelar>
+        {% imagem "Sindcom-Sindicalizado-Prata.png", "Selo do nível Prata, trabalhador sindicalizado", "96px", "nivel__selo", false %}
+        <h3 class="sb">Prata</h3>
+        <ul class="nivel__linhas">
+          <li><svg class="ic" aria-hidden="true"><use href="#i-pessoa"/></svg>Sindicalizado</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-balanca"/></svg>Direito Coletivo + Individual</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-moeda"/></svg>Contribuição Sindical</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-pessoa"/></svg>Titular</li>
+        </ul>
+      </article>
+      <article class="nivel" data-revelar>
+        {% imagem "Sindcom-Filiado-Ouro.png", "Selo do nível Ouro, trabalhador filiado", "96px", "nivel__selo", false %}
+        <h3 class="sb">Ouro</h3>
+        <ul class="nivel__linhas">
+          <li><svg class="ic" aria-hidden="true"><use href="#i-pessoa"/></svg>Filiado</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-balanca"/></svg>Direito Coletivo + Individual + Benefícios</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-moeda"/></svg>Contribuição Sindical + Convênio</li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-familia"/></svg>Titular + Dependentes</li>
+        </ul>
+      </article>
+    </div>
+
+    <h3 class="sb centro comparativo-titulo">Nem todos os trabalhadores possuem os mesmos direitos</h3>
+    <div class="comparativo">
+      <article class="comp" data-revelar>
+        <div class="comp__topo">{% imagem "Sindcom-Representado-Bronze.png", "Selo do nível Bronze", "64px", "comp__selo", false %}<h4>Trabalhador Representado</h4></div>
+        <p>Você continua protegido pelas conquistas coletivas negociadas pelo Sindicato.</p>
+        <ul class="checks">
+          <li class="sim"><span class="sr">Inclui: </span>Piso salarial</li>
+          <li class="sim"><span class="sr">Inclui: </span>Reajustes salariais</li>
+          <li class="sim"><span class="sr">Inclui: </span>Proteção coletiva</li>
+          <li class="sim"><span class="sr">Inclui: </span>Convenções coletivas</li>
+          <li class="nao"><span class="sr">Não inclui: </span>Homologação</li>
+          <li class="nao"><span class="sr">Não inclui: </span>Assistência sindical individual</li>
+          <li class="nao"><span class="sr">Não inclui: </span>Assistência jurídica individual</li>
+          <li class="nao"><span class="sr">Não inclui: </span>Convênio de descontos</li>
+          <li class="nao"><span class="sr">Não inclui: </span>Convênio de benefícios</li>
+          <li class="nao"><span class="sr">Não inclui: </span>Cobertura dos dependentes</li>
+        </ul>
+      </article>
+      <article class="comp" data-revelar>
+        <div class="comp__topo">{% imagem "Sindcom-Sindicalizado-Prata.png", "Selo do nível Prata", "64px", "comp__selo", false %}<h4>Trabalhador Sindicalizado</h4></div>
+        <p>Além dos direitos coletivos, possui acesso aos serviços individuais do Sindicato.</p>
+        <ul class="checks">
+          <li class="sim"><span class="sr">Inclui: </span>Piso salarial</li>
+          <li class="sim"><span class="sr">Inclui: </span>Reajustes salariais</li>
+          <li class="sim"><span class="sr">Inclui: </span>Proteção coletiva</li>
+          <li class="sim"><span class="sr">Inclui: </span>Convenções coletivas</li>
+          <li class="sim"><span class="sr">Inclui: </span>Homologação</li>
+          <li class="sim"><span class="sr">Inclui: </span>Assistência sindical individual</li>
+          <li class="sim"><span class="sr">Inclui: </span>Assistência jurídica individual</li>
+          <li class="nao"><span class="sr">Não inclui: </span>Convênio de descontos</li>
+          <li class="nao"><span class="sr">Não inclui: </span>Convênio de benefícios</li>
+          <li class="nao"><span class="sr">Não inclui: </span>Cobertura dos dependentes</li>
+        </ul>
+      </article>
+      <article class="comp" data-revelar>
+        <div class="comp__topo">{% imagem "Sindcom-Filiado-Ouro.png", "Selo do nível Ouro", "64px", "comp__selo", false %}<h4>Trabalhador Filiado</h4></div>
+        <p>Aqui você recebe a proteção e benefícios completos do SINDCOM.</p>
+        <ul class="checks">
+          <li class="sim"><span class="sr">Inclui: </span>Piso salarial</li>
+          <li class="sim"><span class="sr">Inclui: </span>Reajustes salariais</li>
+          <li class="sim"><span class="sr">Inclui: </span>Proteção coletiva</li>
+          <li class="sim"><span class="sr">Inclui: </span>Convenções coletivas</li>
+          <li class="sim"><span class="sr">Inclui: </span>Homologação</li>
+          <li class="sim"><span class="sr">Inclui: </span>Assistência sindical individual</li>
+          <li class="sim"><span class="sr">Inclui: </span>Assistência jurídica individual</li>
+          <li class="sim"><span class="sr">Inclui: </span>Convênio de descontos</li>
+          <li class="sim"><span class="sr">Inclui: </span>Convênio de benefícios</li>
+          <li class="sim"><span class="sr">Inclui: </span>Cobertura dos dependentes</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="vantagens" class="secao secao--alt">
+  <div class="container">
+    <div class="bloco-imagem">
+      <div class="bloco-imagem__arte" data-revelar>{% imagem "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-17.jpg", "Mão segurando uma caneta sobre a carteira de trabalho", "(min-width: 800px) 380px, 80vw", "", false %}</div>
+      <div class="bloco-imagem__texto">
+        <h2 class="st">Vantagens únicas para filiados</h2>
+        <p>Ser filiado ao Sindicato não é um custo. É uma proteção e garantia de muitos direitos e benefícios trabalhistas para você e sua <strong>FAMÍLIA.</strong></p>
+        <p>O SINDCOM luta e garante duas formas distintas de direitos e benefícios:</p>
+        <ul>
+          <li><strong>Direitos Coletivos:</strong> são aqueles garantidos a todos os trabalhadores atuantes nos ramos comerciais representados pelo SINDCOM, independentemente de esses trabalhadores serem ou não sindicalizados ou filiados.</li>
+          <li><strong>Direitos Individuais:</strong> são os direitos de assistência individual garantidos apenas aos trabalhadores sindicalizados e filiados.</li>
+          <li><strong>Benefícios e Descontos:</strong> é o direito de usufruir do Convênio Sindcom estendido aos seus dependentes, familiares e até terceiros!</li>
+        </ul>
+      </div>
+    </div>
+    <div class="direitos">
+      <div class="direito" data-revelar>
+        <svg class="ic" aria-hidden="true"><use href="#i-pessoas"/></svg>
+        <h3 class="sb">Direitos Coletivos</h3>
+        <ul><li>Piso salarial</li><li>Reajustes salariais</li><li>Proteção coletiva</li><li>Convenções Coletivas</li></ul>
+      </div>
+      <div class="direito" data-revelar>
+        <svg class="ic" aria-hidden="true"><use href="#i-balanca"/></svg>
+        <h3 class="sb">Direitos Individuais</h3>
+        <ul><li>Assistência sindical</li><li>Assistência jurídica</li><li>Advogado Trabalhista</li><li>Advogado Previdenciário</li><li>Advogado Cível</li><li>Advogado Familiar</li><li>Advogado Criminal</li></ul>
+      </div>
+      <div class="direito" data-revelar>
+        <svg class="ic" aria-hidden="true"><use href="#i-coracao"/></svg>
+        <h3 class="sb">Convênio Sindcom</h3>
+        <ul><li>Consultas Médicas</li><li>Consultas Odontológicas</li><li>Exames Clínicos</li><li>Exames de Imagem</li><li>Terapias Integrativas</li><li>Outros serviços de Saúde</li><li>Serviços de Educação</li><li>Serviços de Lazer</li><li>Serviços de Turismo</li><li>Planos de Saúde</li></ul>
+      </div>
+    </div>
+    <p class="chamada-v centro">Enquanto muitos descobrem seus direitos depois do problema, você pode se antecipar!</p>
+    <p class="centro"><a class="botao" href="/filie-se/">Filie-se e garanta mais Direitos</a></p>
+  </div>
+</section>
+
+<section id="convenios" class="secao">
+  <div class="container">
+    <h2 class="st">Convênios e Parcerias</h2>
+    <p>O SINDCOM conecta você a uma rede de benefícios reais. Tudo isso com acesso facilitado para você e sua família.</p>
+    <div class="convenios">
+      <article class="convenio" data-revelar>
+        <span class="selo-exclusivo">Exclusivo</span>
+        <svg class="ic" aria-hidden="true"><use href="#i-pessoa"/></svg>
+        <h3 class="sb">Saúde</h3>
+        <p>Consultas médicas com até 45% de desconto<br>Exames laboratoriais e de imagem com preços reduzidos<br>Clínicas e profissionais parceiros</p>
+        <p><a href="/beneficios/">Saiba mais<span class="sr"> sobre benefícios de saúde</span>...</a></p>
+      </article>
+      <article class="convenio" data-revelar>
+        <span class="selo-exclusivo">Exclusivo</span>
+        <svg class="ic" aria-hidden="true"><use href="#i-livro"/></svg>
+        <h3 class="sb">Educação</h3>
+        <p>Descontos em cursos técnicos e profissionalizantes<br>Parcerias com instituições de ensino<br>Escola de Idiomas Inglês e Espanhol</p>
+        <p><a href="/beneficios/">Saiba mais<span class="sr"> sobre benefícios de educação</span>...</a></p>
+      </article>
+      <article class="convenio" data-revelar>
+        <span class="selo-exclusivo">Exclusivo</span>
+        <svg class="ic" aria-hidden="true"><use href="#i-coracao"/></svg>
+        <h3 class="sb">Serviços</h3>
+        <p>Descontos em serviços diversos<br>Apoio em demandas do dia a dia</p>
+        <p><a href="/beneficios/">Saiba mais<span class="sr"> sobre descontos em serviços</span>...</a></p>
+      </article>
+      <article class="convenio" data-revelar>
+        <span class="selo-exclusivo">Exclusivo</span>
+        <svg class="ic" aria-hidden="true"><use href="#i-aviao"/></svg>
+        <h3 class="sb">Lazer</h3>
+        <p>Parcerias com academias<br>Benefícios em atividades recreativas</p>
+        <p><a href="/beneficios/">Saiba mais<span class="sr"> sobre benefícios de lazer</span>...</a></p>
+      </article>
+    </div>
+    <h3 class="sb sb--vermelho centro parceiros-titulo">Conheça nossos Convênios e Parceiros</h3>
+    <ul class="parceiros" data-revelar>
+      <li>{% imagem "Convenio-de-Descontos-e-Beneficios-Sindcom-Plano-Santa-Casa-scaled.png", "Cartaz do convênio com o Plano Santa Casa", "(min-width: 800px) 250px, 70vw", "", false %}</li>
+      <li>{% imagem "Convenio-de-Descontos-e-Beneficios-Sindcom-02-scaled.png", "Cartaz do Convênio de Descontos e Benefícios do Sindcom", "(min-width: 800px) 250px, 70vw", "", false %}</li>
+      <li>{% imagem "Convenio-de-Descontos-e-Beneficios-Sindcom-Alma-Pura-Maxwell-Ribeiro-scaled.png", "Cartaz do convênio com o parceiro Alma Pura", "(min-width: 800px) 250px, 70vw", "", false %}</li>
+    </ul>
+  </div>
+</section>
+
+<section id="faq" class="secao">
+  <div class="container">
+    <div class="bloco-imagem bloco-imagem--inverso faq-topo">
+      <div class="bloco-imagem__texto">
+        <h2 class="st">FAQ - Perguntas frequentes</h2>
+        <p>Aqui você encontra respostas claras para as dúvidas mais comuns, facilitando seu acesso às informações essenciais sobre seus direitos e benefícios.</p>
+      </div>
+      <div class="bloco-imagem__arte bloco-imagem__arte--larga" data-revelar>{% imagem "Sindcom-Passos-Trabalhadores-do-Comercio-horizontal-11.jpg", "Vendedora atendendo uma cliente em uma loja", "(min-width: 800px) 420px, 90vw", "", false %}</div>
+    </div>
+    <div class="faq">
+      {% set perguntas = [
+        ["01. O Sindicato realmente ajuda?", "Sim. É o Sindicato que negocia salários, benefícios e direitos em convenções coletivas que impactam diretamente o seu bolso e os benefícios estendidos a você e sua família."],
+        ["02. O Sindicato só serve para quem está com problema?", "Não. Ele também atua preventivamente, garantindo melhores condições para todos."],
+        ["03. Vou pagar e não vou usar?", "Você não \"usa\" um Sindicato, você se protege com ele. É como um seguro de vida: você espera não precisar, mas, se precisar, faz toda diferença — seja na defesa dos seus direitos, seja no uso dos benefícios exclusivos."],
+        ["04. Quem pode se filiar ao SINDCOM?", "Qualquer trabalhador do comércio pertencente às categorias representadas pelo sindicato."],
+        ["05. Isso pode prejudicar meu emprego?", "Não. A sindicalização e filiação é um direito garantido. Nenhum empregador pode te punir por isso."],
+        ["06. Qual a diferença entre os planos Bronze, Prata e Ouro?", "Cada plano oferece níveis diferentes de proteção, benefícios, convênios e serviços para o trabalhador e sua família."],
+        ["07. Preciso ser filiado para receber orientação trabalhista?", "Não. O Sindicato pode prestar orientações gerais, mas os sindicalizados (prata) e filiados (ouro) têm acesso a benefícios e atendimentos exclusivos."],
+        ["08. O Sindicato oferece apoio jurídico?", "Sim. Os sindicalizados e filiados podem ter acesso a suporte e orientação jurídica conforme o seu plano de proteção."],
+        ["09. E se eu tiver um problema no trabalho?", "Você não estará sozinho. Terá apoio e orientação para agir corretamente, inclusive judicialmente."],
+        ["10. O Sindicato pode ajudar em casos de demissão?", "Sim. O SINDCOM orienta o trabalhador sobre seus direitos e acompanha situações que envolvam relações de trabalho."],
+        ["11. Os benefícios também atendem meus dependentes?", "Alguns benefícios e convênios podem ser estendidos aos dependentes, conforme as regras de cada parceria."],
+        ["12. Qual o custo?", "É um investimento pequeno comparado aos benefícios e à proteção que você recebe. Para ser sindicalizado você deverá recolher a Taxa de Contribuição Sindical (anuidade) e para ser filiado você deverá pagar a Mensalidade do Convênio Sindcom."],
+        ["13. Por que vale a pena ser filiado?", "Porque você fortalece a representação da categoria e ainda tem acesso a proteção, orientação, benefícios, convênios e serviços exclusivos para si e seus dependentes."],
+        ["14. Como faço para me filiar?", "Basta preencher o formulário de filiação disponível no site ou entrar em contato com nossa equipe."],
+        ["15. Posso cancelar minha filiação quando quiser?", "Para acesso ao Convênio de Descontos e Benefícios do Sindcom, a filiação exige uma fidelidade mínima de 01 ano."],
+        ["16. Se eu ficar desempregado eu perco acesso ao Convênio e seus benefícios?", "Não. Caso você seja desligado do emprego, você poderá solicitar que seu Convênio seja mantido por pagamento em boletos."]
+      ] %}
+      {%- for p in perguntas %}
+      <details><summary>{{ p[0] }}</summary><p>{{ p[1] }}</p></details>
+      {%- endfor %}
+    </div>
+  </div>
+</section>
+
+<section class="secao secao--alt chamada-final">
+  <div class="container centro">
+    <h2 class="st st--centro st--sem-barra chamada-final__titulo">Todos os dias, trabalhadores do comércio perdem direitos por falta de informação e apoio.</h2>
+    <p class="lead">Salários defasados ● Jornadas abusivas ● Falta de orientação</p>
+    <div class="divisor-icone" aria-hidden="true"><svg class="ic"><use href="#i-balanca"/></svg></div>
+    <p class="chamada-final__texto">Fortaleça seus direitos, tenha respaldo e faça parte de quem constrói melhores condições de trabalho todos os dias.</p>
+    <p class="chamada-v">Você não precisa enfrentar tudo sozinho.</p>
+    <p><a class="botao" href="/filie-se/">Filie-se e garanta seus Direitos</a></p>
+  </div>
+</section>
+
+</div>

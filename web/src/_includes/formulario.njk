@@ -1,0 +1,67 @@
+{# Uso: {% set formNome = "contato" %}{% include "formulario.njk" %}  Os campos vêm de _data/formularios.json #}
+{%- set f = formularios.formularios[formNome] -%}
+<div class="form-site" data-formulario="{{ formNome }}" id="formulario"
+     data-endpoint="{{ formularios.endpoint }}" data-chave="{{ formularios.turnstileChave }}" data-maxmb="{{ formularios.maxArquivoMB }}"{% if f.comProtocolo %} data-protocolo="1"{% endif %}>
+  <h2 id="form-titulo-{{ formNome }}">{{ f.titulo }}</h2>
+  {% if not formularios.endpoint %}<p class="form-site__demo" role="note">Modo demonstração: o envio ainda não está ativo. Você pode preencher e testar a validação.</p>{% endif %}
+  <div class="form-site__resumo" role="alert" tabindex="-1" hidden></div>
+  <form novalidate method="post" aria-labelledby="form-titulo-{{ formNome }}" data-sucesso="{{ f.sucesso }}">
+    {% for s in f.secoes %}
+    <fieldset class="form-site__secao">
+      {% if s.titulo %}<legend>{{ s.titulo }}</legend>{% endif %}
+      {% for c in s.campos %}
+      {%- set id = formNome + "-" + c.nome -%}
+      <div class="campo campo--{{ c.tipo }}"{% if c.mostrarSe %} data-mostrar-se="{{ c.mostrarSe }}" hidden{% endif %}>
+        {% if c.tipo == "radio" or c.tipo == "checkboxes" %}
+        <fieldset class="campo__grupo" data-nome="{{ c.nome }}" data-tipo="{{ c.tipo }}"{% if c.obrigatorio %} data-obrigatorio="1"{% endif %} aria-describedby="erro-{{ id }}">
+          <legend>{{ c.rotulo }}{% if c.obrigatorio %} <span class="obrig" aria-hidden="true">*</span>{% endif %}</legend>
+          {% for o in c.opcoes %}<label class="opcao"><input type="{{ 'radio' if c.tipo == 'radio' else 'checkbox' }}" name="{{ c.nome }}" value="{{ o.v }}"> <span>{{ o.t }}</span></label>{% endfor %}
+        </fieldset>
+        {% else %}
+        <label for="{{ id }}">{{ c.rotulo }}{% if c.obrigatorio %} <span class="obrig" aria-hidden="true">*</span>{% else %} <span class="opcional">(opcional)</span>{% endif %}</label>
+        {% if c.ajuda %}<p class="ajuda" id="ajuda-{{ id }}">{{ c.ajuda }}</p>{% endif %}
+        {% if c.tipo == "textarea" %}
+        <textarea id="{{ id }}" name="{{ c.nome }}" rows="{{ c.linhas or 4 }}" data-tipo="textarea"{% if c.max %} maxlength="{{ c.max }}"{% endif %}{% if c.obrigatorio %} data-obrigatorio="1" aria-required="true"{% endif %} aria-describedby="erro-{{ id }}{% if c.ajuda %} ajuda-{{ id }}{% endif %}"></textarea>
+        {% if c.max %}<p class="contador" aria-hidden="true"><span data-conta="{{ id }}">0</span>/{{ c.max }}</p>{% endif %}
+        {% elif c.tipo == "select" %}
+        <select id="{{ id }}" name="{{ c.nome }}" data-tipo="select"{% if c.obrigatorio %} data-obrigatorio="1" aria-required="true"{% endif %}{% if c.autocomplete %} autocomplete="{{ c.autocomplete }}"{% endif %} aria-describedby="erro-{{ id }}">
+          <option value="">Selecione…</option>
+          {% for v in formularios.listas[c.lista] %}<option>{{ v }}</option>{% endfor %}
+        </select>
+        {% elif c.tipo == "arquivo" %}
+        <input type="file" id="{{ id }}" name="{{ c.nome }}" data-tipo="arquivo" accept="{{ c.accept }}" data-maxarq="{{ c.maxArquivos or 1 }}"{% if (c.maxArquivos or 1) > 1 %} multiple{% endif %}{% if c.obrigatorio %} data-obrigatorio="1" aria-required="true"{% endif %} aria-describedby="erro-{{ id }}{% if c.ajuda %} ajuda-{{ id }}{% endif %}">
+        <ul class="arquivos" data-lista="{{ id }}" aria-live="polite"></ul>
+        {% else %}
+        <input id="{{ id }}" name="{{ c.nome }}" data-tipo="{{ c.tipo }}"
+          type="{{ 'email' if c.tipo == 'email' else ('tel' if c.tipo == 'tel' else 'text') }}"
+          {% if c.tipo in ['cpf','cnpj','data','pis','tel'] %}inputmode="numeric"{% endif %}
+          {% if c.max %}maxlength="{{ c.max }}"{% endif %}
+          {% if c.autocomplete %}autocomplete="{{ c.autocomplete }}"{% endif %}
+          {% if c.obrigatorio %}data-obrigatorio="1" aria-required="true"{% endif %}
+          aria-describedby="erro-{{ id }}{% if c.ajuda %} ajuda-{{ id }}{% endif %}">
+        {% endif %}
+        {% endif %}
+        <p class="erro" id="erro-{{ id }}" hidden></p>
+      </div>
+      {% endfor %}
+    </fieldset>
+    {% endfor %}
+    <div class="campo campo--consent">
+      {% for c in f.consentimento %}
+      <label class="opcao opcao--consent"><input type="checkbox" name="{{ c.nome }}" value="1" data-tipo="consent" data-obrigatorio="1" aria-required="true" aria-describedby="erro-{{ formNome }}-{{ c.nome }}"> <span>{{ c.texto | safe }}</span></label>
+      <p class="erro" id="erro-{{ formNome }}-{{ c.nome }}" hidden></p>
+      {% endfor %}
+    </div>
+    <div class="form-site__isca" aria-hidden="true"><label>Não preencha este campo <input type="text" name="_hp" tabindex="-1" autocomplete="off"></label></div>
+    <div class="form-site__turnstile"></div>
+    <p class="form-site__status" role="status" aria-live="polite"></p>
+    <button class="botao" type="submit">{{ f.enviar }}</button>
+  </form>
+  <div class="form-site__ok" hidden tabindex="-1">
+    <h3>Tudo certo!</h3>
+    <p class="form-site__ok-msg"></p>
+    <p class="form-site__protocolo" hidden>Protocolo: <strong></strong></p>
+    <button class="botao botao--sec" type="button" data-novo>Enviar outro</button>
+  </div>
+  <noscript><p>Este formulário precisa de JavaScript. Escreva para <a href="mailto:contato@sindcompassos.org">contato@sindcompassos.org</a> ou chame no <a href="https://wa.me/5535988270406">WhatsApp</a>.</p></noscript>
+</div>

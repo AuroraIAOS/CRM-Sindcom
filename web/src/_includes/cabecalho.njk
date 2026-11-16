@@ -1,0 +1,26 @@
+<header class="cabecalho">
+  <div class="container cabecalho__linha">
+    <a href="/" class="cabecalho__logo">{% imagem "logo_horizontal_colorido.png", site.nome, "190px", "", true %}</a>
+    <button type="button" class="menu-botao" aria-expanded="false" aria-controls="menu-principal">
+      <span class="menu-botao__barras" aria-hidden="true"></span>
+      <span class="menu-botao__texto">Menu</span>
+    </button>
+    <nav aria-label="Principal" class="menu" id="menu-principal">
+      <ul class="menu__lista">
+      {%- for item in site.menu %}
+        {%- set atual = (page.url == item.url) or (item.url != "/" and page.url.startsWith(item.url)) %}
+        <li class="menu__item{% if item.sub %} menu__item--sub{% endif %}">
+          <a href="{{ item.url }}"{% if atual %} aria-current="page"{% endif %}>{{ item.texto }}</a>
+          {%- if item.sub %}
+          <button type="button" class="menu__sub-botao" aria-expanded="false" aria-label="Abrir submenu de {{ item.texto }}"><span aria-hidden="true"></span></button>
+          <ul class="submenu">
+            {%- for s in item.sub %}<li><a href="{{ s[1] }}">{{ s[0] }}</a></li>{% endfor %}
+          </ul>
+          {%- endif %}
+        </li>
+      {%- endfor %}
+      </ul>
+    </nav>
+    <a class="botao cabecalho__cta" href="/filie-se/">Filie-se</a>
+  </div>
+</header>

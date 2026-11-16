@@ -115,3 +115,9 @@ docs/fundamentos/
 
 # Arquivos de bloqueio do Word (~$...)
 ~$*
+
+# Site institucional: contém dados pessoais (respostas de formulários). NUNCA subir ao GitHub (ordem do Maxwell, 2026-10-29)
+site/
+
+# Site HTML: PDFs de CCT/Nota Tecnica (20 MB, documentos publicos) ficam no disco e no servidor, nao na historia do git
+web/src/downloads/

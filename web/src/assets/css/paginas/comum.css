@@ -1,0 +1,13 @@
+/* Utilitários genéricos compartilhados entre Serviços e Benefícios (carregar antes da página: css: [comum, servicos]) */
+.sobretitulo{font-style:italic;color:var(--cor-realce);margin:0 0 var(--e-xs)}
+.hero__grade{display:grid;gap:var(--e-md);align-items:center}
+.hero__grade picture{border-radius:var(--r-lg);overflow:hidden}
+.hero__img{width:100%}
+@media (min-width:900px){.hero__grade{grid-template-columns:1.1fr .9fr}}
+.grade--2{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+.grade--3{grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
+.grade--4{grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
+.centro-v{align-items:center}
+.chamada .realce{font-style:italic;font-size:clamp(20px,3vw,25px)}
+/* alvos de toque mínimos de 44px nos botões */
+.botao{min-height:44px;display:inline-flex;align-items:center;justify-content:center;text-align:center}

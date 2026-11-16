@@ -1,0 +1,31 @@
+/* Componente de formulário (_includes/formulario.njk). Usa os tokens de site.css. */
+.form-site{background:var(--cor-branco);border-radius:var(--r-lg);padding:var(--e-md);box-shadow:0 1px 3px rgb(0 0 0/.08);max-width:760px}
+.form-site h2{margin-top:0}
+.form-site__demo{background:var(--cor-fundo-02);border-left:4px solid var(--cor-texto-02);padding:var(--e-xs) var(--e-sm);font-size:16px}
+.form-site__secao{border:0;padding:0;margin:0 0 var(--e-md)}
+.form-site__secao>legend{font:400 24px/1.3 var(--font-titulo);padding:0;margin-bottom:var(--e-sm)}
+.campo{margin-bottom:var(--e-sm)}
+.campo label,.campo__grupo>legend{display:block;font-weight:400;margin-bottom:4px}
+.campo__grupo{border:0;padding:0;margin:0}
+.obrig{color:var(--cor-realce)}.opcional{color:var(--cor-texto-02);font-size:15px}
+.ajuda{margin:0 0 4px;font-size:15px;color:var(--cor-texto-02)}
+.form-site input[type=text],.form-site input[type=email],.form-site input[type=tel],.form-site select,.form-site textarea,.form-site input[type=file]{
+  width:100%;min-height:44px;padding:10px 12px;font:inherit;color:var(--cor-texto-01);background:var(--cor-fundo-01);border:2px solid #b8b8b8;border-radius:var(--r-md)}
+.form-site textarea{min-height:120px;resize:vertical}
+.form-site input:focus-visible,.form-site select:focus-visible,.form-site textarea:focus-visible{outline:3px solid var(--cor-realce);outline-offset:1px;border-color:var(--cor-realce)}
+.form-site [aria-invalid=true]{border-color:var(--cor-realce);background:#fdf3f3}
+.contador{margin:2px 0 0;font-size:14px;color:var(--cor-texto-02);text-align:right}
+.erro{margin:4px 0 0;color:var(--cor-realce);font-size:16px;font-weight:400}
+.erro::before{content:"⚠ "}
+.opcao{display:flex;align-items:flex-start;gap:10px;min-height:44px;padding:6px 0;cursor:pointer}
+.opcao input{width:22px;height:22px;margin-top:2px;flex:none;accent-color:var(--cor-realce)}
+.opcao--consent{font-size:16px}
+.arquivos{list-style:none;margin:6px 0 0;padding:0;font-size:15px;color:var(--cor-texto-02)}
+.form-site__resumo{background:#fdf3f3;border:2px solid var(--cor-realce);border-radius:var(--r-md);padding:var(--e-sm);margin-bottom:var(--e-sm)}
+.form-site__resumo p{margin:0 0 6px;font-weight:700}.form-site__resumo ul{margin:0;padding-left:20px}
+.form-site__status{min-height:1.6em;margin:var(--e-xs) 0}
+.form-site__isca{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
+.form-site__ok{text-align:center;padding:var(--e-md) 0}
+.form-site__protocolo strong{font:600 24px var(--font-titulo);color:var(--cor-realce)}
+.form-site button[disabled]{opacity:.6;cursor:progress}
+@media (min-width:720px){.form-site__secao .campo--texto,.form-site__secao .campo--email,.form-site__secao .campo--tel,.form-site__secao .campo--cpf,.form-site__secao .campo--cnpj,.form-site__secao .campo--data,.form-site__secao .campo--pis,.form-site__secao .campo--select{display:inline-block;width:calc(50% - 10px);vertical-align:top}.form-site__secao .campo--texto:nth-child(odd){margin-right:16px}}

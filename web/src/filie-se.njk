@@ -1,0 +1,127 @@
+---
+layout: base.njk
+titulo: Filie-se
+descricao: Filie-se ao SINDCOM e tenha assistência sindical e jurídica, descontos em saúde, educação e lazer para você e sua família.
+permalink: /filie-se/
+css: [filie-se, formulario]
+scripts: [validacao, formulario]
+---
+<section class="hero"><div class="container">
+  <h1>Filie-se!</h1>
+  <p class="lead">Trabalhador, defenda seus direitos</p>
+  <p>Filie-se ao SINDCOM e garanta descontos, vantagens e condições especiais em serviços de saúde, educação, assistência social, lazer e bem-estar para si e seus dependentes.</p>
+  <p>Aqui você aumenta seu acesso a serviços de Saúde, Educação, Lazer e Bem-Estar para si e sua Família!</p>
+</div></section>
+
+<section class="secao"><div class="container">
+  {% set formNome = "filiacao" %}{% include "formulario.njk" %}
+</div></section>
+
+<section class="secao secao--alt"><div class="container duas-col">
+  <div data-revelar>
+    <h2>Vantagens únicas para filiados</h2>
+    <p>Ser filiado ao Sindicato não é um custo. É uma proteção e garantia de muitos direitos e benefícios trabalhistas para você e sua <strong>FAMÍLIA.</strong></p>
+    <p>O SINDCOM luta e garante formas distintas de direitos e benefícios:</p>
+    <ul>
+      <li><strong>Direitos Coletivos:</strong> são aqueles garantidos a todos os trabalhadores atuantes nos ramos comerciais representados pelo SINDCOM, independentemente de serem ou não sindicalizados ou filiados.</li>
+      <li><strong>Direitos Individuais:</strong> são os direitos de assistência individual garantidos apenas aos trabalhadores sindicalizados e filiados.</li>
+      <li><strong>Benefícios e Descontos:</strong> é o direito de usufruir do Convênio Sindcom, estendido aos seus dependentes, familiares e até terceiros!</li>
+    </ul>
+  </div>
+  {% imagem "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-17.jpg", "Trabalhadores do comércio de Passos, filiados ao SINDCOM", "(min-width: 800px) 50vw, 100vw", "", false %}
+</div></section>
+
+<section class="secao"><div class="container tres-col">
+  <div class="cartao" data-revelar>
+    <h3>Direitos Coletivos</h3>
+    <ul><li>Piso salarial</li><li>Reajustes salariais</li><li>Proteção coletiva</li><li>Convenções Coletivas</li></ul>
+  </div>
+  <div class="cartao" data-revelar>
+    <h3>Direitos Individuais</h3>
+    <ul><li>Assistência sindical</li><li>Assistência jurídica</li><li>Advogado Trabalhista</li><li>Advogado Previdenciário</li><li>Advogado Cível</li><li>Advogado Familiar</li><li>Advogado Criminal</li></ul>
+  </div>
+  <div class="cartao" data-revelar>
+    <h3>Convênio Sindcom</h3>
+    <ul><li>Consultas Médicas</li><li>Consultas Odontológicas</li><li>Exames Clínicos</li><li>Exames de Imagem</li><li>Terapias Integrativas</li><li>Outros serviços de Saúde</li><li>Serviços de Educação</li><li>Serviços de Lazer</li><li>Serviços de Turismo</li><li>Planos de Saúde</li></ul>
+  </div>
+</div>
+<div class="container chamada">
+  <p>Enquanto muitos descobrem seus direitos depois do problema,</p>
+  <p class="lead"><strong>você pode se antecipar!</strong></p>
+</div></section>
+
+<section class="secao secao--alt"><div class="container">
+  <h2>Custos <em>vs</em> Benefícios</h2>
+  <p class="lead">Três trabalhadores. Três níveis de proteção.</p>
+  <p>Carlos, João e Marcos trabalham no comércio da região. Todos exercem funções parecidas. Todos possuem carteira assinada. Todos são representados pelo SINDCOM.</p>
+  <p>Mas cada um escolheu um nível diferente de relacionamento com o SINDCOM.</p>
+  <div class="niveis">
+    <article class="cartao nivel" data-revelar>
+      {% imagem "Sindcom-Representado-Bronze.png", "Selo do nível Bronze: trabalhador representado", "200px", "", false %}
+      <div>
+        <h3>Carlos</h3>
+        <p>Carlos apresentou a <strong>Carta de Oposição</strong> e optou por não contribuir financeiramente com o Sindicato.</p>
+        <p>Mesmo assim, continua protegido pelas conquistas coletivas negociadas pelo SINDCOM.</p>
+        <p><strong>Carlos recebe:</strong></p>
+        <ul class="lista-check"><li>Piso salarial da categoria</li><li>Reajustes salariais</li><li>Direitos previstos na Convenção Coletiva</li><li>Proteção coletiva nas negociações trabalhistas</li></ul>
+        <p>Quando a categoria conquista avanços, Carlos também é beneficiado.</p>
+        <p><strong>Mas seu acesso termina aí.</strong></p>
+      </div>
+    </article>
+    <article class="cartao nivel" data-revelar>
+      {% imagem "Sindcom-Sindicalizado-Prata.png", "Selo do nível Prata: trabalhador sindicalizado", "200px", "", false %}
+      <div>
+        <h3>João</h3>
+        <p>João permaneceu sindicalizado.</p>
+        <p>Além de todos os direitos coletivos recebidos por Carlos, João possui acesso aos serviços individuais oferecidos pelo sindicato.</p>
+        <p><strong>João recebe:</strong></p>
+        <ul class="lista-check"><li>Todos os direitos do nível Bronze</li><li>Atendimento individual</li><li>Orientação trabalhista</li><li>Apoio sindical em situações específicas</li><li>Maior proximidade com a equipe do sindicato</li></ul>
+        <p>Quando surge uma dúvida ou problema relacionado ao trabalho, João pode contar com suporte direto.</p>
+      </div>
+    </article>
+    <article class="cartao nivel" data-revelar>
+      {% imagem "Sindcom-Filiado-Ouro.png", "Selo do nível Ouro: filiado com Convênio Sindcom", "200px", "", false %}
+      <div>
+        <h3>Marcos</h3>
+        <p>Marcos decidiu dar um passo além.</p>
+        <p>Além de permanecer sindicalizado, aderiu ao Convênio Sindcom. Por isso, possui acesso ao nível máximo de proteção e benefícios.</p>
+        <p><strong>Marcos recebe:</strong></p>
+        <ul class="lista-check"><li>Todos os direitos do nível Bronze</li><li>Todos os direitos do nível Prata</li><li>Convênio de descontos e benefícios</li><li>Benefícios exclusivos</li><li>Inclusão de dependentes</li><li>Economia em serviços parceiros</li><li>Vantagens para toda a família</li></ul>
+        <p>Quando utiliza os convênios ao longo do ano, Marcos frequentemente economiza muito mais do que investe na mensalidade.</p>
+      </div>
+    </article>
+  </div>
+</div></section>
+
+<section class="secao"><div class="container duas-col">
+  {% imagem "Sindcom-Passos-Trabalhadores-do-Comercio-horizontal-14.jpg", "Trabalhadores do comércio de Passos e região", "(min-width: 800px) 50vw, 100vw", "", false %}
+  <div class="chamada" data-revelar>
+    <h2>A pergunta é simples:</h2>
+    <p class="lead">Em qual nível de proteção você deseja estar?</p>
+    <a class="botao" href="#formulario">Filie-se!</a>
+  </div>
+</div></section>
+
+<section class="secao secao--alt"><div class="container duas-col">
+  <div class="lottie" data-lottie="/assets/lottie/denuncia.json" role="img" aria-label="Animação de alerta, representando a denúncia de irregularidades"></div>
+  <div data-revelar>
+    <h2>Denúncia anônima</h2>
+    <p>Direitos trabalhistas não são favores. São garantias legais.</p>
+    <p>Caso você tenha identificado possíveis irregularidades, registre sua denúncia de forma segura e anônima.</p>
+    <a class="botao" href="/denuncie/">Denuncie aqui!</a>
+  </div>
+</div></section>
+
+<section class="secao"><div class="container grade">
+  <div class="cartao" data-revelar>
+    <h2>Serviços para o Trabalhador</h2>
+    <p>Prezado trabalhador, fique à vontade para cadastrar aqui seu currículo e/ou buscar pelas vagas e oportunidades de emprego cadastradas.</p>
+    <p><a class="botao botao--sec" href="/curriculo/">Cadastro de Currículo</a></p>
+    <p><a class="botao botao--sec" href="/vaga/#vagas-abertas">Banco de Vagas</a></p>
+  </div>
+  <div class="cartao" data-revelar>
+    <h2>Serviços para o Empregador</h2>
+    <p>Prezado empregador, fique à vontade para cadastrar aqui suas vagas e oportunidades de emprego.</p>
+    <p><a class="botao botao--sec" href="/vaga/">Cadastro de Vagas</a></p>
+  </div>
+</div></section>

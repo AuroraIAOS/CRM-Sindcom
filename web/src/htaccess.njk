@@ -1,0 +1,78 @@
+---
+permalink: /.htaccess
+eleventyExcludeFromCollections: true
+---
+# .htaccess do site estatico do SINDCOM (gerado por web/src/htaccess.njk; nao editar no servidor).
+# ATENCAO: este arquivo nunca deve citar o texto dos marcadores de blocos de plugins (orientacoes.md 1.9).
+
+# 1) HTTP -> HTTPS. Vem ANTES de qualquer outra regra: se viesse depois de uma regra com [L], nunca seria alcancada (orientacoes.md 1.5).
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !=https
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L]
+</IfModule>
+
+# 2) HSTS de 1 dia, so sob TLS e sem includeSubDomains (alcancaria envios. e crm.). Elevar depois de dias estavel.
+<IfModule mod_headers.c>
+Header always set Strict-Transport-Security "max-age=86400" env=HTTPS
+</IfModule>
+
+# 3) 301 das URLs antigas do WordPress para as novas (preserva links externos e posicao no Google).
+#    Cada origem e ancorada (^...$), entao nao ha laco: nenhum destino casa com uma origem.
+<IfModule mod_alias.c>
+RedirectMatch 301 ^/filie/?$ /filie-se/
+RedirectMatch 301 ^/denuncia/?$ /denuncie/
+RedirectMatch 301 ^/servicos-sindicais/?$ /servicos/
+RedirectMatch 301 ^/vagas/?$ /vaga/
+RedirectMatch 301 ^/curriculos/?$ /curriculo/
+RedirectMatch 301 ^/contact/?$ /contato/
+RedirectMatch 301 ^/(index\.php|home)/?$ /
+</IfModule>
+
+# 4) Pagina de erro propria e sem listagem de diretorios.
+ErrorDocument 404 /404.html
+Options -Indexes
+
+# 5) Compressao e tipos MIME de formatos modernos.
+<IfModule mod_deflate.c>
+AddOutputFilterByType DEFLATE text/html text/css application/javascript text/javascript application/json image/svg+xml application/xml
+</IfModule>
+<IfModule mod_mime.c>
+AddType image/avif .avif
+AddType image/webp .webp
+AddType font/woff2 .woff2
+AddType application/json .json
+</IfModule>
+
+# 6) Cache: imagens, fontes, CSS, JS e PDFs por 1 ano (os nomes das imagens geradas mudam com o conteudo); HTML por 10 minutos.
+<IfModule mod_expires.c>
+ExpiresActive On
+ExpiresByType text/html "access plus 10 minutes"
+ExpiresByType text/css "access plus 1 month"
+ExpiresByType application/javascript "access plus 1 month"
+ExpiresByType text/javascript "access plus 1 month"
+ExpiresByType image/avif "access plus 1 year"
+ExpiresByType image/webp "access plus 1 year"
+ExpiresByType image/jpeg "access plus 1 year"
+ExpiresByType image/png "access plus 1 year"
+ExpiresByType image/svg+xml "access plus 1 year"
+ExpiresByType font/woff2 "access plus 1 year"
+ExpiresByType application/pdf "access plus 1 week"
+ExpiresByType application/json "access plus 1 week"
+</IfModule>
+
+# 7) Cabecalhos de seguranca. A CSP esta em modo Report-Only: observar antes de impor.
+<IfModule mod_headers.c>
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+Header always set Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+Header always set Content-Security-Policy-Report-Only "default-src 'self'; img-src 'self' data: https://*.tile.openstreetmap.org; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self' https://*.supabase.co; style-src 'self' 'unsafe-inline'; font-src 'self'"
+</IfModule>
+{% if staging %}
+# VERSAO DE TESTE: nenhum buscador pode indexar (evita competir com o site real).
+<IfModule mod_headers.c>
+Header always set X-Robots-Tag "noindex, nofollow"
+</IfModule>
+{% endif %}

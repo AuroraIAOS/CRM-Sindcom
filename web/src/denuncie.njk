@@ -1,0 +1,38 @@
+---
+layout: base.njk
+titulo: Denúncias e Comunicações
+descricao: Denuncie ao SINDCOM irregularidades trabalhistas no comércio de Passos e região. Seus direitos não são favores, são garantias legais.
+permalink: /denuncie/
+css: [denuncie, formulario]
+scripts: [validacao, formulario]
+---
+<section class="hero"><div class="container duas-col">
+  <div class="denuncia-intro" data-revelar>
+    <h1>Denúncias e Comunicações</h1>
+    <p class="lead">Trabalhador, os seus direitos não são favores. São garantias legais.</p>
+    <p>Muitas irregularidades continuam acontecendo porque ninguém denuncia. Sua voz pode ajudar a transformar realidades, proteger trabalhadores e incentivar práticas mais justas nas empresas da região.</p>
+    <p>Se você presenciou ou está presenciando uma possível irregularidade, infração ou crime trabalhista e deseja levar ao conhecimento do SINDCOM, use o formulário abaixo.</p>
+    <p><strong>Denuncie irregularidades. Proteja os seus direitos!</strong></p>
+    <a class="botao" href="#formulario">Ir para o formulário</a>
+  </div>
+  <div class="lottie" data-lottie="/assets/lottie/denuncia.json" role="img" aria-label="Animação de alerta, representando a denúncia de irregularidades"></div>
+</div></section>
+
+<section class="secao"><div class="container">
+  <div class="denuncia-intro" data-revelar>
+    <h2>Como funciona o sigilo</h2>
+    <p>O formulário permite o registro de forma anônima: você pode optar por não se identificar. Se preferir, também pode informar seus dados para que o SINDCOM retorne o contato.</p>
+    <p>Nada além do que você escolher informar será solicitado como identificação.</p>
+  </div>
+</div></section>
+
+<section class="secao secao--alt"><div class="container">
+  {% set formNome = "denuncia" %}{% include "formulario.njk" %}
+</div></section>
+
+<section class="secao chamada"><div class="container">
+  <h2>Ainda não é filiado?</h2>
+  <p>Fazer parte do SINDCOM garante proteção, suporte e benefícios contínuos.</p>
+  <a class="botao botao--sec" href="/filie-se/">Quero me filiar</a>
+  <p><a href="/contato/">Fale com o SINDCOM</a></p>
+</div></section>

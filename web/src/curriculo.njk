@@ -1,0 +1,36 @@
+---
+layout: base.njk
+titulo: Currículos
+descricao: Trabalhador, cadastre seu currículo no SINDCOM e seja encontrado por empresas do comércio de Passos e região.
+permalink: /curriculo/
+css: [curriculo, formulario]
+scripts: [validacao, formulario]
+---
+<section class="hero"><div class="container duas-col" id="cadastroC">
+  <div data-revelar>
+    <h1>Currículos</h1>
+    <p class="lead">Trabalhador, cadastre aqui o seu currículo.</p>
+    <a class="botao" href="#formulario">Cadastrar currículo</a>
+  </div>
+  <div class="lottie" data-lottie="/assets/lottie/documentos.json" role="img" aria-label="Animação de documentos, representando o cadastro de currículos"></div>
+</div></section>
+
+<section class="secao"><div class="container">
+  {% set formNome = "curriculo" %}{% include "formulario.njk" %}
+</div></section>
+
+<section class="secao secao--alt"><div class="container chamada" id="bancoC" data-revelar>
+  <h2>Empreendedor, está procurando profissionais?</h2>
+  <p>O SINDCOM conecta os profissionais e empreendedores do comércio de Passos e Região. Cadastre a sua vaga no sindicato.</p>
+  <a class="botao" href="/vaga/">Cadastrar uma vaga</a>
+</div></section>
+
+<section class="secao"><div class="container duas-col">
+  <div class="lottie" data-lottie="/assets/lottie/denuncia.json" role="img" aria-label="Animação de alerta, representando a denúncia de irregularidades"></div>
+  <div data-revelar>
+    <h2>Denúncia anônima</h2>
+    <p>Direitos trabalhistas não são favores. São garantias legais.</p>
+    <p>Caso você tenha identificado possíveis irregularidades, registre sua denúncia de forma segura e anônima.</p>
+    <a class="botao" href="/denuncie/">Denuncie aqui!</a>
+  </div>
+</div></section>

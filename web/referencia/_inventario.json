@@ -1,0 +1,250 @@
+{
+  "01_home": {
+    "imagens": [
+      "Convenio-de-Descontos-e-Beneficios-Sindcom-02-scaled.png",
+      "Convenio-de-Descontos-e-Beneficios-Sindcom-Alma-Pura-Maxwell-Ribeiro-scaled.png",
+      "Convenio-de-Descontos-e-Beneficios-Sindcom-Plano-Santa-Casa-scaled.png",
+      "Sindcom-Filiado-Ouro.png",
+      "Sindcom-Passos-Logotipo-01.png",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-horizontal-11.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-01.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-02.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-03.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-06.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-07.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-08.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-09.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-10.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-12.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-14.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-15.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-17.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-19.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-21.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-22.jpg",
+      "Sindcom-Representado-Bronze.png",
+      "Sindcom-Sindicalizado-Prata.png"
+    ],
+    "links": [
+      "https://sindcompassos.org/denuncia",
+      "https://sindcompassos.org/filie/",
+      "https://sindcompassos.org/servicos/"
+    ],
+    "embeds": [
+      {
+        "tipo": "google_maps",
+        "endereco": "Avenida Expedicionarios, 137, Centro, Passos, MG"
+      }
+    ]
+  },
+  "02_institucional": {
+    "imagens": [
+      "Davi-de-Oliveira-Presidente-do-Sindcom-Passos.png",
+      "Sindcom-Passos-Logotipo-01.png",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-horizontal-28.webp",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-23.png"
+    ],
+    "links": [
+      "https://sindcompassos.org/denuncia",
+      "https://sindcompassos.org/filie/"
+    ],
+    "embeds": [
+      {
+        "tipo": "mapa_leaflet",
+        "src": "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
+      },
+      {
+        "tipo": "google_maps",
+        "endereco": "Avenida Expedicionarios, 137, Centro, Passos, MG"
+      }
+    ]
+  },
+  "03_servicos": {
+    "imagens": [
+      "Sindcom-Filiado-Ouro.png",
+      "Sindcom-Passos-Logotipo-01.png",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-horizontal-27.jpg",
+      "Sindcom-Representado-Bronze.png",
+      "Sindcom-Sindicalizado-Prata.png"
+    ],
+    "links": [
+      "https://sindcompassos.org/denuncia",
+      "https://sindcompassos.org/filie/",
+      "https://wa.me/5535988270406?text=Ol%C3%A1%20Dr.%20Adenilson.%20Eu%20gostaria%20de%20solicitar%20algumas%20informa%C3%A7%C3%B5es."
+    ],
+    "embeds": [
+      {
+        "tipo": "google_drive",
+        "src": "https://drive.google.com/embeddedfolderview?id=1tEopkg_pruNeTR9gVGxOYGBoNSvgHeDi#list"
+      },
+      {
+        "tipo": "google_drive",
+        "src": "https://drive.google.com/embeddedfolderview?id=12aX60GOkWRW280RRISHUsax1XtAUDBvO#list"
+      },
+      {
+        "tipo": "google_maps",
+        "endereco": "Avenida Expedicionarios, 137, Centro, Passos, MG"
+      }
+    ]
+  },
+  "04_beneficios": {
+    "imagens": [
+      "Convenio-de-Descontos-e-Beneficios-Sindcom-02-scaled.png",
+      "Convenio-de-Descontos-e-Beneficios-Sindcom-Alma-Pura-Maxwell-Ribeiro-scaled.png",
+      "Convenio-de-Descontos-e-Beneficios-Sindcom-Plano-Santa-Casa-scaled.png",
+      "Sindcom-Filiado-Ouro.png",
+      "Sindcom-Passos-Logotipo-01.png",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-horizontal-14.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-horizontal-27.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-horizontal-28.png",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-horizontal-28.webp",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-22.png",
+      "Sindcom-Representado-Bronze.png",
+      "Sindcom-Sindicalizado-Prata.png"
+    ],
+    "links": [
+      "https://sindcompassos.org/denuncia",
+      "https://sindcompassos.org/filie/"
+    ],
+    "embeds": [
+      {
+        "tipo": "google_maps",
+        "endereco": "Avenida Expedicionarios, 137, Centro, Passos, MG"
+      }
+    ]
+  },
+  "05_contato": {
+    "imagens": [
+      "Sindcom-Passos-Logotipo-01.png"
+    ],
+    "links": [
+      "https://sindcompassos.org/denuncia",
+      "https://sindcompassos.org/filie/"
+    ],
+    "embeds": [
+      {
+        "tipo": "google_forms",
+        "src": "https://docs.google.com/forms/d/e/1FAIpQLSdcoOFZJcoOf1ZdpCDe_GiBAsJQ4GpvipU9fjhr8cekqBzgvg/viewform?embedded=true"
+      },
+      {
+        "tipo": "google_maps",
+        "endereco": "Av. dos Expedicionários, 137, Centro, Passos"
+      },
+      {
+        "tipo": "mapa_leaflet",
+        "src": "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
+      },
+      {
+        "tipo": "google_maps",
+        "endereco": "Avenida Expedicionarios, 137, Centro, Passos, MG"
+      }
+    ]
+  },
+  "06_filie-se": {
+    "imagens": [
+      "Sindcom-Filiado-Ouro.png",
+      "Sindcom-Passos-Logotipo-01.png",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-horizontal-14.jpg",
+      "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-17.jpg",
+      "Sindcom-Representado-Bronze.png",
+      "Sindcom-Sindicalizado-Prata.png"
+    ],
+    "links": [
+      "https://sindcompassos.org/denuncia"
+    ],
+    "embeds": [
+      {
+        "tipo": "google_forms",
+        "src": "https://docs.google.com/forms/d/e/1FAIpQLSdaLYu7Ptudc2jOp1xnvK5j0qearaKNQXFp3-IZZMo_x-D1MQ/viewform?embedded=true"
+      },
+      {
+        "tipo": "google_forms",
+        "src": "https://docs.google.com/forms/d/e/1FAIpQLSdaLYu7Ptudc2jOp1xnvK5j0qearaKNQXFp3-IZZMo_x-D1MQ/viewform?embedded=true"
+      },
+      {
+        "tipo": "google_maps",
+        "endereco": "Avenida Expedicionarios, 137, Centro, Passos, MG"
+      }
+    ]
+  },
+  "07_denuncie": {
+    "imagens": [
+      "Sindcom-Passos-Logotipo-01.png"
+    ],
+    "links": [
+      "#comunique",
+      "#denuncie"
+    ],
+    "embeds": [
+      {
+        "tipo": "google_forms",
+        "src": "https://docs.google.com/forms/d/e/1FAIpQLSdrTvjQMhX8m2w0fq8395NUHUUUFzgc6BhCZI1g5l8FWbvmaw/viewform?embedded=true"
+      },
+      {
+        "tipo": "google_forms",
+        "src": "https://docs.google.com/forms/d/e/1FAIpQLScG4hbS-9AvcUnCcVTIDLEI8Vuj64Uhj0L5H4X4D1_BeGk4ug/viewform?embedded=true"
+      },
+      {
+        "tipo": "google_maps",
+        "endereco": "Avenida Expedicionarios, 137, Centro, Passos, MG"
+      }
+    ]
+  },
+  "08_curriculo": {
+    "imagens": [
+      "Sindcom-Passos-Logotipo-01.png"
+    ],
+    "links": [
+      "https://sindcompassos.org/denuncia"
+    ],
+    "embeds": [
+      {
+        "tipo": "google_forms",
+        "src": "https://docs.google.com/forms/d/e/1FAIpQLSeXrpePYr8cD2T0NsP1d9H-xx8x-RC2pP47xjBAJkY-PkFvIg/viewform?embedded=true"
+      },
+      {
+        "tipo": "google_drive",
+        "src": "https://drive.google.com/embeddedfolderview?id=1ol3McDvtzh6FePvS6AmofAUn8hiqvkkV#list"
+      },
+      {
+        "tipo": "google_maps",
+        "endereco": "Avenida Expedicionarios, 137, Centro, Passos, MG"
+      }
+    ]
+  },
+  "09_vaga": {
+    "imagens": [
+      "Sindcom-Passos-Logotipo-01.png"
+    ],
+    "links": [
+      "https://sindcompassos.org/denuncia"
+    ],
+    "embeds": [
+      {
+        "tipo": "google_forms",
+        "src": "https://docs.google.com/forms/d/e/1FAIpQLSdE3-WVMMEJ67VMZUkXDJ_TwkTI5RdIdzwl6IdNNRhV8hdd1g/viewform?embedded=true"
+      },
+      {
+        "tipo": "google_drive",
+        "src": "https://drive.google.com/embeddedfolderview?id=1_zZbiKm9SW5cjuoXeuA8frI4If3HVoRr#list"
+      },
+      {
+        "tipo": "google_maps",
+        "endereco": "Avenida Expedicionarios, 137, Centro, Passos, MG"
+      }
+    ]
+  },
+  "10_termos": {
+    "imagens": [],
+    "links": [],
+    "embeds": []
+  },
+  "11_dados": {
+    "imagens": [],
+    "links": [
+      "https://drive.google.com/file/d/1w--1UAl66O_cTZZbO8HIQrx5Ge0NRPDM/view",
+      "https://drive.google.com/file/d/1w--1UAl66O_cTZZbO8HIQrx5Ge0NRPDM/view?usp=drive_link"
+    ],
+    "embeds": []
+  }
+}

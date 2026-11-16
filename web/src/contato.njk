@@ -1,0 +1,88 @@
+---
+layout: base.njk
+titulo: Contato
+descricao: Fale com o SINDCOM. Envie sua mensagem, venha à sede em Passos ou conheça os 29 municípios que atendemos no sudoeste de Minas.
+permalink: /contato/
+css: [contato, formulario]
+scripts: [validacao, formulario]
+---
+<section class="hero" id="fale"><div class="container duas-col">
+  <div data-revelar>
+    <h1>Fale com o SINDCOM</h1>
+    <p class="lead">Precisa de orientação, tem dúvidas sobre seus direitos ou quer falar com o sindicato?</p>
+    <p>Preencha o formulário e nossa equipe entrará em contato o mais breve possível.</p>
+    <p>Atendimento simples, direto e sem burocracia.</p>
+  </div>
+  <div class="lottie" data-lottie="/assets/lottie/duvida.json" role="img" aria-label="Animação de um ponto de interrogação, representando dúvidas"></div>
+</div></section>
+
+<section class="secao"><div class="container">
+  {% set formNome = "contato" %}{% include "formulario.njk" %}
+</div></section>
+
+<section class="secao secao--alt" id="presencial"><div class="container">
+  <h2>Atendimento presencial</h2>
+  <p>O SINDCOM está de portas abertas para atender você.</p>
+  <p>Nossa sede foi pensada para oferecer um atendimento próximo, humano e eficiente aos trabalhadores do comércio da região.</p>
+  <dl class="contatos">
+    <dt>Endereço</dt>
+    <dd><a href="https://www.openstreetmap.org/search?query=Avenida+dos+Expedicionarios+137+Passos+MG">Av. dos Expedicionários, 137, Centro, Passos, Minas Gerais, CEP 37.900-130</a></dd>
+    <dt>Horário de atendimento</dt>
+    <dd>Segunda a sexta-feira, das 08h às 11h e das 13h às 17h</dd>
+    <dt>Correio eletrônico</dt>
+    <dd><a href="mailto:contato@sindcompassos.org">contato@sindcompassos.org</a></dd>
+    <dt>Telefone</dt>
+    <dd><a href="tel:+553535263847">(35) 3526-3847</a></dd>
+    <dt>WhatsApp</dt>
+    <dd><a href="https://wa.me/5535988270406">(35) 98827-0406</a></dd>
+  </dl>
+  <p>Se preferir, fale conosco antes de ir até a sede.</p>
+</div></section>
+
+<section class="secao" id="regiao"><div class="container">
+  <h2>Nossa atuação na região</h2>
+  <p>O SINDCOM atua em <strong>29 municípios do sudoeste de Minas Gerais</strong>, garantindo suporte e representatividade para os trabalhadores e seus familiares de toda a região.</p>
+  <p>Nosso compromisso é estar presente onde o trabalhador está.</p>
+  {% include "mapa-atuacao.njk" ignore missing %}
+  <ul class="municipios">
+    <li>Alpinópolis</li><li>Alterosa</li><li>Arceburgo</li><li>Bom Jesus da Penha</li><li>Capetinga</li>
+    <li>Capitólio</li><li>Carmo do Rio Claro</li><li>Cássia</li><li>Conceição da Aparecida</li><li>Delfinópolis</li>
+    <li>Fortaleza de Minas</li><li>Guapé</li><li>Ibiraci</li><li>Ilicínea</li><li>Itamogi</li>
+    <li>Itaú de Minas</li><li>Jacuí</li><li>Monte Santo de Minas</li><li>Nova Resende</li><li>Passos</li>
+    <li>Piumhí</li><li>Pratápolis</li><li>São João Batista do Glória</li><li>São José da Barra</li><li>São Pedro da União</li>
+    <li>São Roque de Minas</li><li>São Sebastião do Paraíso</li><li>São Tomás de Aquino</li><li>Vargem Bonita</li>
+  </ul>
+</div></section>
+
+<section class="secao secao--alt chamada"><div class="container" data-revelar>
+  <h2>Você já deu o primeiro passo.</h2>
+  <p class="lead">Agora fortaleça seus direitos.</p>
+  <p>Entrar em contato é importante. Mas fazer parte do Sindicato é o que realmente garante proteção, suporte e benefícios contínuos.</p>
+  <p>Não fique sozinho. Faça parte do SINDCOM.</p>
+  <a class="botao" href="/filie-se/">Quero me filiar agora</a>
+</div></section>
+
+<section class="secao"><div class="container duas-col">
+  <div class="lottie" data-lottie="/assets/lottie/denuncia.json" role="img" aria-label="Animação de alerta, representando a denúncia de irregularidades"></div>
+  <div data-revelar>
+    <h2>Denúncia anônima</h2>
+    <p>Direitos trabalhistas não são favores. São garantias legais.</p>
+    <p>Caso você tenha identificado possíveis irregularidades, registre sua denúncia de forma segura e anônima.</p>
+    <a class="botao" href="/denuncie/">Denuncie aqui!</a>
+  </div>
+</div></section>
+
+<section class="secao secao--alt"><div class="container grade">
+  <div class="cartao" data-revelar>
+    <h2>Serviços para o Trabalhador</h2>
+    <p>Prezado trabalhador, fique à vontade para cadastrar aqui seu currículo e/ou buscar pelas vagas e oportunidades de emprego cadastradas.</p>
+    <p><a class="botao botao--sec" href="/curriculo/">Cadastro de Currículo</a></p>
+    <p><a class="botao botao--sec" href="/vaga/#vagas-abertas">Banco de Vagas</a></p>
+  </div>
+  <div class="cartao" data-revelar>
+    <h2>Serviços para o Empregador</h2>
+    <p>Prezado empregador, fique à vontade para cadastrar aqui suas vagas e oportunidades de emprego.</p>
+    <p><a class="botao botao--sec" href="/vaga/">Cadastro de Vagas</a></p>
+  </div>
+</div></section>
+

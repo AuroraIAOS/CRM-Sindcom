@@ -1,0 +1,23 @@
+{
+  "name": "sindcom-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "extrair": "node scripts/extrair-elementor.mjs",
+    "dev": "eleventy --serve",
+    "build": "eleventy",
+    "test": "node --test",
+    "verificar": "node scripts/verificar-dist.mjs"
+  },
+  "devDependencies": {
+    "@11ty/eleventy": "3.1.2",
+    "@11ty/eleventy-img": "^6.0.4",
+    "@fontsource/lato": "^5.3.0",
+    "@fontsource/playfair-display": "^5.3.0",
+    "jsdom": "^25.0.1",
+    "lottie-web": "^5.13.0"
+  },
+  "dependencies": {
+    "leaflet": "^1.9.4"
+  }
+}
