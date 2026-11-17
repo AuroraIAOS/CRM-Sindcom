@@ -47,11 +47,6 @@
 .checks .nao::before{content:"✗";color:var(--cor-realce)}
 
 /* ---------- DIREITOS ---------- */
-.direitos{display:grid;gap:var(--e-md);grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));margin:var(--e-lg) 0 var(--e-md)}
-.direito{text-align:left}
-.direito .ic{width:56px;height:56px;margin-bottom:var(--e-xs)}
-.direito ul{padding-left:1.2em;margin:0}
-.direito li{margin-bottom:4px}
 
 /* ---------- FAQ ---------- */
 .faq-topo{margin-bottom:var(--e-md)}

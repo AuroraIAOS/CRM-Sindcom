@@ -65,8 +65,8 @@
   {% include "cabecalho.njk" %}
   <main id="conteudo">{{ content | safe }}</main>
   {% include "rodape.njk" %}
-  <script src="/assets/js/site.js" defer></script>
-  <script src="/assets/js/menu.js" defer></script>
-  {% for s in scripts %}<script src="/assets/js/{{ s }}.js" defer></script>
+  <script src="/assets/js/site.js?v={{ versao }}" defer></script>
+  <script src="/assets/js/menu.js?v={{ versao }}" defer></script>
+  {% for s in scripts %}<script src="/assets/js/{{ s }}.js?v={{ versao }}" defer></script>
   {% endfor %}</body>
 </html>

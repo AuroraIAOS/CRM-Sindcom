@@ -7,7 +7,7 @@
 .campo{margin-bottom:var(--e-sm)}
 .campo label,.campo__grupo>legend{display:block;font-weight:400;margin-bottom:4px}
 .campo__grupo{border:0;padding:0;margin:0}
-.obrig{color:var(--cor-realce)}.opcional{color:var(--cor-texto-02);font-size:15px}
+.obrig{color:var(--cor-realce)}
 .ajuda{margin:0 0 4px;font-size:15px;color:var(--cor-texto-02)}
 .form-site input[type=text],.form-site input[type=email],.form-site input[type=tel],.form-site select,.form-site textarea,.form-site input[type=file]{
   width:100%;min-height:44px;padding:10px 12px;font:inherit;color:var(--cor-texto-01);background:var(--cor-fundo-01);border:2px solid #b8b8b8;border-radius:var(--r-md)}
@@ -53,3 +53,18 @@
 .opcao--consent{font-size:14px;color:var(--cor-texto-02)}
 .form-site .botao[type=submit]{min-height:48px;padding:0 36px;border:0;border-radius:12px;font:inherit;cursor:pointer;color:#fff;transition:filter .2s,transform .2s}
 .form-site .botao[type=submit]:hover{transform:translateY(-1px)}
+/* A ajuda vem depois do campo, para que todos os campos de uma linha comecem na mesma altura */
+.campo{display:flex;flex-direction:column}
+.campo .ajuda{order:4;margin:6px 0 0}
+.campo .erro{order:6}
+.form-site input[type=file]{color:var(--cor-texto-02);font-size:15px}
+.form-site input[type=file]::file-selector-button{margin-right:14px;padding:8px 16px;border:0;border-radius:8px;background:var(--cor-branco);color:var(--cor-texto-01);font:inherit;font-size:14px;cursor:pointer;box-shadow:0 1px 3px rgb(0 0 0/.15)}
+.form-site input[type=file]::file-selector-button:hover{background:var(--cor-fundo-02)}
+
+/* Campo oculto por regra condicional continua oculto (o display:flex acima o reativava) */
+.campo[hidden]{display:none}
+.campo:not([hidden]){animation:campo-entra .35s ease-out}
+@keyframes campo-entra{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.campo:not([hidden]){animation:none}}
+/* Entradas alinhadas pela base da linha: se um rótulo quebrar em duas linhas, os campos vizinhos continuam na mesma altura */
+.campo>input,.campo>select{margin-top:auto}

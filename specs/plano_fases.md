@@ -1807,7 +1807,7 @@ revisão humana antes de qualquer escrita).
 
 ---
 
-## ETAPA 09 — EXECUÇÃO DAS CAMPANHAS · Complexidade: MÉDIA · Status: ⬜
+## ETAPA 09 — EXECUÇÃO DAS CAMPANHAS · Complexidade: MÉDIA · Status: 🟡 EM ANDAMENTO (9.00 ✅ · 9.1 🟡 · demais ⬜)
 
 Objetivo geral: **usar** a estrutura que a ETAPA 08 construiu. Uma subetapa por onda, cada uma
 organizando, disparando e acompanhando o seu público. A ETAPA 08 termina com tudo pronto e provado
@@ -2375,6 +2375,32 @@ produção até o SQL 33 ser aplicado lá. Dado DEMO do módulo removido do benc
 
 ---
 
+## ETAPA 11 — SITE INSTITUCIONAL EM HTML ESTÁTICO (WordPress → Eleventy) · Complexidade: ALTA · Status: 🟡 EM ANDAMENTO (11 páginas construídas e aprovadas em `novo.sindcompassos.org`; virada **não** feita)
+
+Objetivo: sair do WordPress + Elementor + cache NFD EPC, que derrubou o site em 2026-09-01, 2026-09-09 e 2026-10-29
+(`orientacoes.md` §1.6–1.9), por um site estático (Eleventy), rápido, sem Google, sem Brevo e sem n8n, com formulários
+próprios ligados ao banco do CRM. Plano completo e tabela de pacotes (WP): `docs/plano_site_html.md`. Runbook da
+virada: `docs/site_deploy_runbook.md`. Diretrizes dos formulários: `docs/site_formularios_diretrizes.md`.
+Código em `web/` (só código, textos públicos e imagens tratadas; `site/` com dados pessoais **nunca** vai ao GitHub).
+
+| Parte | Status |
+|---|---|
+| Fundação, componentes, 11 páginas (Início, Institucional, Serviços, Benefícios, Contato, Filie-se, Denúncia, Currículos, Vagas, Termos, Dados) reconstruídas a partir do site original e aprovadas por Maxwell, uma a uma | ✅ |
+| SEO: sitemap, robots, JSON-LD, 301 das URLs antigas (`/filie/`, `/denuncia`, `/servicos-sindicais/`…) | ✅ |
+| Publicação em `novo.sindcompassos.org` (teste, `noindex`), verificada por requisição e por hash; Lighthouse celular 97–98 / acessibilidade 100 / boas práticas 100 | ✅ |
+| Componente único de formulário (campos sem moldura, grade de 2 colunas, campos condicionais) — **em modo demonstração: valida, não envia** | ✅ |
+| Textos jurídicos de Termos/Política e Dados aprovados pelo jurídico (2026-11-17) | ✅ |
+| SQL 35 (`sql/35_formularios_site.sql`), Edge Function `formularios-site` e `tests/rls/formularios_site.spec.ts` **escritos, não aplicados/implantados** | 🟡 |
+| E-mail real de entrega (`contato@`/`juridico@`), chave real do Turnstile, migração do histórico de respostas (≈87), aba Jurídico (denúncia só vai ao ar depois dela), fila de filiação e caixa de mensagens no CRM | ⬜ |
+| Portão de segurança adversarial da nova superfície (obrigatório antes da virada) | ⬜ |
+| **Virada** (Fase B do runbook) e aposentadoria do WordPress (30 dias de rollback) | ⬜ |
+
+**Merge ≠ virada.** O merge em `main` entrega só o código-fonte; `sindcompassos.org` continua sendo o WordPress até Maxwell
+ordenar a virada. Nada deste código toca o CRM em produção (`web/` é um pacote à parte; a suíte do CRM só enxerga
+`tests/**/*.spec.ts` e o spec dos formulários fica em `skip` até o SQL 35 ser aplicado num bench).
+
+---
+
 ## ETAPA 05 — BACKLOG PÓS-MVP (prioriza-se com dado real, não com opinião) · Status: ⬜
 
 Objetivo geral: refinamentos guiados por evidência sobre o produto lançado.
@@ -2449,8 +2475,10 @@ recriação de contêiner.
 | 04 | Média | Etapa 03 | Fechamento do mapa de telas: `/juridico` e `/cartas` ✅ |
 | 06 | Alta | Etapa 04 | Base empresarial real: 16.687 empresas + 17.319 estabelecimentos ✅ |
 | 07 | Alta | Etapa 06 | Portão adversarial: 5 falhas reais fechadas ✅ |
-| 08 | Alta | Etapa 07 (portão) + DMARC + nota jurídica | Base de **pessoas**: campanha, coleta por token e rastreio por cobertura |
+| 08 | Alta | Etapa 07 (portão) + DMARC + nota jurídica | Base de **pessoas**: campanha, coleta por token e rastreio por cobertura ✅ |
+| 09 | Média | Etapa 08 | Execução das campanhas por onda 🟡 (9.00 ✅ · 9.1 Onda 00 em andamento · 9.2–9.6 ⬜) |
 | 10 | Alta | Etapa 08 (padrão de token) | Controle de boletos TAF/CA/CN/PAMED: coleta por link, valor calculado, acompanhamento ✅ (produção) |
+| 11 | Alta | Etapa 08 (nota jurídica) + Etapa 10 | Site institucional em HTML estático no lugar do WordPress 🟡 (11 páginas prontas e aprovadas em teste; virada pendente) |
 | 05 | Variável | Etapa 08 + dados de uso | Refinamentos guiados por evidência |
 
 ---

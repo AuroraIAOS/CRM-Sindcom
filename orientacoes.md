@@ -2934,6 +2934,68 @@ explicação visível além de um "Obrigatório" discreto. O zod passou a garant
 decide o que é obrigatório é a validação compartilhada. **Duas conferências sobre o mesmo campo é
 uma a mais** — vale para CPF, vale para piso, vale para o que vier.
 
+
+### 4.13 `display:flex` num componente reativa o campo que o JavaScript escondeu com `hidden`
+
+**(a) Problema.** No formulário de denúncia, nome, telefone e e-mail deveriam aparecer só depois de a pessoa
+responder "Sim, posso ser contatado". Apareciam sempre, com asterisco de obrigatório, induzindo quem queria
+ficar anônimo a preencher o nome. A lógica estava certa: `formulario.js` já alternava `bloco.hidden`, desabilitava
+e limpava os campos. O defeito era CSS: ao colocar `.campo{display:flex}` (para alinhar a ajuda e o campo), a regra
+do autor passou a vencer o `[hidden]{display:none}` do navegador, que é só estilo padrão.
+
+**(b) Solução.** Toda regra que define `display` num elemento que o JS esconde por `hidden` precisa de uma
+regra explícita `[hidden]{display:none}` logo depois.
+
+**(c) Como implantar.**
+```css
+.campo{display:flex;flex-direction:column}
+.campo[hidden]{display:none}
+```
+Medir o comportamento, não o arquivo: no navegador, `getComputedStyle(campo).display` deve ser `none` antes de
+escolher "Sim", `flex` depois e `none` de novo com "Não". `web/tests/formulario.test.mjs` tem um teste que falha
+se essa regra sair do CSS.
+
+### 4.14 Injetar a biblioteca do Lottie uma vez por animação quebra a segunda animação da página
+
+**(a) Problema.** Nas páginas com dois Lotties (um no texto e o escudo da denúncia no rodapé: Currículos e Vagas,
+depois também Contato, Serviços e Denúncia), o escudo do rodapé aparecia sem o prédio vermelho, enquanto na home,
+com um só Lottie, aparecia inteiro. O `site.js` criava um `<script src="lottie.min.js">` por elemento
+`data-lottie`; com dois elementos a biblioteca era executada duas vezes (`document.querySelectorAll('script[src*=lottie]')`
+dava 2) e a segunda animação saía defeituosa.
+
+**(b) Solução.** Carregar a biblioteca uma única vez, com uma Promise compartilhada, e só então chamar
+`loadAnimation` em cada elemento.
+
+**(c) Como implantar.**
+```js
+let lottieP;
+const carregarLottie = () => (lottieP ??= new Promise((ok, erro) => {
+  if (window.lottie) return ok(window.lottie);
+  const s = document.createElement('script'); s.src = '/assets/js/lottie.min.js';
+  s.onload = () => ok(window.lottie); s.onerror = erro; document.head.appendChild(s);
+}));
+```
+Conferir por contagem (`scripts=1`, `svgs=2`). Cuidado ao julgar o quadro: o arquivo do escudo tem um quadro quase
+vazio no meio do ciclo; compare vários instantes antes de concluir que "está cortado". Vale o mesmo padrão para
+qualquer biblioteca carregada sob demanda por mais de um componente (ver `mapa-sede.js`, que usa a mesma Promise
+`window.__leafletP` do mapa de atuação).
+
+### 4.15 Corrigir um `.js` num site com cache de 30 dias não chega a quem já visitou — versione o endereço
+
+**(a) Problema.** O `.htaccess` do site estático dá `Cache-Control: max-age=2592000` (30 dias) a CSS e JS. Depois
+de corrigir o `site.js` (§4.14), quem já tinha aberto o site de teste continuaria com o arquivo antigo e veria o
+defeito por até um mês, mesmo com o arquivo certo no servidor (o hash conferia). O CSS não sofre isso porque é
+embutido no HTML de cada página.
+
+**(b) Solução.** Número de versão na URL do script, gerado a cada build.
+
+**(c) Como implantar.** Em `web/eleventy.config.js`:
+```js
+config.addGlobalData('versao', () => new Date().toISOString().slice(0, 16).replace(/\D/g, ''));
+```
+e nos modelos `<script src="/assets/js/site.js?v={{ versao }}" defer></script>`. Atenção ao escapar: um `\D` sem a
+barra (`/D/g`) não falha, só deixa a versão com hífens e dois-pontos. Toda correção de JavaScript do site vai
+acompanhada de novo build e de novo envio das páginas (o HTML é que carrega o número novo).
 ## 5. Ambiente de desenvolvimento (Windows)
 
 ### 5.1 Backticks e crases quebram scripts no shell

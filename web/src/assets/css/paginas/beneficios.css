@@ -3,22 +3,6 @@
 .bloco-imagem__texto h2.sb{margin-bottom:var(--e-sm)}
 .subtitulo-custo{margin:0 0 var(--e-sm)}
 
-/* Três perfis */
-.perfis{display:grid;gap:var(--e-sm);grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));margin:var(--e-md) 0 var(--e-lg);align-items:stretch}
-.perfil{display:flex;flex-direction:column;background:var(--cor-fundo-02);border-radius:20px;overflow:hidden}
-.perfil__topo{display:flex;align-items:center;gap:12px;margin:0;padding:10px 16px;background:var(--cor-realce);color:#fff;font:400 22px/1.2 var(--font-titulo);border-radius:0 0 18px 18px}
-.perfil__selo{width:40px;height:auto}
-.perfil__corpo{padding:var(--e-sm)}
-.perfil__corpo p{font-size:15px;margin:0 0 10px}
-.perfil__corpo p.perfil__recebe{color:var(--cor-realce);font-weight:700}
-.checks{list-style:none;padding:0;margin:0 0 var(--e-sm)}
-.checks li{padding-left:26px;position:relative;margin-bottom:6px;font-size:15px;color:var(--cor-texto-02)}
-.checks li::before{content:"✓";position:absolute;left:0;color:#2e7d32;font-weight:700}
-
-/* A pergunta é simples */
-.pergunta__texto{text-align:center}
-.pergunta__texto .sb{font-size:clamp(24px,4vw,30px)}
-
 /* Exemplos de custo-benefício */
 @media (min-width:800px){.exemplos{grid-template-columns:280px 1fr}}
 .exemplo{background:var(--cor-fundo-01);border-radius:20px;margin-bottom:var(--e-sm);overflow:hidden;box-shadow:0 1px 4px rgb(0 0 0/.08)}

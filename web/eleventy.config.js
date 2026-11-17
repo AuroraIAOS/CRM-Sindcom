@@ -7,6 +7,8 @@ export default function (config) {
   config.addPassthroughCopy({ 'src/downloads': 'downloads' });
   config.addWatchTarget('src/assets/css');
 
+  // Versão dos scripts (cache de 30 dias no servidor): muda a cada build e força o navegador a baixar o arquivo novo
+  config.addGlobalData('versao', () => new Date().toISOString().slice(0, 16).replace(/\D/g, ''));
   // SITE_STAGING=1 gera a versão de teste (novo.sindcompassos.org): bloqueada para buscadores
   config.addGlobalData('staging', () => process.env.SITE_STAGING === '1');
 

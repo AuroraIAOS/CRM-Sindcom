@@ -3,19 +3,25 @@ layout: base.njk
 titulo: Solicitação de Dados
 descricao: "Base legal para a solicitação de dados dos trabalhadores: por que o SINDCOM solicita, por que a empresa pode enviar e como protegemos as informações."
 permalink: /dados/
-css: [dados]
+css: [componentes, documento, rodape-completo]
+rodapeCompleto: true
+ondaCor: fundo-01
 ---
-<section class="hero">
-  <div class="container dados-estreito">
-    <p class="dados-eyebrow">Solicitação de Dados</p>
-    <h1>Base legal para a solicitação de dados dos trabalhadores</h1>
-    <p class="lead"><em>Por que o SINDCOM solicita os dados dos trabalhadores do comércio, por que sua empresa pode enviá-los, e o que fazemos para proteger essas informações.</em></p>
+{% include "icones.njk" %}
+<div class="pg">
+
+<section class="pagina-topo">
+  <div class="container">
+    <div class="tp"><h1 class="tp__titulo"><span class="tp__nome">Solicitação de Dados</span><span class="so-leitor"> — </span><span class="tp__sub">Base legal para a solicitação de dados dos trabalhadores</span></h1></div>
+    {% if staging %}<p class="doc__aviso" role="note"><strong>Versão em revisão jurídica.</strong> Texto de trabalho, disponível apenas neste endereço de teste; ainda não foi publicado.</p>{% endif %}
   </div>
 </section>
 
 <section class="secao">
-  <div class="container dados-estreito">
-    <nav class="dados-indice" aria-label="Neste documento">
+  <div class="container">
+    <p class="chamada-v doc__lead">Por que o SINDCOM solicita os dados dos trabalhadores do comércio, por que sua empresa pode enviá-los, e o que fazemos para proteger essas informações.</p>
+    <div class="doc">
+      <nav class="doc__indice" aria-label="Neste documento">
       <p><strong>Neste documento</strong></p>
       <ol>
         <li><a href="#quem-somos">Quem somos e o que solicitamos</a></li>
@@ -29,79 +35,81 @@ css: [dados]
         <li><a href="#documento-completo">Documento completo</a></li>
       </ol>
     </nav>
-
-    <article class="dados-texto">
-      <h2 id="quem-somos">1. Quem somos e o que solicitamos</h2>
-      <p>O <strong>Sindicato dos Empregados no Comércio de Passos e Região (SINDCOM)</strong> representa os trabalhadores do comércio em 29 municípios do sudoeste de Minas Gerais.</p>
-      <p>Estamos solicitando às empresas e aos escritórios de contabilidade da região seis informações sobre cada trabalhador:</p>
-      <ul>
+      <article class="doc__texto">
+        <h2 id="quem-somos">1. Quem somos e o que solicitamos</h2>
+        <p>O <strong>Sindicato dos Empregados no Comércio de Passos e Região (SINDCOM)</strong> representa os trabalhadores do comércio em 29 municípios do sudoeste de Minas Gerais.</p>
+        <p>Estamos solicitando às empresas e aos escritórios de contabilidade da região seis informações sobre cada trabalhador:</p>
+        <ul>
         <li>CNPJ do estabelecimento</li>
         <li>Nome</li>
         <li>CPF</li>
         <li>Telefone de contato</li>
         <li>Piso salarial pago</li>
         <li>Se é sindicalizado ou se manifestou oposição à contribuição</li>
-      </ul>
-      <p><strong>Não solicitamos</strong> data de nascimento, endereço residencial, e-mail pessoal, estado civil, dados de dependentes nem a data de entrega da carta de oposição. A lista é curta de propósito: coletamos o mínimo necessário.</p>
+        </ul>
+        <p><strong>Não solicitamos</strong> data de nascimento, endereço residencial, e-mail pessoal, estado civil, dados de dependentes nem a data de entrega da carta de oposição. A lista é curta de propósito: coletamos o mínimo necessário.</p>
 
-      <h2 id="por-que-podemos">2. Por que podemos solicitar</h2>
-      <p>A Constituição Federal atribui ao sindicato <strong>a defesa dos direitos e interesses coletivos ou individuais da categoria</strong> (CF, art. 8º, III). Essa representação alcança toda a categoria — não apenas quem é filiado.</p>
-      <p>A CLT confere ao sindicato as prerrogativas de <strong>representar</strong> os interesses da categoria (CLT, art. 513, "a") e de <strong>impor contribuições</strong> a todos os que dela participam (art. 513, "e").</p>
-      <p>Um sindicato que não sabe quem compõe a categoria não consegue negociar pisos com base na realidade salarial, identificar descumprimento de cláusula convencional, nem prestar serviço a quem tem direito a ele.</p>
+        <h2 id="por-que-podemos">2. Por que podemos solicitar</h2>
+        <p>A Constituição Federal atribui ao sindicato <strong>a defesa dos direitos e interesses coletivos ou individuais da categoria</strong> (CF, art. 8º, III). Essa representação alcança toda a categoria — não apenas quem é filiado.</p>
+        <p>A CLT confere ao sindicato as prerrogativas de <strong>representar</strong> os interesses da categoria (CLT, art. 513, "a") e de <strong>impor contribuições</strong> a todos os que dela participam (art. 513, "e").</p>
+        <p>Um sindicato que não sabe quem compõe a categoria não consegue negociar pisos com base na realidade salarial, identificar descumprimento de cláusula convencional, nem prestar serviço a quem tem direito a ele.</p>
 
-      <h2 id="dado-sensivel">3. O dado sensível: filiação sindical</h2>
-      <p>A informação sobre ser sindicalizado ou ter se oposto à contribuição é dado pessoal sensível (Lei Geral de Proteção de Dados, art. 5º, II) e, portanto, tem regime de tratamento mais estrito.</p>
-      <p>Por isso, tratamos essa informação com base no art. 11, II, "d" da LGPD — exercício regular de direitos. Ao solicitar direto à empresa a identificação daqueles que se opuseram, o SINDCOM não age contrário ao interesse do trabalhador que se opôs, mas sim, a seu favor. Isso porque, é justamente o fato de conhecer os trabalhadores que se opuseram que permite ao SINDCOM emitir o boleto de repasse sem incluir o respectivo valor destes, protegendo esses trabalhadores contra cobrança e desconto indevidos. O dado sensível é tratado, portanto, para assegurar o exercício da oposição e impedir que o trabalhador opositor seja incluído na cobrança.</p>
+        <h2 id="dado-sensivel">3. O dado sensível: filiação sindical</h2>
+        <p>A informação sobre ser sindicalizado ou ter se oposto à contribuição é dado pessoal sensível (Lei Geral de Proteção de Dados, art. 5º, II) e, portanto, tem regime de tratamento mais estrito.</p>
+        <p>Por isso, tratamos essa informação com base no art. 11, II, "d" da LGPD — exercício regular de direitos. Ao solicitar direto à empresa a identificação daqueles que se opuseram, o SINDCOM não age contrário ao interesse do trabalhador que se opôs, mas sim, a seu favor. Isso porque, é justamente o fato de conhecer os trabalhadores que se opuseram que permite ao SINDCOM emitir o boleto de repasse sem incluir o respectivo valor destes, protegendo esses trabalhadores contra cobrança e desconto indevidos. O dado sensível é tratado, portanto, para assegurar o exercício da oposição e impedir que o trabalhador opositor seja incluído na cobrança.</p>
 
-      <h2 id="quem-se-opos">4. Por que precisamos saber quem se opôs</h2>
-      <p class="dados-destaque"><strong>Para deixar de cobrar dessa pessoa e garantir que nenhum desconto indevido foi realizado em seu holerite.</strong></p>
-      <p>O Supremo Tribunal Federal decidiu que a contribuição pode alcançar toda a categoria desde que assegurado o direito de oposição. E a Convenção Coletiva permite que o trabalhador manifeste essa oposição por escrito, perante a própria empresa.</p>
-      <p>Quando isso acontece, somente a empresa sabe se o valor da contribuição foi ou não efetivamente descontado do trabalhador. E se a empresa não informa ao SINDCOM, o Sindicato irá, inevitavelmente, cobrar indevidamente quem se opôs e, em seguida, ter que devolver o valor tal como a mesma cláusula nos obriga.</p>
-      <p>Portanto, informar sobre a oposição do trabalhador não serve para agir contra o trabalhador. Serve justamente ao oposto, ou seja, para que o Sindicato se abstenha de cobrá-lo e fazer valer seu real direito à oposição e não recolhimento da contribuição sindical.</p>
+        <h2 id="quem-se-opos">4. Por que precisamos saber quem se opôs</h2>
+        <p class="doc-destaque"><strong>Para deixar de cobrar dessa pessoa e garantir que nenhum desconto indevido foi realizado em seu holerite.</strong></p>
+        <p>O Supremo Tribunal Federal decidiu que a contribuição pode alcançar toda a categoria desde que assegurado o direito de oposição. E a Convenção Coletiva permite que o trabalhador manifeste essa oposição por escrito, perante a própria empresa.</p>
+        <p>Quando isso acontece, somente a empresa sabe se o valor da contribuição foi ou não efetivamente descontado do trabalhador. E se a empresa não informa ao SINDCOM, o Sindicato irá, inevitavelmente, cobrar indevidamente quem se opôs e, em seguida, ter que devolver o valor tal como a mesma cláusula nos obriga.</p>
+        <p>Portanto, informar sobre a oposição do trabalhador não serve para agir contra o trabalhador. Serve justamente ao oposto, ou seja, para que o Sindicato se abstenha de cobrá-lo e fazer valer seu real direito à oposição e não recolhimento da contribuição sindical.</p>
 
-      <h2 id="empresa-contabilidade">5. Por que a empresa e a contabilidade podem enviar</h2>
-      <p class="dados-destaque"><strong>Porque a Convenção Coletiva já as obriga a isso.</strong></p>
-      <p>A cláusula que trata da "Contribuição dos Empregados" determina que, dentro de 15 dias do desconto, as empresas encaminhem ao Sindicato os comprovantes de recolhimento acompanhados das relações de empregados, com os respectivos salários.</p>
-      <p>Havendo obrigação pactuada em norma coletiva, o envio tem base legal própria — art. 11, II, "a" da LGPD para o dado sensível, e art. 7º, II para os demais.</p>
-      <p>O contador que atende à nossa solicitação não está compartilhando dado indevidamente: <strong>está cumprindo obrigação convencional do seu cliente.</strong> E estamos solicitando menos do que a convenção nos faculta exigir.</p>
+        <h2 id="empresa-contabilidade">5. Por que a empresa e a contabilidade podem enviar</h2>
+        <p class="doc-destaque"><strong>Porque a Convenção Coletiva já as obriga a isso.</strong></p>
+        <p>A cláusula que trata da "Contribuição dos Empregados" determina que, dentro de 15 dias do desconto, as empresas encaminhem ao Sindicato os comprovantes de recolhimento acompanhados das relações de empregados, com os respectivos salários.</p>
+        <p>Havendo obrigação pactuada em norma coletiva, o envio tem base legal própria — art. 11, II, "a" da LGPD para o dado sensível, e art. 7º, II para os demais.</p>
+        <p>O contador que atende à nossa solicitação não está compartilhando dado indevidamente: <strong>está cumprindo obrigação convencional do seu cliente.</strong> E estamos solicitando menos do que a convenção nos faculta exigir.</p>
 
-      <h2 id="o-que-fazemos">6. O que fazemos e o que não fazemos com os dados</h2>
-      <p class="dados-destaque"><strong>Finalidade. Representação sindical, cálculo da contribuição devida e respeito às oposições. Nada além.</strong></p>
-      <ul>
+        <h2 id="o-que-fazemos">6. O que fazemos e o que não fazemos com os dados</h2>
+        <p class="doc-destaque"><strong>Finalidade. Representação sindical, cálculo da contribuição devida e respeito às oposições. Nada além.</strong></p>
+        <ul>
         <li><strong>Como recebemos:</strong> os dados são enviados por um token individual, rastreável, revogável e com prazo de validade, que permite apenas enviar. Assim, uma empresa nunca poderá consultar ou listar dados de terceiros. O arquivo fica em repositório privado do SINDCOM, jamais em endereço público.</li>
         <li><strong>Antes de virar cadastro:</strong> nenhuma informação entra na nossa base sem revisão humana e não há gravação automática dos dados a partir da origem externa. Situação que garante segurança de dados e instância de correção humana.</li>
         <li><strong>Rastreabilidade:</strong> cada envio dos contadores e empresas, bem como leitura e registro dos profissionais do SINDCOM ficam registrados de forma imutável, com data e origem.</li>
         <li><strong>Verificação:</strong> o sistema é submetido a testes de segurança com tentativas de invasão deliberadas e ataques de deep hackers. Esses testes ocorrem periodicamente e sempre antes de entrar em operação massiva. Nós não confiamos apenas em tudo que funcione como esperado. Nós simulamos, testamos e corrigimos toda e qualquer fragilidade que possa surgir junto ao avanço tecnológico.</li>
-      </ul>
+        </ul>
 
-      <h2 id="prazo">7. Por quanto tempo guardamos</h2>
-      <p>Enquanto durar o vínculo empregatício e a relação de representação, mantendo os dados atualizados.</p>
-      <p>Se o trabalhador pedir exclusão, o pedido é atendido mediante a apresentação de uma "Carta de Exclusão" entregue por ele. Para quem é filiado (nível OURO), informamos antes que a exclusão implica a perda dos serviços e benefícios da filiação.</p>
-      <p>Após a exclusão ou o fim do vínculo, o registro é reduzido ao mínimo — iniciais do nome e CPF mascarado —, preservando apenas o rastro necessário a auditorias e requisições judiciais. A eliminação definitiva ocorre após 20 anos sem qualquer movimentação.</p>
+        <h2 id="prazo">7. Por quanto tempo guardamos</h2>
+        <p>Enquanto durar o vínculo empregatício e a relação de representação, mantendo os dados atualizados.</p>
+        <p>Se o trabalhador pedir exclusão, o pedido é atendido mediante a apresentação de uma "Carta de Exclusão" entregue por ele. Para quem é filiado (nível OURO), informamos antes que a exclusão implica a perda dos serviços e benefícios da filiação.</p>
+        <p>Após a exclusão ou o fim do vínculo, o registro é reduzido ao mínimo — iniciais do nome e CPF mascarado —, preservando apenas o rastro necessário a auditorias e requisições judiciais. A eliminação definitiva ocorre após 20 anos sem qualquer movimentação.</p>
 
-      <h2 id="direitos">8. Direitos do trabalhador</h2>
-      <p>O SINDCOM disponibiliza ainda os seguintes canais para confirmação, acesso, correção e eliminação de dados pessoais, nos termos do art. 18 da LGPD:</p>
-      <ul>
+        <h2 id="direitos">8. Direitos do trabalhador</h2>
+        <p>O SINDCOM disponibiliza ainda os seguintes canais para confirmação, acesso, correção e eliminação de dados pessoais, nos termos do art. 18 da LGPD:</p>
+        <ul>
         <li><strong>E-mail:</strong> <a href="mailto:juridico@sindcompassos.org">juridico@sindcompassos.org</a></li>
         <li><strong>WhatsApp da Assessoria Jurídica:</strong> <a href="https://wa.me/5535988270406">(35) 98827-0406</a></li>
         <li><strong>Presencialmente:</strong> Av. dos Expedicionários, 137, Centro, Passos/MG — de segunda a sexta-feira, das 08h às 11h e das 13h às 17h</li>
-      </ul>
+        </ul>
 
-      <h2 id="documento-completo">9. Documento completo</h2>
-      <p>A fundamentação integral, com todos os dispositivos legais e a jurisprudência citada, está na Nota Técnica completa: <a href="/downloads/nota-tecnica-01-2026.pdf"><strong>NOTA TÉCNICA nº 01/2026/Sindcom</strong></a>.</p>
+        <h2 id="documento-completo">9. Documento completo</h2>
+        <p>A fundamentação integral, com todos os dispositivos legais e a jurisprudência citada, está na Nota Técnica completa: <a href="/downloads/nota-tecnica-01-2026.pdf"><strong>NOTA TÉCNICA nº 01/2026/Sindcom</strong></a>.</p>
 
-      <a class="dados-arquivo" href="/downloads/nota-tecnica-01-2026.pdf" download>
-        <span class="dados-arquivo__icone" aria-hidden="true">PDF</span>
-        <span class="dados-arquivo__texto">
-          <strong>Nota Técnica nº 01/2026</strong>
-          <span>Arquivo PDF · 13 páginas · 402 KB</span>
+        <a class="doc-arquivo" href="/downloads/nota-tecnica-01-2026.pdf" download>
+        <span class="doc-arquivo__icone" aria-hidden="true">PDF</span>
+        <span class="doc-arquivo__texto">
+        <strong>Nota Técnica nº 01/2026</strong>
+        <span>Arquivo PDF · 13 páginas · 402 KB</span>
         </span>
-        <span class="dados-arquivo__acao">Baixar</span>
-      </a>
+        <span class="doc-arquivo__acao">Baixar</span>
+        </a>
 
-      <p class="dados-assinatura"><strong>Adenilson Antônio Silva — Assessoria Jurídica — OAB/MG 96.522.</strong><br>
-      SINDCOM — Sindicato dos Empregados no Comércio de Passos e Região.<br>
-      Passos/MG, 28 de agosto de 2026.</p>
-    </article>
+        <p class="doc-assinatura"><strong>Adenilson Antônio Silva — Assessoria Jurídica — OAB/MG 96.522.</strong><br>
+        SINDCOM — Sindicato dos Empregados no Comércio de Passos e Região.<br>
+        Passos/MG, 28 de agosto de 2026.</p>
+      </article>
+    </div>
   </div>
 </section>
+
+</div>

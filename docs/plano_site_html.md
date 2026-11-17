@@ -1,6 +1,6 @@
 # Plano de Ação — Site institucional em HTML (v3, 2026-10-29)
 
-> Status: **PROPOSTA, aguardando o "pode começar" do Maxwell.** Nada foi construído nem publicado.
+> Status (2026-11-17): **ETAPA 1 concluída em teste** (11 páginas aprovadas em `novo.sindcompassos.org`); **ETAPA 2 parcial** (componente de formulário pronto, em modo demonstração; SQL 35 e Edge Function escritos, não implantados); **ETAPA 3 não iniciada**. A virada **não** foi feita. Esta tabela é o painel de progresso do site; o resumo está na ETAPA 11 de `specs/plano_fases.md`.
 > Motivo: o WordPress + Elementor + cache NFD EPC derrubou o site em 2026-09-01, 2026-09-09 e 2026-10-29
 > (`orientacoes.md` §1.6–1.9). A causa é a pilha, não o conteúdo.
 
@@ -51,17 +51,17 @@ em Markdown/JSON. Imagens em AVIF/WebP com `srcset` (17 MB devem cair para cerca
 quando aparecem na tela. CCTs e Nota Técnica em `/downloads/`, com nomes limpos. A biblioteca de livros e cartilhas
 **fica de fora**.
 
-| WP | Entrega | Depende de | Paralelo? |
-|---|---|---|---|
-| 1.0 | **Fundação:** Eleventy, tokens, layout, cabeçalho/rodapé, fontes locais, pipeline de imagens, Lighthouse da página-modelo | nada | Não, é a base |
-| 1.1 | Extração: textos, links e imagens realmente usadas por página; mapa de URLs antigas → novas | nada | Sim, junto com 1.0 |
-| 1.2 | Home + Institucional (mapa Leaflet) + Termos + Dados (Nota Técnica) | 1.0, 1.1 | Sim |
-| 1.3 | Serviços (CCTs) + Benefícios | 1.0, 1.1 | Sim |
-| 1.4 | Contato + Filie-se + Denuncie + Currículo + Vaga (visual completo; o formulário real entra na Etapa 2) | 1.0, 1.1 | Sim |
-| 1.5 | SEO e acessibilidade: sitemap, robots, dados estruturados, 301 das URLs antigas | 1.2–1.4 | Não |
-| 1.6 | Subdomínio de teste criado no cPanel (aba aberta por comando seu) e site publicado nele | 1.5 | Não |
-| 1.7 | **Virada:** só depois da Etapa 2 (§4). HTTPS e HSTS mantidos (§1.5 do `orientacoes.md`) | 2.7 | Não |
-| 1.8 | Aposentadoria: WordPress desativado por 30 dias como rollback, depois remoção do plugin de cache | 1.7 | Não |
+| WP | Entrega | Depende de | Paralelo? | Status |
+|---|---|---|---|---|
+| 1.0 | **Fundação:** Eleventy, tokens, layout, cabeçalho/rodapé, fontes locais, pipeline de imagens, Lighthouse da página-modelo | nada | Não, é a base | ✅ |
+| 1.1 | Extração: textos, links e imagens realmente usadas por página; mapa de URLs antigas → novas | nada | Sim, junto com 1.0 | ✅ |
+| 1.2 | Home + Institucional (mapa Leaflet) + Termos + Dados (Nota Técnica) | 1.0, 1.1 | Sim | ✅ |
+| 1.3 | Serviços (CCTs) + Benefícios | 1.0, 1.1 | Sim | ✅ |
+| 1.4 | Contato + Filie-se + Denuncie + Currículo + Vaga (visual completo; o formulário real entra na Etapa 2) | 1.0, 1.1 | Sim | ✅ visual; formulário em demonstração |
+| 1.5 | SEO e acessibilidade: sitemap, robots, dados estruturados, 301 das URLs antigas | 1.2–1.4 | Não | ✅ |
+| 1.6 | Subdomínio de teste criado no cPanel (aba aberta por comando seu) e site publicado nele | 1.5 | Não | ✅ (`novo.sindcompassos.org`) |
+| 1.7 | **Virada:** só depois da Etapa 2 (§4). HTTPS e HSTS mantidos (§1.5 do `orientacoes.md`) | 2.7 | Não | ⬜ aguarda Etapa 2 e portão |
+| 1.8 | Aposentadoria: WordPress desativado por 30 dias como rollback, depois remoção do plugin de cache | 1.7 | Não | ⬜ |
 
 **Critérios de aceite:** Lighthouse ≥ 95 no celular, LCP < 2 s, home < 500 KB sem imagens; 11/11 páginas conferidas lado a lado; nenhuma requisição a domínio do Google
 (conferido no painel de rede); `site/` ausente do `git ls-files`.
@@ -101,17 +101,17 @@ consentimento LGPD com o texto da página de Termos, tipo e tamanho de anexo val
 Denúncia anônima: sem IP e sem e-mail obrigatório. Tabelas novas com RLS (negação por padrão) e testes
 em `tests/rls` + `tests/adversarial` **antes** de qualquer tela.
 
-| WP | Entrega | Depende de | Paralelo? |
-|---|---|---|---|
-| 2.0 | **Spike:** testar A/B/C, Turnstile, anexo por e-mail; esqueleto compartilhado (validação, gravação, limite) | 1.6 | Não |
-| 2.1 | SQL: tabelas, RLS, marca "e-mail pendente", retenção; testes RLS | 2.0 | Não |
-| 2.2 | Contato | 2.1 | Sim |
-| 2.3 | Denúncia (anexos, modo anônimo) | 2.1 | Sim |
-| 2.4 | Currículo + Vaga (moderação) | 2.1 | Sim |
-| 2.5 | Filiação (reaproveita a função do CRM; a ponte do Google Apps Script deixa de existir) | 2.1 | Sim |
-| 2.6 | Componente de formulário único (estética Sindcom, erros/sucesso, acessível) ligado a cada função | 2.2–2.5 | Parcialmente |
-| 2.7 | **Portão adversarial** (varredura de catálogo, funções expostas, endpoints públicos, abuso de upload) | 2.2–2.6 | Não |
-| 2.8 | Migração do histórico: contato (≈65), denúncia (≈18) e comunicado (≈4, entram como denúncia), por script local lendo `site/forms/`. **Eu vou ler esses dados pessoais** para importá-los; o script não é commitado | 2.1 | Sim |
+| WP | Entrega | Depende de | Paralelo? | Status |
+|---|---|---|---|---|
+| 2.0 | **Spike:** testar A/B/C, Turnstile, anexo por e-mail; esqueleto compartilhado (validação, gravação, limite) | 1.6 | Não | ⬜ (e-mail real adiado) |
+| 2.1 | SQL: tabelas, RLS, marca "e-mail pendente", retenção; testes RLS | 2.0 | Não | 🟡 SQL 35 e testes escritos, não aplicados |
+| 2.2 | Contato | 2.1 | Sim | 🟡 função escrita, não implantada |
+| 2.3 | Denúncia (anexos, modo anônimo) | 2.1 | Sim | 🟡 idem |
+| 2.4 | Currículo + Vaga (moderação) | 2.1 | Sim | 🟡 idem |
+| 2.5 | Filiação (reaproveita a função do CRM; a ponte do Google Apps Script deixa de existir) | 2.1 | Sim | 🟡 idem |
+| 2.6 | Componente de formulário único (estética Sindcom, erros/sucesso, acessível) ligado a cada função | 2.2–2.5 | Parcialmente | ✅ componente único (modelo: Contato) |
+| 2.7 | **Portão adversarial** (varredura de catálogo, funções expostas, endpoints públicos, abuso de upload) | 2.2–2.6 | Não | ⬜ |
+| 2.8 | Migração do histórico: contato (≈65), denúncia (≈18) e comunicado (≈4, entram como denúncia), por script local lendo `site/forms/`. **Eu vou ler esses dados pessoais** para importá-los; o script não é commitado | 2.1 | Sim | ⬜ |
 
 **Critérios de aceite:** cada formulário de teste chega na caixa certa **e** está no banco; falha de envio simulada não
 perde o texto; anônimo não lê nada das tabelas; sem token do Turnstile o envio é recusado; relatório do portão
@@ -119,13 +119,13 @@ entregue e **parado aguardando seu merge**. Dado de teste é removido ao fim de 
 
 ## 5. ETAPA 3 — Integração dentro do CRM
 
-| WP | Entrega | Quem vê (por RLS) |
-|---|---|---|
-| 3.1 | Aba **Jurídico**: denúncias (lista, detalhe, urgência, status, responsável) | Admin e Jurídico |
-| 3.2 | Notificações no sino para cada novo envio | por papel |
-| 3.3 | Filiações pendentes na fila de aprovação (a regra "não aprovar sem ordem" continua) | Admin e Secretaria |
-| 3.4 | Caixa de mensagens do site (contato) | Admin e Secretaria |
-| 3.5 | Moderação de vagas, com publicação automática no site | Admin e Secretaria |
+| WP | Entrega | Quem vê (por RLS) | Status |
+|---|---|---|---|
+| 3.1 | Aba **Jurídico**: denúncias (lista, detalhe, urgência, status, responsável) | Admin e Jurídico | ⬜ |
+| 3.2 | Notificações no sino para cada novo envio | por papel | ⬜ |
+| 3.3 | Filiações pendentes na fila de aprovação (a regra "não aprovar sem ordem" continua) | Admin e Secretaria | ⬜ |
+| 3.4 | Caixa de mensagens do site (contato) | Admin e Secretaria | ⬜ |
+| 3.5 | Moderação de vagas, com publicação automática no site | Admin e Secretaria | ⬜ |
 
 **Ordem de virada:** o formulário de **denúncia só vai ao ar depois do WP 3.1**, senão ninguém lê o relato.
 Os demais (contato, currículo, vaga, filiação) já entregam tudo por e-mail e podem ir antes. Cada WP segue as regras do

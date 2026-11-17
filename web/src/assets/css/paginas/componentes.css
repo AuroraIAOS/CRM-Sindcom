@@ -55,3 +55,36 @@
 
 .municipios{columns:3 220px;column-gap:var(--e-md);padding-left:1.2em;margin:var(--e-md) 0}
 .municipios li{margin-bottom:6px;break-inside:avoid}
+
+/* Duas colunas texto+animação | formulário (modelo Contato) */
+.fale{display:grid;gap:var(--e-lg);align-items:start}
+@media (min-width:900px){.fale{grid-template-columns:1fr 1.1fr}}
+.fale__form .form-site{max-width:none}
+/* Distribuição lateral: texto e animação formam um bloco único, centralizado na altura do formulário */
+.fale{align-items:stretch}
+.fale__texto{display:flex;flex-direction:column;justify-content:center;gap:0}
+.fale__lottie{width:min(100%,320px);margin:var(--e-md) auto 0}
+/* Três perfis */
+.perfis{display:grid;gap:var(--e-sm);grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));margin:var(--e-md) 0 var(--e-lg);align-items:stretch}
+.perfil{display:flex;flex-direction:column;background:var(--cor-fundo-02);border-radius:20px;overflow:hidden}
+.perfil__topo{display:flex;align-items:center;gap:12px;margin:0;padding:10px 16px;background:var(--cor-realce);color:#fff;font:400 22px/1.2 var(--font-titulo);border-radius:0 0 18px 18px}
+.perfil__selo{width:40px;height:auto}
+.perfil__corpo{padding:var(--e-sm)}
+.perfil__corpo p{font-size:15px;margin:0 0 10px}
+.perfil__corpo p.perfil__recebe{color:var(--cor-realce);font-weight:700}
+.checks{list-style:none;padding:0;margin:0 0 var(--e-sm)}
+.checks li{padding-left:26px;position:relative;margin-bottom:6px;font-size:15px;color:var(--cor-texto-02)}
+.checks li::before{content:"✓";position:absolute;left:0;color:#2e7d32;font-weight:700}
+
+/* A pergunta é simples */
+.pergunta__texto{text-align:center}
+.pergunta__texto .sb{font-size:clamp(24px,4vw,30px)}
+
+.direitos{display:grid;gap:var(--e-md);grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));margin:var(--e-lg) 0 var(--e-md)}
+.direito{text-align:left}
+.direito .ic{width:56px;height:56px;margin-bottom:var(--e-xs)}
+.direito ul{padding-left:1.2em;margin:0}
+.direito li{margin-bottom:4px}
+.subtitulo-custo{margin:0 0 var(--e-sm)}
+.sigilo{max-width:820px}
+@media (min-width:900px){.fale--longo .fale__texto{align-self:start;justify-content:flex-start;position:sticky;top:110px}}

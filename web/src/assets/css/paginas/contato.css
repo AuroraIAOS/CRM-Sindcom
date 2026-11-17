@@ -1,7 +1,4 @@
-.fale{display:grid;gap:var(--e-lg);align-items:start}
-@media (min-width:900px){.fale{grid-template-columns:1fr 1.1fr}}
 
-.fale__form .form-site{max-width:none}
 
 .contatos-card{display:grid;gap:var(--e-sm) var(--e-md);grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));background:var(--cor-fundo-01);border-radius:24px;padding:var(--e-md);margin:var(--e-md) 0}
 .contatos-card dt{color:var(--cor-realce);font-weight:700;font-size:16px}
@@ -17,7 +14,3 @@
 @media (min-width:800px){.regiao-topo{grid-template-columns:1fr 1fr;align-items:center}}
 .regiao-topo p{margin:0}
 
-/* Distribuição lateral: texto e animação formam um bloco único, centralizado na altura do formulário */
-.fale{align-items:stretch}
-.fale__texto{display:flex;flex-direction:column;justify-content:center;gap:0}
-.fale__lottie{width:min(100%,320px);margin:var(--e-md) auto 0}

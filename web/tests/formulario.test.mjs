@@ -75,3 +75,12 @@ test('erroCampo: obrigatório, limite e consentimento', () => {
   assert.match(V.erroCampo('consent', '', { obrigatorio: true }), /Marque/);
   assert.match(V.erroCampo('email', 'ruim', { obrigatorio: true }), /e-mail válido/);
 });
+
+test('CSS: campo condicional oculto não pode ser reexibido por display do componente; sem "(opcional)" nos rótulos', () => {
+  const css = readFileSync(new URL('../src/assets/css/paginas/formulario.css', import.meta.url), 'utf8');
+  assert.match(css, /\.campo\[hidden\]\s*\{\s*display:\s*none/);
+  const tpl = readFileSync(new URL('../src/_includes/formulario.njk', import.meta.url), 'utf8');
+  assert.doesNotMatch(tpl, /\(opcional\)/);
+  const dados = readFileSync(new URL('../src/_data/formularios.json', import.meta.url), 'utf8');
+  assert.doesNotMatch(dados, /\(opcional\)/);
+});

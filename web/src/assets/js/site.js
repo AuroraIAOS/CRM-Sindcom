@@ -21,10 +21,19 @@ document.documentElement.classList.add('js');
 quandoVisivel('[data-revelar]', (el) => el.classList.add('revelado'));
 
 // <div data-lottie="/assets/lottie/denuncia.json" role="img" aria-label="..."> — carrega o player só quando visível
-quandoVisivel('[data-lottie]', (el) => {
-  if (reduzMovimento) return;
+// A biblioteca é carregada UMA vez e compartilhada: injetá-la de novo por animação quebrava a segunda (escudo cortado no rodapé)
+let lottieP;
+const carregarLottie = () => (lottieP ??= new Promise((ok, erro) => {
+  if (window.lottie) return ok(window.lottie);
   const s = document.createElement('script');
   s.src = '/assets/js/lottie.min.js';
-  s.onload = () => window.lottie.loadAnimation({ container: el, path: el.dataset.lottie, renderer: 'svg', loop: true, autoplay: true });
+  s.onload = () => ok(window.lottie); s.onerror = erro;
   document.head.appendChild(s);
+}));
+quandoVisivel('[data-lottie]', async (el) => {
+  if (reduzMovimento) return;
+  try {
+    const l = await carregarLottie();
+    l.loadAnimation({ container: el, path: el.dataset.lottie, renderer: 'svg', loop: true, autoplay: true });
+  } catch { /* sem animação: o texto da página continua completo */ }
 });

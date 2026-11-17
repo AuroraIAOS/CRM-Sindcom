@@ -15,10 +15,11 @@
         {% if c.tipo == "radio" or c.tipo == "checkboxes" %}
         <fieldset class="campo__grupo" data-nome="{{ c.nome }}" data-tipo="{{ c.tipo }}"{% if c.obrigatorio %} data-obrigatorio="1"{% endif %} aria-describedby="erro-{{ id }}">
           <legend>{{ c.rotulo }}{% if c.obrigatorio %} <span class="obrig" aria-hidden="true">*</span>{% endif %}</legend>
+          {% if c.ajuda %}<p class="ajuda" id="ajuda-{{ id }}">{{ c.ajuda }}</p>{% endif %}
           {% for o in c.opcoes %}<label class="opcao"><input type="{{ 'radio' if c.tipo == 'radio' else 'checkbox' }}" name="{{ c.nome }}" value="{{ o.v }}"> <span>{{ o.t }}</span></label>{% endfor %}
         </fieldset>
         {% else %}
-        <label for="{{ id }}">{{ c.rotulo }}{% if c.obrigatorio %} <span class="obrig" aria-hidden="true">*</span>{% else %} <span class="opcional">(opcional)</span>{% endif %}</label>
+        <label for="{{ id }}">{{ c.rotulo }}{% if c.obrigatorio %} <span class="obrig" aria-hidden="true">*</span>{% endif %}</label>
         {% if c.ajuda %}<p class="ajuda" id="ajuda-{{ id }}">{{ c.ajuda }}</p>{% endif %}
         {% if c.tipo == "textarea" %}
         <textarea id="{{ id }}" name="{{ c.nome }}" rows="{{ c.linhas or 4 }}" data-tipo="textarea"{% if c.max %} maxlength="{{ c.max }}"{% endif %}{% if c.obrigatorio %} data-obrigatorio="1" aria-required="true"{% endif %} aria-describedby="erro-{{ id }}{% if c.ajuda %} ajuda-{{ id }}{% endif %}"></textarea>

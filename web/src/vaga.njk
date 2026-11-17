@@ -1,47 +1,43 @@
 ---
 layout: base.njk
 titulo: Vagas e Oportunidades
-descricao: Empreendedor, cadastre as vagas da sua empresa. Trabalhador, encontre oportunidades no comércio de Passos e região com o SINDCOM.
+descricao: Empreendedor, cadastre as vagas da sua empresa no SINDCOM, que conecta empresas e trabalhadores do comércio de Passos e região.
 permalink: /vaga/
-css: [vaga, formulario]
+css: [componentes, formulario, rodape-completo]
 scripts: [validacao, formulario]
+rodapeCompleto: true
 ---
-<section class="hero"><div class="container duas-col" id="cadastroV">
-  <div data-revelar>
-    <h1>Vagas e Oportunidades</h1>
-    <p class="lead">Empreendedor, cadastre aqui suas vagas e oportunidades de trabalho.</p>
-    <a class="botao" href="#formulario">Cadastrar vaga</a>
-  </div>
-  <div class="lottie" data-lottie="/assets/lottie/documentos.json" role="img" aria-label="Animação de documentos, representando o cadastro de vagas"></div>
-</div></section>
+{% include "icones.njk" %}
+{# TODO Etapa 3: a vaga cadastrada será moderada (Admin/Secretaria) no CRM; nenhuma listagem pública existe por enquanto. Currículos nunca são listados publicamente. #}
+<div class="pg">
 
-<section class="secao"><div class="container">
-  {% set formNome = "vaga" %}{% include "formulario.njk" %}
-</div></section>
-
-<section class="secao secao--alt" id="bancoV"><div class="container chamada" data-revelar>
-  <h2>Trabalhador, encontre aqui vagas e oportunidades do seu interesse</h2>
-  <p class="lead">Oportunidades à vista!</p>
-  <p>Aqui, o SINDCOM conecta trabalhadores e empresas do comércio de Passos e Região através do cadastro e oferta de <strong>vagas de emprego.</strong></p>
-  <p>Nosso banco de vagas é organizado por áreas do comércio, facilitando sua busca.</p>
-  <p>Consulte vagas atualizadas. Encontre oportunidades alinhadas ao seu perfil.</p>
-  <a class="botao" href="/curriculo/">Cadastrar meu currículo</a>
-</div></section>
-
-{# TODO Etapa 3: a listagem de vagas aprovadas virá do CRM (moderadas por Admin/Secretaria) e será renderizada
-   nesta seção; remover o atributo "hidden" quando houver dados. Currículos nunca são listados publicamente. #}
-<section id="vagas-abertas" hidden>
+<section class="pagina-topo">
   <div class="container">
-    <h2>Vagas abertas</h2>
+    <div class="tp"><h1 class="tp__titulo"><span class="tp__nome">Vagas e Oportunidades</span></h1></div>
   </div>
 </section>
 
-<section class="secao"><div class="container duas-col">
-  <div class="lottie" data-lottie="/assets/lottie/denuncia.json" role="img" aria-label="Animação de alerta, representando a denúncia de irregularidades"></div>
-  <div data-revelar>
-    <h2>Denúncia anônima</h2>
-    <p>Direitos trabalhistas não são favores. São garantias legais.</p>
-    <p>Caso você tenha identificado possíveis irregularidades, registre sua denúncia de forma segura e anônima.</p>
-    <a class="botao" href="/denuncie/">Denuncie aqui!</a>
+<section class="secao" id="cadastroV">
+  <div class="container fale fale--longo">
+    <div class="fale__texto" data-revelar>
+      <h2 class="st">Empreendedor, cadastre aqui suas vagas e oportunidades de trabalho</h2>
+      <p>Aqui, o SINDCOM conecta trabalhadores e empresas do comércio de Passos e Região através do cadastro e oferta de <strong>vagas de emprego.</strong></p>
+      <p class="chamada-v">Preencha o formulário e cadastre a vaga da sua empresa.</p>
+      <div class="lottie fale__lottie" data-lottie="/assets/lottie/documentos.json" role="img" aria-label="Animação de documentos, representando o cadastro de vagas"></div>
+    </div>
+    <div class="fale__form">
+      {% set formNome = "vaga" %}{% include "formulario.njk" %}
+    </div>
   </div>
-</div></section>
+</section>
+
+<section class="secao secao--alt chamada-final">
+  <div class="container centro">
+    <h2 class="st st--centro st--sem-barra chamada-final__titulo">Trabalhador, cadastre seu currículo</h2>
+    <div class="divisor-icone" aria-hidden="true"><svg class="ic"><use href="#i-balanca"/></svg></div>
+    <p class="chamada-final__texto">O SINDCOM conecta os profissionais e empreendedores do comércio de Passos e Região.</p>
+    <p><a class="botao" href="/curriculo/">Cadastrar meu currículo</a></p>
+  </div>
+</section>
+
+</div>

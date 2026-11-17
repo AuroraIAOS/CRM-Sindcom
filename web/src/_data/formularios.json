@@ -4,8 +4,43 @@
   "turnstileChaveEhTeste": true,
   "maxArquivoMB": 5,
   "listas": {
-    "uf": ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"],
-    "estadoCivil": ["Solteiro(a)","Casado(a)","União estável","Separado(a)","Divorciado(a)","Viúvo(a)"]
+    "uf": [
+      "AC",
+      "AL",
+      "AP",
+      "AM",
+      "BA",
+      "CE",
+      "DF",
+      "ES",
+      "GO",
+      "MA",
+      "MT",
+      "MS",
+      "MG",
+      "PA",
+      "PB",
+      "PR",
+      "PE",
+      "PI",
+      "RJ",
+      "RN",
+      "RS",
+      "RO",
+      "RR",
+      "SC",
+      "SP",
+      "SE",
+      "TO"
+    ],
+    "estadoCivil": [
+      "Solteiro(a)",
+      "Casado(a)",
+      "União estável",
+      "Separado(a)",
+      "Divorciado(a)",
+      "Viúvo(a)"
+    ]
   },
   "formularios": {
     "contato": {
@@ -13,18 +48,73 @@
       "enviar": "Enviar mensagem",
       "sucesso": "Mensagem enviada. Responderemos pelo e-mail ou telefone informado.",
       "secoes": [
-        { "campos": [
-          { "nome": "nome", "largura": "inteira", "rotulo": "Nome completo", "tipo": "texto", "obrigatorio": true, "max": 120, "autocomplete": "name" },
-          { "nome": "telefone", "rotulo": "Telefone celular (com DDD)", "tipo": "tel", "obrigatorio": true, "autocomplete": "tel-national" },
-          { "nome": "email", "rotulo": "E-mail", "tipo": "email", "obrigatorio": true, "max": 160, "autocomplete": "email" },
-          { "nome": "cidade", "rotulo": "Cidade de residência", "tipo": "texto", "obrigatorio": true, "max": 80, "autocomplete": "address-level2" },
-          { "nome": "estado", "rotulo": "Estado", "tipo": "select", "lista": "uf", "obrigatorio": true, "autocomplete": "address-level1" },
-          { "nome": "assunto", "largura": "inteira", "rotulo": "Assunto", "tipo": "texto", "obrigatorio": true, "max": 60 },
-          { "nome": "mensagem", "largura": "inteira", "rotulo": "Mensagem", "tipo": "textarea", "obrigatorio": true, "max": 5000, "linhas": 6 }
-        ]}
+        {
+          "campos": [
+            {
+              "nome": "nome",
+              "largura": "inteira",
+              "rotulo": "Nome completo",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 120,
+              "autocomplete": "name"
+            },
+            {
+              "nome": "telefone",
+              "rotulo": "Telefone celular (com DDD)",
+              "tipo": "tel",
+              "obrigatorio": true,
+              "autocomplete": "tel-national"
+            },
+            {
+              "nome": "email",
+              "rotulo": "E-mail",
+              "tipo": "email",
+              "obrigatorio": true,
+              "max": 160,
+              "autocomplete": "email"
+            },
+            {
+              "nome": "cidade",
+              "rotulo": "Cidade de residência",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 80,
+              "autocomplete": "address-level2"
+            },
+            {
+              "nome": "estado",
+              "rotulo": "Estado",
+              "tipo": "select",
+              "lista": "uf",
+              "obrigatorio": true,
+              "autocomplete": "address-level1"
+            },
+            {
+              "nome": "assunto",
+              "largura": "inteira",
+              "rotulo": "Assunto",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 60
+            },
+            {
+              "nome": "mensagem",
+              "largura": "inteira",
+              "rotulo": "Mensagem",
+              "tipo": "textarea",
+              "obrigatorio": true,
+              "max": 5000,
+              "linhas": 6
+            }
+          ]
+        }
       ],
       "consentimento": [
-        { "nome": "consentimento", "texto": "Li e concordo com os <a href=\"/termos/#politica-de-privacidade\" target=\"_blank\" rel=\"noopener\">Termos e a Política de Privacidade</a> e autorizo o uso destes dados para responder à minha mensagem." }
+        {
+          "nome": "consentimento",
+          "texto": "Li e concordo com os <a href=\"/termos/#politica-de-privacidade\" target=\"_blank\" rel=\"noopener\">Termos e a Política de Privacidade</a> e autorizo o uso destes dados para responder à minha mensagem."
+        }
       ]
     },
     "curriculo": {
@@ -32,17 +122,64 @@
       "enviar": "Enviar currículo",
       "sucesso": "Currículo recebido. Obrigado por se cadastrar.",
       "secoes": [
-        { "campos": [
-          { "nome": "nome", "rotulo": "Nome completo", "tipo": "texto", "obrigatorio": true, "max": 120, "autocomplete": "name" },
-          { "nome": "telefone", "rotulo": "Telefone (com DDD)", "tipo": "tel", "obrigatorio": true, "autocomplete": "tel-national" },
-          { "nome": "email", "rotulo": "E-mail", "tipo": "email", "obrigatorio": true, "max": 160, "autocomplete": "email" },
-          { "nome": "cidade", "rotulo": "Cidade de residência", "tipo": "texto", "obrigatorio": true, "max": 80, "autocomplete": "address-level2" },
-          { "nome": "area_interesse", "rotulo": "Área de interesse", "tipo": "texto", "obrigatorio": true, "max": 100, "ajuda": "Ex.: vendas, caixa, estoque, atendimento." },
-          { "nome": "anexo", "rotulo": "Currículo (PDF, DOC ou DOCX, até 5 MB)", "tipo": "arquivo", "obrigatorio": true, "accept": ".pdf,.doc,.docx", "maxArquivos": 1 }
-        ]}
+        {
+          "campos": [
+            {
+              "nome": "nome",
+              "rotulo": "Nome completo",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 120,
+              "autocomplete": "name",
+              "largura": "inteira"
+            },
+            {
+              "nome": "telefone",
+              "rotulo": "Telefone (com DDD)",
+              "tipo": "tel",
+              "obrigatorio": true,
+              "autocomplete": "tel-national"
+            },
+            {
+              "nome": "email",
+              "rotulo": "E-mail",
+              "tipo": "email",
+              "obrigatorio": true,
+              "max": 160,
+              "autocomplete": "email"
+            },
+            {
+              "nome": "cidade",
+              "rotulo": "Cidade de residência",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 80,
+              "autocomplete": "address-level2"
+            },
+            {
+              "nome": "area_interesse",
+              "rotulo": "Área de interesse",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 100,
+              "ajuda": "Ex.: vendas, caixa, estoque, atendimento."
+            },
+            {
+              "nome": "anexo",
+              "rotulo": "Currículo (PDF, DOC ou DOCX, até 5 MB)",
+              "tipo": "arquivo",
+              "obrigatorio": true,
+              "accept": ".pdf,.doc,.docx",
+              "maxArquivos": 1
+            }
+          ]
+        }
       ],
       "consentimento": [
-        { "nome": "consentimento", "texto": "Li e concordo com os <a href=\"/termos/#politica-de-privacidade\" target=\"_blank\" rel=\"noopener\">Termos e a Política de Privacidade</a> e autorizo o SINDCOM a tratar meu currículo para esta finalidade." }
+        {
+          "nome": "consentimento",
+          "texto": "Li e concordo com os <a href=\"/termos/#politica-de-privacidade\" target=\"_blank\" rel=\"noopener\">Termos e a Política de Privacidade</a> e autorizo o SINDCOM a tratar meu currículo para esta finalidade."
+        }
       ]
     },
     "vaga": {
@@ -50,21 +187,83 @@
       "enviar": "Enviar vaga",
       "sucesso": "Vaga recebida. Ela será analisada pela equipe do SINDCOM antes de ser divulgada.",
       "secoes": [
-        { "titulo": "A empresa", "campos": [
-          { "nome": "empresa", "rotulo": "Nome da empresa", "tipo": "texto", "obrigatorio": true, "max": 120 },
-          { "nome": "cnpj", "rotulo": "CNPJ", "tipo": "cnpj", "obrigatorio": true },
-          { "nome": "contato_nome", "rotulo": "Nome do responsável", "tipo": "texto", "obrigatorio": true, "max": 120, "autocomplete": "name" },
-          { "nome": "telefone", "rotulo": "Telefone (com DDD)", "tipo": "tel", "obrigatorio": true, "autocomplete": "tel-national" },
-          { "nome": "email", "rotulo": "E-mail", "tipo": "email", "obrigatorio": true, "max": 160, "autocomplete": "email" }
-        ]},
-        { "titulo": "A vaga", "campos": [
-          { "nome": "cargo", "rotulo": "Cargo", "tipo": "texto", "obrigatorio": true, "max": 100 },
-          { "nome": "descricao", "rotulo": "Descrição da vaga", "tipo": "textarea", "obrigatorio": true, "max": 3000, "linhas": 5 },
-          { "nome": "requisitos", "rotulo": "Requisitos", "tipo": "textarea", "obrigatorio": false, "max": 2000, "linhas": 4 }
-        ]}
+        {
+          "titulo": "A empresa",
+          "campos": [
+            {
+              "nome": "empresa",
+              "rotulo": "Nome da empresa",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 120,
+              "largura": "inteira"
+            },
+            {
+              "nome": "cnpj",
+              "rotulo": "CNPJ",
+              "tipo": "cnpj",
+              "obrigatorio": true
+            },
+            {
+              "nome": "contato_nome",
+              "rotulo": "Nome do responsável",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 120,
+              "autocomplete": "name"
+            },
+            {
+              "nome": "telefone",
+              "rotulo": "Telefone (com DDD)",
+              "tipo": "tel",
+              "obrigatorio": true,
+              "autocomplete": "tel-national"
+            },
+            {
+              "nome": "email",
+              "rotulo": "E-mail",
+              "tipo": "email",
+              "obrigatorio": true,
+              "max": 160,
+              "autocomplete": "email"
+            }
+          ]
+        },
+        {
+          "titulo": "A vaga",
+          "campos": [
+            {
+              "nome": "cargo",
+              "rotulo": "Cargo",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 100,
+              "largura": "inteira"
+            },
+            {
+              "nome": "descricao",
+              "rotulo": "Descrição da vaga",
+              "tipo": "textarea",
+              "obrigatorio": true,
+              "max": 3000,
+              "linhas": 5
+            },
+            {
+              "nome": "requisitos",
+              "rotulo": "Requisitos",
+              "tipo": "textarea",
+              "obrigatorio": false,
+              "max": 2000,
+              "linhas": 4
+            }
+          ]
+        }
       ],
       "consentimento": [
-        { "nome": "consentimento", "texto": "Li e concordo com os <a href=\"/termos/#politica-de-privacidade\" target=\"_blank\" rel=\"noopener\">Termos e a Política de Privacidade</a> e autorizo o SINDCOM a analisar e divulgar esta vaga." }
+        {
+          "nome": "consentimento",
+          "texto": "Li e concordo com os <a href=\"/termos/#politica-de-privacidade\" target=\"_blank\" rel=\"noopener\">Termos e a Política de Privacidade</a> e autorizo o SINDCOM a analisar e divulgar esta vaga."
+        }
       ]
     },
     "filiacao": {
@@ -72,32 +271,150 @@
       "enviar": "Enviar pedido de filiação",
       "sucesso": "Pedido de filiação recebido. A Secretaria do SINDCOM entrará em contato.",
       "secoes": [
-        { "titulo": "Seus dados", "campos": [
-          { "nome": "nome", "rotulo": "Nome completo", "tipo": "texto", "obrigatorio": true, "max": 120, "autocomplete": "name" },
-          { "nome": "cpf", "rotulo": "CPF", "tipo": "cpf", "obrigatorio": true },
-          { "nome": "data_nascimento", "rotulo": "Data de nascimento", "tipo": "data", "obrigatorio": true, "autocomplete": "bday" },
-          { "nome": "pis_pasep", "rotulo": "PIS/PASEP", "tipo": "pis", "obrigatorio": false },
-          { "nome": "estado_civil", "rotulo": "Estado civil", "tipo": "select", "lista": "estadoCivil", "obrigatorio": true },
-          { "nome": "telefone", "rotulo": "Telefone principal (com DDD)", "tipo": "tel", "obrigatorio": true, "autocomplete": "tel-national" },
-          { "nome": "email", "rotulo": "E-mail pessoal", "tipo": "email", "obrigatorio": true, "max": 160, "autocomplete": "email" },
-          { "nome": "endereco", "rotulo": "Endereço completo", "tipo": "texto", "obrigatorio": true, "max": 200, "autocomplete": "street-address" },
-          { "nome": "municipio", "rotulo": "Município de residência", "tipo": "texto", "obrigatorio": true, "max": 80, "autocomplete": "address-level2" }
-        ]},
-        { "titulo": "Onde você trabalha", "campos": [
-          { "nome": "empresa", "rotulo": "Nome da empresa", "tipo": "texto", "obrigatorio": true, "max": 120 },
-          { "nome": "cnpj_empresa", "rotulo": "CNPJ da empresa", "tipo": "cnpj", "obrigatorio": true },
-          { "nome": "cidade_empresa", "rotulo": "Cidade do estabelecimento", "tipo": "texto", "obrigatorio": true, "max": 80 },
-          { "nome": "cargo", "rotulo": "Cargo ou função", "tipo": "texto", "obrigatorio": true, "max": 100 },
-          { "nome": "telefone_rh", "rotulo": "Telefone do RH da empresa", "tipo": "tel", "obrigatorio": false },
-          { "nome": "email_rh", "rotulo": "E-mail do RH da empresa", "tipo": "email", "obrigatorio": false, "max": 160 }
-        ]},
-        { "titulo": "Documentos", "campos": [
-          { "nome": "documentos", "rotulo": "Documentos solicitados (PDF, JPG ou PNG, até 5 arquivos de 5 MB)", "tipo": "arquivo", "obrigatorio": false, "accept": ".pdf,.jpg,.jpeg,.png", "maxArquivos": 5, "ajuda": "Se preferir, você pode entregar os documentos na sede." }
-        ]}
+        {
+          "titulo": "Seus dados",
+          "campos": [
+            {
+              "nome": "nome",
+              "rotulo": "Nome completo",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 120,
+              "autocomplete": "name",
+              "largura": "inteira"
+            },
+            {
+              "nome": "cpf",
+              "rotulo": "CPF",
+              "tipo": "cpf",
+              "obrigatorio": true
+            },
+            {
+              "nome": "data_nascimento",
+              "rotulo": "Data de nascimento",
+              "tipo": "data",
+              "obrigatorio": true,
+              "autocomplete": "bday"
+            },
+            {
+              "nome": "pis_pasep",
+              "rotulo": "PIS/PASEP",
+              "tipo": "pis",
+              "obrigatorio": false
+            },
+            {
+              "nome": "estado_civil",
+              "rotulo": "Estado civil",
+              "tipo": "select",
+              "lista": "estadoCivil",
+              "obrigatorio": true
+            },
+            {
+              "nome": "telefone",
+              "rotulo": "Telefone principal (com DDD)",
+              "tipo": "tel",
+              "obrigatorio": true,
+              "autocomplete": "tel-national"
+            },
+            {
+              "nome": "email",
+              "rotulo": "E-mail pessoal",
+              "tipo": "email",
+              "obrigatorio": true,
+              "max": 160,
+              "autocomplete": "email"
+            },
+            {
+              "nome": "endereco",
+              "rotulo": "Endereço completo",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 200,
+              "autocomplete": "street-address",
+              "largura": "inteira"
+            },
+            {
+              "nome": "municipio",
+              "rotulo": "Município de residência",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 80,
+              "autocomplete": "address-level2",
+              "largura": "inteira"
+            }
+          ]
+        },
+        {
+          "titulo": "Onde você trabalha",
+          "campos": [
+            {
+              "nome": "empresa",
+              "rotulo": "Nome da empresa",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 120,
+              "largura": "inteira"
+            },
+            {
+              "nome": "cnpj_empresa",
+              "rotulo": "CNPJ da empresa",
+              "tipo": "cnpj",
+              "obrigatorio": true
+            },
+            {
+              "nome": "cidade_empresa",
+              "rotulo": "Cidade do estabelecimento",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 80
+            },
+            {
+              "nome": "cargo",
+              "rotulo": "Cargo ou função",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 100,
+              "largura": "inteira"
+            },
+            {
+              "nome": "telefone_rh",
+              "rotulo": "Telefone do RH da empresa",
+              "tipo": "tel",
+              "obrigatorio": false
+            },
+            {
+              "nome": "email_rh",
+              "rotulo": "E-mail do RH da empresa",
+              "tipo": "email",
+              "obrigatorio": false,
+              "max": 160
+            }
+          ]
+        },
+        {
+          "titulo": "Documentos",
+          "campos": [
+            {
+              "nome": "documentos",
+              "rotulo": "Documentos solicitados (PDF, JPG ou PNG, até 5 arquivos de 5 MB)",
+              "tipo": "arquivo",
+              "obrigatorio": false,
+              "accept": ".pdf,.jpg,.jpeg,.png",
+              "maxArquivos": 5,
+              "ajuda": "Se preferir, você pode entregar os documentos na sede."
+            }
+          ]
+        }
       ],
       "consentimento": [
-        { "nome": "consentimento_ciencia", "texto": "Estou ciente de que a filiação envolve dado pessoal sensível (filiação sindical) e de como o SINDCOM o trata, conforme os <a href=\"/termos/#politica-de-privacidade\" target=\"_blank\" rel=\"noopener\">Termos e a Política de Privacidade</a>." },
-        { "nome": "consentimento_autorizacao", "texto": "Declaro que as informações são verdadeiras e autorizo o SINDCOM a tratá-las para analisar minha filiação e prestar os serviços sindicais." }
+        {
+          "nome": "consentimento_ciencia",
+          "texto": "Estou ciente de que a filiação envolve dado pessoal sensível (filiação sindical) e de como o SINDCOM o trata, conforme os <a href=\"/termos/#politica-de-privacidade\" target=\"_blank\" rel=\"noopener\">Termos e a Política de Privacidade</a>."
+        },
+        {
+          "nome": "consentimento_autorizacao",
+          "texto": "Declaro que as informações são verdadeiras e autorizo o SINDCOM a tratá-las para analisar minha filiação e prestar os serviços sindicais."
+        }
       ]
     },
     "denuncia": {
@@ -106,35 +423,178 @@
       "sucesso": "Denúncia recebida. Guarde o protocolo abaixo.",
       "comProtocolo": true,
       "secoes": [
-        { "titulo": "Quem é denunciado", "campos": [
-          { "nome": "empresa_denunciada", "rotulo": "Empresa ou estabelecimento", "tipo": "texto", "obrigatorio": true, "max": 160 },
-          { "nome": "cnpj", "rotulo": "CNPJ (se souber)", "tipo": "cnpj", "obrigatorio": false },
-          { "nome": "cidade", "rotulo": "Cidade", "tipo": "texto", "obrigatorio": true, "max": 80 },
-          { "nome": "endereco", "rotulo": "Endereço (se souber)", "tipo": "texto", "obrigatorio": false, "max": 200 }
-        ]},
-        { "titulo": "O que aconteceu", "campos": [
-          { "nome": "tipos", "rotulo": "Tipo de irregularidade (marque uma ou mais)", "tipo": "checkboxes", "obrigatorio": true, "opcoes": [
-            { "v": "trabalhista", "t": "Direitos trabalhistas" },
-            { "v": "direitos_humanos", "t": "Direitos humanos" },
-            { "v": "saude_seguranca", "t": "Saúde e segurança" },
-            { "v": "outra", "t": "Outra situação grave" } ] },
-          { "nome": "relato", "rotulo": "Relate o ocorrido", "tipo": "textarea", "obrigatorio": true, "max": 8000, "linhas": 7, "ajuda": "Conte o que, quando e onde. Não é preciso se identificar." },
-          { "nome": "urgencia", "rotulo": "Grau de urgência", "tipo": "radio", "obrigatorio": true, "opcoes": [
-            { "v": "baixa", "t": "Baixa" }, { "v": "media", "t": "Média" }, { "v": "alta", "t": "Alta" } ] },
-          { "nome": "comunicada_autoridade", "rotulo": "A empresa já foi comunicada por alguma autoridade?", "tipo": "radio", "obrigatorio": true, "opcoes": [
-            { "v": "sim", "t": "Sim" }, { "v": "nao", "t": "Não" }, { "v": "nao_sei", "t": "Não sei" } ] },
-          { "nome": "evidencias", "rotulo": "Evidências (PDF, JPG, PNG ou MP4, até 5 arquivos de 5 MB)", "tipo": "arquivo", "obrigatorio": false, "accept": ".pdf,.jpg,.jpeg,.png,.mp4", "maxArquivos": 5 }
-        ]},
-        { "titulo": "Identificação (opcional)", "campos": [
-          { "nome": "identificar", "rotulo": "Você quer se identificar?", "tipo": "radio", "obrigatorio": true, "opcoes": [
-            { "v": "nao", "t": "Não, quero permanecer anônimo" }, { "v": "sim", "t": "Sim, posso ser contatado" } ] },
-          { "nome": "nome", "rotulo": "Seu nome", "tipo": "texto", "obrigatorio": true, "max": 120, "mostrarSe": "identificar=sim" },
-          { "nome": "telefone", "rotulo": "Seu telefone", "tipo": "tel", "obrigatorio": false, "mostrarSe": "identificar=sim" },
-          { "nome": "email", "rotulo": "Seu e-mail", "tipo": "email", "obrigatorio": false, "max": 160, "mostrarSe": "identificar=sim" }
-        ]}
+        {
+          "titulo": "Quem é denunciado",
+          "campos": [
+            {
+              "nome": "empresa_denunciada",
+              "rotulo": "Empresa ou estabelecimento",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 160,
+              "largura": "inteira"
+            },
+            {
+              "nome": "cnpj",
+              "rotulo": "CNPJ (se souber)",
+              "tipo": "cnpj",
+              "obrigatorio": false
+            },
+            {
+              "nome": "cidade",
+              "rotulo": "Cidade",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 80
+            },
+            {
+              "nome": "endereco",
+              "rotulo": "Endereço (se souber)",
+              "tipo": "texto",
+              "obrigatorio": false,
+              "max": 200,
+              "largura": "inteira"
+            }
+          ]
+        },
+        {
+          "titulo": "O que aconteceu",
+          "campos": [
+            {
+              "nome": "tipos",
+              "rotulo": "Tipo de irregularidade (marque uma ou mais)",
+              "tipo": "checkboxes",
+              "obrigatorio": true,
+              "opcoes": [
+                {
+                  "v": "trabalhista",
+                  "t": "Direitos trabalhistas"
+                },
+                {
+                  "v": "direitos_humanos",
+                  "t": "Direitos humanos"
+                },
+                {
+                  "v": "saude_seguranca",
+                  "t": "Saúde e segurança"
+                },
+                {
+                  "v": "outra",
+                  "t": "Outra situação grave"
+                }
+              ]
+            },
+            {
+              "nome": "relato",
+              "rotulo": "Relate o ocorrido",
+              "tipo": "textarea",
+              "obrigatorio": true,
+              "max": 8000,
+              "linhas": 7,
+              "ajuda": "Conte o que, quando e onde. Não é preciso se identificar."
+            },
+            {
+              "nome": "urgencia",
+              "rotulo": "Grau de urgência",
+              "tipo": "radio",
+              "obrigatorio": true,
+              "opcoes": [
+                {
+                  "v": "baixa",
+                  "t": "Baixa"
+                },
+                {
+                  "v": "media",
+                  "t": "Média"
+                },
+                {
+                  "v": "alta",
+                  "t": "Alta"
+                }
+              ]
+            },
+            {
+              "nome": "comunicada_autoridade",
+              "rotulo": "A empresa já foi comunicada por alguma autoridade?",
+              "tipo": "radio",
+              "obrigatorio": true,
+              "opcoes": [
+                {
+                  "v": "sim",
+                  "t": "Sim"
+                },
+                {
+                  "v": "nao",
+                  "t": "Não"
+                },
+                {
+                  "v": "nao_sei",
+                  "t": "Não sei"
+                }
+              ]
+            },
+            {
+              "nome": "evidencias",
+              "rotulo": "Evidências (PDF, JPG, PNG ou MP4, até 5 arquivos de 5 MB)",
+              "tipo": "arquivo",
+              "obrigatorio": false,
+              "accept": ".pdf,.jpg,.jpeg,.png,.mp4",
+              "maxArquivos": 5
+            }
+          ]
+        },
+        {
+          "titulo": "Identificação",
+          "campos": [
+            {
+              "nome": "identificar",
+              "rotulo": "Você quer se identificar?",
+              "ajuda": "Escolha uma opção. Só pediremos seus dados se você responder que pode ser contatado; permanecendo anônimo, nenhum dado pessoal é solicitado.",
+              "tipo": "radio",
+              "obrigatorio": true,
+              "opcoes": [
+                {
+                  "v": "nao",
+                  "t": "Não, quero permanecer anônimo"
+                },
+                {
+                  "v": "sim",
+                  "t": "Sim, posso ser contatado"
+                }
+              ]
+            },
+            {
+              "nome": "nome",
+              "rotulo": "Seu nome",
+              "tipo": "texto",
+              "obrigatorio": true,
+              "max": 120,
+              "mostrarSe": "identificar=sim",
+              "largura": "inteira"
+            },
+            {
+              "nome": "telefone",
+              "rotulo": "Seu telefone",
+              "tipo": "tel",
+              "obrigatorio": false,
+              "mostrarSe": "identificar=sim"
+            },
+            {
+              "nome": "email",
+              "rotulo": "Seu e-mail",
+              "tipo": "email",
+              "obrigatorio": false,
+              "max": 160,
+              "mostrarSe": "identificar=sim"
+            }
+          ]
+        }
       ],
       "consentimento": [
-        { "nome": "consentimento", "texto": "Li e concordo com os <a href=\"/termos/#politica-de-privacidade\" target=\"_blank\" rel=\"noopener\">Termos e a Política de Privacidade</a>. Declaro que as informações são verdadeiras, ciente de que denúncias de má-fé podem gerar responsabilização." }
+        {
+          "nome": "consentimento",
+          "texto": "Li e concordo com os <a href=\"/termos/#politica-de-privacidade\" target=\"_blank\" rel=\"noopener\">Termos e a Política de Privacidade</a>. Declaro que as informações são verdadeiras, ciente de que denúncias de má-fé podem gerar responsabilização."
+        }
       ]
     }
   }
