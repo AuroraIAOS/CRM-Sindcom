@@ -1,0 +1,14 @@
+{# Mapa de atuação do SINDCOM (Leaflet + OpenStreetMap, tudo hospedado no próprio site).
+   Uso: {% include "mapa-atuacao.njk" %} — independe da página. Carrega só quando visível (assets/js/mapa.js).
+   Variável opcional antes do include: {% set mapaAlt = "..." %} #}
+<link rel="stylesheet" href="/assets/css/paginas/mapa.css">
+<figure class="mapa-atuacao">
+  <div class="mapa-atuacao__mapa" data-mapa-atuacao data-fonte="/assets/data/mapa-atuacao.json" role="region" aria-label="Mapa interativo dos 29 municípios de atuação do SINDCOM, em Minas Gerais" tabindex="0">
+    <p class="mapa-atuacao__aviso">Carregando o mapa de atuação…</p>
+  </div>
+  <figcaption class="mapa-atuacao__legenda">
+    <span class="mapa-atuacao__chave" aria-hidden="true"></span> Municípios de atuação do SINDCOM (29). Aproxime o mapa para ver os nomes.
+    <noscript> O mapa interativo precisa de JavaScript; a lista dos municípios está no texto desta página. <a href="https://www.openstreetmap.org/?mlat=-20.7194&amp;mlon=-46.6094#map=9/-20.70/-46.46">Ver a região no OpenStreetMap</a>.</noscript>
+  </figcaption>
+</figure>
+<script src="/assets/js/mapa.js?v={{ versao }}" defer></script>

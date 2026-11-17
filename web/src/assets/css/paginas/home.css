@@ -1,0 +1,59 @@
+/* ---------- HERO ---------- */
+.hero-home{background:var(--cor-fundo-01);padding-bottom:clamp(40px,7vw,80px)}
+.hero-home__grade{display:grid;gap:var(--e-lg);align-items:center;margin-top:var(--e-md)}
+@media (min-width:900px){.hero-home__grade{grid-template-columns:1fr 440px}}
+
+/* Fotos em fade cruzado + zoom lento (só CSS). 8 fotos x 5 s = ciclo de 40 s. */
+.hero-fotos{position:relative;width:min(400px,80vw);aspect-ratio:2/3;margin-inline:auto;--ciclo:40s;--passo:5s}
+.hero-fotos__moldura{position:absolute;inset:0;transform:translate(18px,18px);border:4px solid var(--cor-realce);border-radius:40px 40px 0 40px;opacity:.9}
+.hero-fotos__pilha{position:absolute;inset:0;margin:0;padding:0;list-style:none;border-radius:40px 40px 0 40px;overflow:hidden;background:var(--cor-fundo-02);box-shadow:0 18px 40px rgb(0 0 0/.22)}
+.hero-fotos__pilha li{position:absolute;inset:0;opacity:0;animation:hero-troca var(--ciclo) infinite both;animation-delay:calc(var(--i) * var(--passo) - 1.5s)}
+.hero-fotos__pilha li:first-child{opacity:1}
+.hero-fotos__pilha picture,.hero-fotos__pilha img{display:block;width:100%;height:100%;object-fit:cover}
+.hero-fotos__pilha img{animation:hero-zoom var(--ciclo) infinite both}
+.hero-fotos__pilha li img{animation-delay:calc(var(--i) * var(--passo) - 1.5s)}
+@keyframes hero-troca{0%{opacity:0}3%{opacity:1}12.5%{opacity:1}15.5%{opacity:0}100%{opacity:0}}
+@keyframes hero-zoom{0%{transform:scale(1)}15.5%{transform:scale(1.09)}100%{transform:scale(1.09)}}
+@media (prefers-reduced-motion:reduce){
+  .hero-fotos__pilha li{animation:none;opacity:0}.hero-fotos__pilha li:first-child{opacity:1}
+}
+
+/* ---------- QUEM REPRESENTAMOS ---------- */
+.atividades{display:grid;gap:var(--e-sm);margin:var(--e-md) 0}
+.atividade{display:grid;grid-template-columns:240px 1fr;gap:var(--e-md);align-items:center;background:var(--cor-branco);border-radius:24px;padding:var(--e-md);box-shadow:0 2px 8px rgb(0 0 0/.06)}
+.atividade__marca{display:flex;flex-direction:column;align-items:center;gap:var(--e-xs);text-align:center}
+.atividade__marca .sb{font-size:20px;color:var(--cor-texto-02)}
+.atividade ul{margin:0;padding-left:1.2em;font-size:17px}
+.atividade li{margin-bottom:4px}
+@media (max-width:760px){.atividade{grid-template-columns:1fr}}
+/* ---------- NÍVEIS ---------- */
+.niveis{display:grid;gap:var(--e-md);grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));margin-top:var(--e-md)}
+.nivel{text-align:left}
+.nivel__selo{width:96px;height:auto;margin-bottom:var(--e-xs)}
+.nivel__linhas{list-style:none;margin:var(--e-xs) 0 0;padding:0;display:grid;gap:10px}
+.nivel__linhas li{display:flex;align-items:center;gap:12px;font-size:17px}
+.nivel__linhas .ic{width:30px;height:30px;stroke-width:1.8}
+.comparativo-titulo{margin:var(--e-lg) 0 var(--e-md)}
+.comparativo{display:grid;gap:var(--e-md);grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr))}
+.comp__topo{display:flex;align-items:center;gap:12px;margin-bottom:var(--e-xs)}
+.comp__selo{width:64px;height:auto}
+.comp h4{margin:0;font:400 22px/1.2 var(--font-titulo);color:var(--cor-texto-01)}
+.comp p{font-size:16px}
+.checks{list-style:none;padding:0;margin:var(--e-sm) 0 0;font-size:16px}
+.checks li{padding:6px 0 6px 28px;position:relative;border-top:1px solid #e0e0e0}
+.checks li::before{position:absolute;left:0;font-weight:700}
+.checks .sim::before{content:"✓";color:#2e7d32}
+.checks .nao{color:var(--cor-texto-02)}
+.checks .nao::before{content:"✗";color:var(--cor-realce)}
+
+/* ---------- DIREITOS ---------- */
+
+/* ---------- FAQ ---------- */
+.faq-topo{margin-bottom:var(--e-md)}
+.faq details{background:var(--cor-branco);border-radius:14px;margin-bottom:10px;box-shadow:0 1px 4px rgb(0 0 0/.08)}
+.faq summary{cursor:pointer;padding:16px 52px 16px 20px;font-size:17px;color:var(--cor-texto-02);list-style:none;position:relative}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"";position:absolute;right:22px;top:50%;width:9px;height:9px;border-right:2px solid var(--cor-texto-02);border-bottom:2px solid var(--cor-texto-02);transform:translateY(-70%) rotate(45deg);transition:transform .25s}
+.faq details[open] summary{color:var(--cor-realce);font-weight:700}
+.faq details[open] summary::after{transform:translateY(-30%) rotate(225deg);border-color:var(--cor-realce)}
+.faq details p{margin:0;padding:0 20px 18px;font-size:16px}

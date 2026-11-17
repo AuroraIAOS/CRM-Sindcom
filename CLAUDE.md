@@ -66,6 +66,15 @@ Ciclo completo funcionando: faturas → guias → e-mail com PDF → guia marcad
 
 **Bug de cobrança corrigido no caminho:** `v_base_calculo_trabalhador` usava `least(valor * 0.05, 100.00)`, e como `least()` ignora NULLs, quem NÃO tinha base de cálculo (sem piso na CCT e sem salário informado) recebia exatamente o TETO de R$ 100 — o valor máximo, para a pessoa sobre quem menos se sabe. Atingiria 14 dos 18 trabalhadores da base. Hoje: sem base → NULL → o motor pula e reporta nominalmente na tela.
 
+## Site institucional em HTML (ETAPA 11) · EM ANDAMENTO
+
+`sindcompassos.org` ainda é o WordPress. O site novo (Eleventy, pasta `web/`) tem as 11 páginas prontas e aprovadas em `novo.sindcompassos.org` (teste, `noindex`); **a virada não foi feita e só Maxwell a ordena**. Painel de progresso: tabela de pacotes em `docs/plano_site_html.md` (resumo na ETAPA 11 de `specs/plano_fases.md`); runbook da virada: `docs/site_deploy_runbook.md`.
+
+- **`site/` (respostas de formulários, dados pessoais) nunca vai ao GitHub.** `web/` só tem código, textos públicos e imagens tratadas. PDFs de CCT/Nota Técnica ficam em `web/src/downloads/` (ignorado pelo git).
+- **Nenhuma menção a ACT** (acordo coletivo por empresa) em texto, rótulo ou assunto: é sigiloso. Antes de publicar: `grep -rwE "ACT|ACTs" web/src web/dist`.
+- **Formulários seguem o modelo de Contato:** `docs/site_formularios_diretrizes.md`. Estão em modo demonstração; SQL 35 e a Edge Function `formularios-site` estão escritos e **não implantados**. Portão adversarial obrigatório antes da virada.
+- Sem Google, sem Brevo/n8n. Deploy de teste: `SITE_STAGING=1 npx eleventy` em `web/` e `bash web/scripts/enviar-ftp.sh` (confira por hash; script JS ganha `?v=` a cada build, `orientacoes.md` §4.15).
+
 ## Backlog (decisões adiadas)
 
 - [x] ~~**Visão anual de cartas de oposição** (`/cartas`)~~ — **entregue na Subetapa 04.2 (2026-07-22)**, com exportação CSV. A tela mostra **4 situações, não 2**: entregou→Bronze · sem carta→Prata · Ouro sem carta · **Ouro COM carta (não regride — pendente de cancelamento da adesão)**. Ver `docs/plano_cartas_juridico.md`.

@@ -1,0 +1,29 @@
+{
+  "nome": "SINDCOM",
+  "nomeCompleto": "Sindicato dos Empregados no Comércio de Passos e Região",
+  "slogan": "Sozinho o peso é maior",
+  "url": "https://sindcompassos.org",
+  "endereco": "Avenida dos Expedicionários, 137, Centro, Passos, MG",
+  "enderecoEstruturado": {
+    "rua": "Avenida dos Expedicionários, 137",
+    "bairro": "Centro",
+    "cidade": "Passos",
+    "estado": "MG",
+    "pais": "BR"
+  },
+  "coordenadasSede": [-20.721852, -46.607957],
+  "telefone": "(35) 3526-3847",
+  "telefoneInternacional": "+553535263847",
+  "email": "contato@sindcompassos.org",
+  "whatsapp": "5535988270406",
+  "imagemPadrao": "/assets/img/og-padrao.jpg",
+  "corTema": "#C62828",
+  "menu": [
+    { "texto": "Sindcom", "url": "/", "sub": [["Quem representamos?", "/#representamos"], ["Proteção ao trabalhador", "/#protecao"], ["Vantagens e benefícios", "/#vantagens"], ["Convênio e parcerias", "/#convenios"], ["FAQ perguntas frequentes", "/#faq"]] },
+    { "texto": "Institucional", "url": "/institucional/", "sub": [["Quem somos?", "/institucional/#quem"], ["Nossa história", "/institucional/#historia"], ["O Presidente", "/institucional/#presidente"], ["Nossa força", "/institucional/#forca"], ["Nossos resultados", "/institucional/#resultados"]] },
+    { "texto": "Serviços", "url": "/servicos/", "sub": [["Convenção coletiva", "/servicos/#convencao"], ["Consultas jurídicas", "/servicos/#consultas"], ["Taxas e boletos", "/servicos/#taxas"], ["Vagas", "/servicos/#vagas"], ["Currículos", "/servicos/#curriculos"]] },
+    { "texto": "Benefícios", "url": "/beneficios/", "sub": [["Benefícios coletivos", "/beneficios/#coletivos"], ["Benefícios para filiados", "/beneficios/#sindicalizados"], ["Custo e benefício", "/beneficios/#custo"], ["Convênios e parcerias", "/beneficios/#convenios"]] },
+    { "texto": "Dados", "url": "/dados/" },
+    { "texto": "Contato", "url": "/contato/", "sub": [["Fale com o SINDCOM", "/contato/#fale"], ["Atendimento presencial", "/contato/#presencial"], ["Nossa atuação na região", "/contato/#regiao"]] }
+  ]
+}

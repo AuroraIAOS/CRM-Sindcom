@@ -1,0 +1,64 @@
+{% if rodapeCompleto %}
+<footer class="rodape rodape--completo">
+  <svg class="rodape__onda" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true" focusable="false"{% if ondaCor %} style="fill:var(--cor-{{ ondaCor }})"{% endif %}><path d="M0 0H1440V28L720 90 0 28Z"/></svg>
+  <div class="container rodape__miolo">
+
+    <section class="rodape-denuncia" aria-labelledby="rd-titulo">
+      <div class="lottie rodape-denuncia__arte" data-lottie="/assets/lottie/denuncia.json" role="img" aria-label="Animação ilustrando uma denúncia trabalhista"></div>
+      <div class="rodape-denuncia__texto">
+        <h2 class="rt" id="rd-titulo">Denúncia anônima</h2>
+        <p class="rodape-denuncia__lead">Direitos trabalhistas não são favores. São garantias legais.</p>
+        <p class="rodape-denuncia__apoio">Caso você tenha identificado possíveis irregularidades, clique no botão ao lado e registre sua denúncia de forma segura e anônima.</p>
+      </div>
+      <a class="botao rodape-denuncia__botao" href="/denuncie/">Denuncie aqui!</a>
+    </section>
+
+    <div class="rodape-servicos">
+      <section aria-labelledby="rs-trab">
+        <h2 class="rt" id="rs-trab">Serviços para o Trabalhador</h2>
+        <p>Prezado trabalhador, fique à vontade para cadastrar aqui seu currículo e/ou buscar pelas vagas e oportunidades de emprego cadastradas.</p>
+        <a class="rodape-card" href="/curriculo/"><svg class="ic" aria-hidden="true"><use href="#i-curriculo"/></svg><span>Cadastro de Currículo</span></a>
+      </section>
+      <section aria-labelledby="rs-emp">
+        <h2 class="rt" id="rs-emp">Serviços para o Empregador</h2>
+        <p>Prezado empregador, fique à vontade para cadastrar aqui suas vagas e oportunidades de emprego e/ou buscar por currículos que lhe atendam.</p>
+        <a class="rodape-card" href="/vaga/"><svg class="ic" aria-hidden="true"><use href="#i-vagas"/></svg><span>Cadastro de Vagas</span></a>
+      </section>
+    </div>
+
+    <section class="rodape-contatos" aria-labelledby="rc-titulo">
+      <div class="rodape-contatos__logo">{% imagem "Sindcom-Passos-Logotipo-01.png", "Logotipo do SINDCOM", "200px", "", false %}</div>
+      <div class="rodape-contatos__dados">
+        <h2 class="rt rt--claro" id="rc-titulo">Contatos</h2>
+        <ul>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-pino"/></svg><span>Av. dos Expedicionários, 137, Centro, CEP 37.900-130, Passos, Minas Gerais</span></li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-email"/></svg><a href="mailto:{{ site.email }}">{{ site.email }}</a></li>
+          <li><svg class="ic" aria-hidden="true"><use href="#i-telefone"/></svg><a href="tel:{{ site.telefoneInternacional }}">{{ site.telefone }}</a></li>
+        </ul>
+      </div>
+      <div class="rodape-contatos__mapa" data-mapa-sede data-lat="{{ site.coordenadasSede[0] }}" data-lng="{{ site.coordenadasSede[1] }}" role="region" aria-label="Mapa com a localização da sede do SINDCOM, em Passos" tabindex="0">
+        <a class="rodape-contatos__mapa-link" href="https://www.openstreetmap.org/?mlat={{ site.coordenadasSede[0] }}&amp;mlon={{ site.coordenadasSede[1] }}#map=17/{{ site.coordenadasSede[0] }}/{{ site.coordenadasSede[1] }}" rel="noopener">Abrir no mapa (OpenStreetMap)</a>
+      </div>
+    </section>
+  </div>
+  <div class="rodape__base">
+    <p>Todos os direitos reservados | Copyright 2026 | Criado em março de 2026</p>
+    <p><a href="/dados/">Tratamento de Dados</a> – <a href="/termos/">Termos de Uso &amp; Privacidade</a></p>
+  </div>
+</footer>
+<script src="/assets/js/mapa-sede.js?v={{ versao }}" defer></script>
+{% else %}
+<footer class="rodape">
+  <div class="container rodape__grade">
+    <div>
+      <p class="rodape__nome">{{ site.nomeCompleto }}</p>
+      <p>{{ site.endereco }} · <a href="https://www.openstreetmap.org/search?query=Avenida+dos+Expedicionarios+137+Passos+MG">Ver no mapa</a></p>
+      <p><em>{{ site.slogan }}</em></p>
+    </div>
+    <nav aria-label="Rodapé">
+      <a href="/filie-se/">Filie-se</a> · <a href="/contato/">Contato</a> · <a href="/denuncie/">Denuncie</a><br>
+      <a href="/curriculo/">Currículo</a> · <a href="/vaga/">Vaga</a> · <a href="/dados/">Dados</a> · <a href="/termos/">Termos e privacidade</a>
+    </nav>
+  </div>
+</footer>
+{% endif %}

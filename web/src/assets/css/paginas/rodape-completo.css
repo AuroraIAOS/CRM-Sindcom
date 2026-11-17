@@ -1,0 +1,44 @@
+/* Rodapé completo (bloco escuro com onda): Denúncia, Serviços e Contatos, como no site original. */
+.rodape--completo{position:relative;background:var(--cor-texto-01);color:var(--cor-fundo-01);padding:0}
+.rodape--completo a{color:inherit}
+.rodape__onda{display:block;width:100%;height:clamp(40px,6vw,90px);fill:var(--cor-fundo-02);margin-bottom:-1px}
+.rodape__miolo{padding-block:var(--e-md) var(--e-lg);display:grid;gap:var(--e-lg)}
+.rt{margin:0 0 var(--e-sm);font:400 clamp(22px,4.4vw,30px)/1.15 var(--font-titulo);color:var(--cor-fundo-01)}
+.rt::after{content:"";display:block;width:80px;height:3px;margin-top:12px;background:var(--cor-realce)}
+.rt--claro{color:var(--cor-texto-01)}
+.rodape--completo p{font-size:16px;color:#e4e4e4;margin:0 0 var(--e-sm)}
+
+/* Denúncia anônima */
+.rodape-denuncia{display:grid;grid-template-columns:150px 1fr auto;gap:var(--e-md);align-items:center;border:2px solid var(--cor-fundo-01);border-radius:24px;padding:var(--e-md)}
+.rodape-denuncia__arte{width:150px;margin:0}
+.rodape-denuncia__lead{font-size:clamp(18px,2.6vw,25px)!important;font-weight:300;color:var(--cor-fundo-01)!important}
+.rodape-denuncia__apoio{font-size:15px!important;margin:0!important}
+.rodape-denuncia__botao{font:italic 600 24px/1.1 var(--font-titulo);padding:22px 28px;text-align:center;border-radius:14px;color:#fff!important}
+@media (max-width:760px){.rodape-denuncia{grid-template-columns:1fr;text-align:left}.rodape-denuncia__arte{width:110px}.rodape-denuncia__botao{justify-self:start}}
+
+/* Serviços */
+.rodape-servicos{display:grid;grid-template-columns:1fr 1fr;gap:var(--e-lg)}
+.rodape-servicos section:last-child{text-align:right}
+.rodape-servicos section:last-child .rt::after{margin-left:auto}
+.rodape-card{display:flex;flex-direction:row;align-items:center;justify-content:center;gap:16px;width:100%;min-height:72px;padding:12px 20px;background:var(--cor-branco);color:var(--cor-texto-02)!important;border-radius:14px;text-decoration:none;font:400 20px/1.2 var(--font-titulo);text-align:center;box-shadow:0 4px 12px rgb(0 0 0/.28);transition:transform .2s,box-shadow .2s}
+.rodape-card:hover,.rodape-card:focus-visible{transform:translateY(-3px);box-shadow:0 10px 20px rgb(0 0 0/.32)}
+.rodape-card .ic{width:36px;height:36px;stroke:var(--cor-texto-02)}
+@media (max-width:760px){.rodape-servicos{grid-template-columns:1fr;gap:var(--e-md)}.rodape-servicos section:last-child{text-align:left}.rodape-servicos section:last-child .rt::after{margin-left:0}}
+
+/* Contatos */
+.rodape-contatos{display:grid;grid-template-columns:200px 1fr minmax(0,1.1fr);gap:var(--e-md);align-items:center;background:var(--cor-branco);color:var(--cor-texto-02);border-radius:24px;padding:var(--e-md)}
+.rodape-contatos__logo img{width:100%;max-width:200px;margin-inline:auto}
+.rodape-contatos ul{list-style:none;margin:0;padding:0;display:grid;gap:14px}
+.rodape-contatos li{display:flex;gap:12px;align-items:flex-start;color:var(--cor-texto-02);font-size:16px}
+.rodape-contatos li .ic{width:24px;height:24px;margin-top:2px;color:var(--cor-realce)}
+.rodape-contatos a{color:var(--cor-texto-02)}
+.rodape-contatos__mapa{position:relative;min-height:240px;border-radius:14px;overflow:hidden;background:var(--cor-fundo-02)}
+.rodape-contatos__mapa-link{position:absolute;inset:auto 8px 8px auto;z-index:500;background:var(--cor-branco);color:var(--cor-texto-01)!important;font-size:13px;padding:4px 10px;border-radius:999px;text-decoration:none;box-shadow:0 1px 4px rgb(0 0 0/.3)}
+.rodape-contatos__mapa .leaflet-container{height:100%;min-height:240px;font-family:var(--font-corpo)}
+.pino-sede{width:30px;height:30px;border-radius:50% 50% 50% 0;background:var(--cor-realce);transform:rotate(-45deg);border:3px solid #fff;box-shadow:0 2px 6px rgb(0 0 0/.4)}
+@media (max-width:900px){.rodape-contatos{grid-template-columns:1fr}.rodape-contatos__logo{text-align:center}}
+
+/* Base */
+.rodape__base{border-top:3px solid var(--cor-realce);padding:var(--e-sm) var(--e-sm) var(--e-md);text-align:center}
+.rodape__base p{font-size:12px!important;margin:4px 0!important;color:#cfcfcf!important}
+.rodape__base a{text-decoration:none}.rodape__base a:hover{text-decoration:underline}

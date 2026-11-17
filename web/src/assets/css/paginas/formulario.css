@@ -1,0 +1,70 @@
+/* Componente de formulário (_includes/formulario.njk). Usa os tokens de site.css. */
+.form-site{background:var(--cor-branco);border-radius:var(--r-lg);padding:var(--e-md);box-shadow:0 1px 3px rgb(0 0 0/.08);max-width:760px}
+.form-site h2{margin-top:0}
+.form-site__demo{background:var(--cor-fundo-02);border-left:4px solid var(--cor-texto-02);padding:var(--e-xs) var(--e-sm);font-size:16px}
+.form-site__secao{border:0;padding:0;margin:0 0 var(--e-md)}
+.form-site__secao>legend{font:400 24px/1.3 var(--font-titulo);padding:0;margin-bottom:var(--e-sm)}
+.campo{margin-bottom:var(--e-sm)}
+.campo label,.campo__grupo>legend{display:block;font-weight:400;margin-bottom:4px}
+.campo__grupo{border:0;padding:0;margin:0}
+.obrig{color:var(--cor-realce)}
+.ajuda{margin:0 0 4px;font-size:15px;color:var(--cor-texto-02)}
+.form-site input[type=text],.form-site input[type=email],.form-site input[type=tel],.form-site select,.form-site textarea,.form-site input[type=file]{
+  width:100%;min-height:44px;padding:10px 12px;font:inherit;color:var(--cor-texto-01);background:var(--cor-fundo-01);border:2px solid #b8b8b8;border-radius:var(--r-md)}
+.form-site textarea{min-height:120px;resize:vertical}
+.form-site input:focus-visible,.form-site select:focus-visible,.form-site textarea:focus-visible{outline:3px solid var(--cor-realce);outline-offset:1px;border-color:var(--cor-realce)}
+.form-site [aria-invalid=true]{border-color:var(--cor-realce);background:#fdf3f3}
+.contador{margin:2px 0 0;font-size:14px;color:var(--cor-texto-02);text-align:right}
+.erro{margin:4px 0 0;color:var(--cor-realce);font-size:16px;font-weight:400}
+.erro::before{content:"⚠ "}
+.opcao{display:flex;align-items:flex-start;gap:10px;min-height:44px;padding:6px 0;cursor:pointer}
+.opcao input{width:22px;height:22px;margin-top:2px;flex:none;accent-color:var(--cor-realce)}
+.opcao--consent{font-size:16px}
+.arquivos{list-style:none;margin:6px 0 0;padding:0;font-size:15px;color:var(--cor-texto-02)}
+.form-site__resumo{background:#fdf3f3;border:2px solid var(--cor-realce);border-radius:var(--r-md);padding:var(--e-sm);margin-bottom:var(--e-sm)}
+.form-site__resumo p{margin:0 0 6px;font-weight:700}.form-site__resumo ul{margin:0;padding-left:20px}
+.form-site__status{min-height:1.6em;margin:var(--e-xs) 0}
+.form-site__isca{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}
+.form-site__ok{text-align:center;padding:var(--e-md) 0}
+.form-site__protocolo strong{font:600 24px var(--font-titulo);color:var(--cor-realce)}
+.form-site button[disabled]{opacity:.6;cursor:progress}
+
+/* ---- Estética delicada: campos sem moldura (só a cor muda), mesma altura, grade de 2 colunas ---- */
+.form-site{border-radius:24px;padding:clamp(20px,4vw,40px);box-shadow:0 12px 32px rgb(0 0 0/.06)}
+.form-site__demo{background:var(--cor-fundo-01);border-left:3px solid var(--cor-realce);border-radius:0 10px 10px 0;font-size:14px;color:var(--cor-texto-02);margin:0 0 var(--e-md)}
+.form-site__secao{display:grid;grid-template-columns:1fr;gap:18px 16px;margin:0 0 var(--e-sm)}
+@media (min-width:720px){.form-site__secao{grid-template-columns:1fr 1fr}}
+.form-site__secao>legend{grid-column:1/-1}
+.campo{margin:0;min-width:0}
+.campo--inteira,.campo--textarea,.campo--radio,.campo--checkboxes,.campo--arquivo{grid-column:1/-1}
+.campo label,.campo__grupo>legend{font-size:14px;color:var(--cor-texto-02);margin-bottom:6px;letter-spacing:.01em}
+.ajuda{font-size:13px}
+.form-site input[type=text],.form-site input[type=email],.form-site input[type=tel],.form-site select,.form-site textarea,.form-site input[type=file]{
+  height:48px;min-height:48px;padding:0 16px;color:var(--cor-texto-01);background:var(--cor-fundo-01);border:1px solid transparent;border-radius:12px;transition:background .2s,border-color .2s,box-shadow .2s}
+.form-site textarea{height:auto;min-height:130px;padding:14px 16px;line-height:1.5}
+.form-site input[type=file]{padding:10px 16px;height:auto}
+.form-site select{appearance:none;-webkit-appearance:none;padding-right:44px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%23565656' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 18px center}
+.form-site input:hover,.form-site select:hover,.form-site textarea:hover{background-color:var(--cor-fundo-02)}
+.form-site input:focus-visible,.form-site select:focus-visible,.form-site textarea:focus-visible{outline:none;background-color:var(--cor-branco);border-color:var(--cor-realce);box-shadow:0 0 0 4px rgb(198 40 40/.12)}
+.form-site [aria-invalid=true]{border-color:var(--cor-realce);background-color:#fdf3f3}
+.contador{font-size:13px}
+.erro{font-size:14px}
+.campo--consent{margin-top:var(--e-xs)}
+.opcao--consent{font-size:14px;color:var(--cor-texto-02)}
+.form-site .botao[type=submit]{min-height:48px;padding:0 36px;border:0;border-radius:12px;font:inherit;cursor:pointer;color:#fff;transition:filter .2s,transform .2s}
+.form-site .botao[type=submit]:hover{transform:translateY(-1px)}
+/* A ajuda vem depois do campo, para que todos os campos de uma linha comecem na mesma altura */
+.campo{display:flex;flex-direction:column}
+.campo .ajuda{order:4;margin:6px 0 0}
+.campo .erro{order:6}
+.form-site input[type=file]{color:var(--cor-texto-02);font-size:15px}
+.form-site input[type=file]::file-selector-button{margin-right:14px;padding:8px 16px;border:0;border-radius:8px;background:var(--cor-branco);color:var(--cor-texto-01);font:inherit;font-size:14px;cursor:pointer;box-shadow:0 1px 3px rgb(0 0 0/.15)}
+.form-site input[type=file]::file-selector-button:hover{background:var(--cor-fundo-02)}
+
+/* Campo oculto por regra condicional continua oculto (o display:flex acima o reativava) */
+.campo[hidden]{display:none}
+.campo:not([hidden]){animation:campo-entra .35s ease-out}
+@keyframes campo-entra{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.campo:not([hidden]){animation:none}}
+/* Entradas alinhadas pela base da linha: se um rótulo quebrar em duas linhas, os campos vizinhos continuam na mesma altura */
+.campo>input,.campo>select{margin-top:auto}

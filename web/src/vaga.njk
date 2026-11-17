@@ -1,0 +1,43 @@
+---
+layout: base.njk
+titulo: Vagas e Oportunidades
+descricao: Empreendedor, cadastre as vagas da sua empresa no SINDCOM, que conecta empresas e trabalhadores do comércio de Passos e região.
+permalink: /vaga/
+css: [componentes, formulario, rodape-completo]
+scripts: [validacao, formulario]
+rodapeCompleto: true
+---
+{% include "icones.njk" %}
+{# TODO Etapa 3: a vaga cadastrada será moderada (Admin/Secretaria) no CRM; nenhuma listagem pública existe por enquanto. Currículos nunca são listados publicamente. #}
+<div class="pg">
+
+<section class="pagina-topo">
+  <div class="container">
+    <div class="tp"><h1 class="tp__titulo"><span class="tp__nome">Vagas e Oportunidades</span></h1></div>
+  </div>
+</section>
+
+<section class="secao" id="cadastroV">
+  <div class="container fale fale--longo">
+    <div class="fale__texto" data-revelar>
+      <h2 class="st">Empreendedor, cadastre aqui suas vagas e oportunidades de trabalho</h2>
+      <p>Aqui, o SINDCOM conecta trabalhadores e empresas do comércio de Passos e Região através do cadastro e oferta de <strong>vagas de emprego.</strong></p>
+      <p class="chamada-v">Preencha o formulário e cadastre a vaga da sua empresa.</p>
+      <div class="lottie fale__lottie" data-lottie="/assets/lottie/documentos.json" role="img" aria-label="Animação de documentos, representando o cadastro de vagas"></div>
+    </div>
+    <div class="fale__form">
+      {% set formNome = "vaga" %}{% include "formulario.njk" %}
+    </div>
+  </div>
+</section>
+
+<section class="secao secao--alt chamada-final">
+  <div class="container centro">
+    <h2 class="st st--centro st--sem-barra chamada-final__titulo">Trabalhador, cadastre seu currículo</h2>
+    <div class="divisor-icone" aria-hidden="true"><svg class="ic"><use href="#i-balanca"/></svg></div>
+    <p class="chamada-final__texto">O SINDCOM conecta os profissionais e empreendedores do comércio de Passos e Região.</p>
+    <p><a class="botao" href="/curriculo/">Cadastrar meu currículo</a></p>
+  </div>
+</section>
+
+</div>

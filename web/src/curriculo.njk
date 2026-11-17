@@ -1,0 +1,42 @@
+---
+layout: base.njk
+titulo: Currículos
+descricao: Trabalhador, cadastre seu currículo no SINDCOM, que conecta profissionais e empreendedores do comércio de Passos e região.
+permalink: /curriculo/
+css: [componentes, formulario, rodape-completo]
+scripts: [validacao, formulario]
+rodapeCompleto: true
+---
+{% include "icones.njk" %}
+<div class="pg">
+
+<section class="pagina-topo">
+  <div class="container">
+    <div class="tp"><h1 class="tp__titulo"><span class="tp__nome">Currículos</span></h1></div>
+  </div>
+</section>
+
+<section class="secao" id="cadastroC">
+  <div class="container fale">
+    <div class="fale__texto" data-revelar>
+      <h2 class="st">Trabalhador, cadastre aqui o seu currículo</h2>
+      <p>O SINDCOM conecta os profissionais e empreendedores do comércio de Passos e Região.</p>
+      <p class="chamada-v">Preencha o formulário e deixe seus dados com o SINDCOM.</p>
+      <div class="lottie fale__lottie" data-lottie="/assets/lottie/documentos.json" role="img" aria-label="Animação de documentos, representando o cadastro de currículos"></div>
+    </div>
+    <div class="fale__form">
+      {% set formNome = "curriculo" %}{% include "formulario.njk" %}
+    </div>
+  </div>
+</section>
+
+<section class="secao secao--alt chamada-final">
+  <div class="container centro">
+    <h2 class="st st--centro st--sem-barra chamada-final__titulo">Empreendedor, está procurando profissionais?</h2>
+    <div class="divisor-icone" aria-hidden="true"><svg class="ic"><use href="#i-balanca"/></svg></div>
+    <p class="chamada-final__texto">O SINDCOM conecta os profissionais e empreendedores do comércio de Passos e Região.<br>Cadastre a sua vaga no sindicato.</p>
+    <p><a class="botao" href="/vaga/">Cadastrar uma vaga</a></p>
+  </div>
+</section>
+
+</div>

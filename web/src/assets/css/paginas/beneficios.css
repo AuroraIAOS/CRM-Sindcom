@@ -1,0 +1,14 @@
+.arte-recorte{width:100%;aspect-ratio:4/5;object-fit:cover;object-position:50% 20%}
+.bloco-imagem+.bloco-imagem{margin-top:var(--e-lg)}
+.bloco-imagem__texto h2.sb{margin-bottom:var(--e-sm)}
+.subtitulo-custo{margin:0 0 var(--e-sm)}
+
+/* Exemplos de custo-benefício */
+@media (min-width:800px){.exemplos{grid-template-columns:280px 1fr}}
+.exemplo{background:var(--cor-fundo-01);border-radius:20px;margin-bottom:var(--e-sm);overflow:hidden;box-shadow:0 1px 4px rgb(0 0 0/.08)}
+.exemplo__topo{display:flex;align-items:center;gap:12px;margin:0;padding:12px 18px;font:400 22px/1.2 var(--font-titulo);color:var(--cor-texto-02)}
+.exemplo__topo .ic{width:34px;height:34px}
+.exemplo__corpo{display:grid;gap:4px var(--e-md);grid-template-columns:1fr;padding:6px 18px 14px;font-size:15px}
+@media (min-width:640px){.exemplo__corpo{grid-template-columns:1fr auto;align-items:center}}
+.exemplo__corpo ul{margin:0;padding-left:1.2em}
+.exemplo__corpo .chamada-v{margin:0;font-size:18px}

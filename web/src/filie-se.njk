@@ -1,0 +1,143 @@
+---
+layout: base.njk
+titulo: Filie-se
+descricao: Filie-se ao SINDCOM e tenha assistência sindical e jurídica, descontos em saúde, educação e lazer para você e sua família.
+permalink: /filie-se/
+css: [componentes, formulario, rodape-completo]
+scripts: [validacao, formulario]
+rodapeCompleto: true
+---
+{% include "icones.njk" %}
+<div class="pg">
+
+<section class="pagina-topo">
+  <div class="container">
+    <div class="tp"><h1 class="tp__titulo"><span class="tp__nome">Filie-se!</span></h1></div>
+  </div>
+</section>
+
+<section class="secao" id="filiacao">
+  <div class="container fale fale--longo">
+    <div class="fale__texto" data-revelar>
+      <h2 class="st">Trabalhador, defenda seus direitos</h2>
+      <p>Filie-se ao SINDCOM e garanta descontos, vantagens e condições especiais em serviços de saúde, educação, assistência social, lazer e bem-estar para si e seus dependentes.</p>
+      <p class="chamada-v">Aqui você aumenta seu acesso a serviços de Saúde, Educação, Lazer e Bem-Estar para si e sua Família!</p>
+      <div class="lottie fale__lottie" data-lottie="/assets/lottie/documentos.json" role="img" aria-label="Animação de documentos, representando o formulário de filiação"></div>
+    </div>
+    <div class="fale__form">
+      {% set formNome = "filiacao" %}{% include "formulario.njk" %}
+    </div>
+  </div>
+</section>
+
+<section class="secao secao--alt" id="vantagens">
+  <div class="container">
+    <div class="bloco-imagem">
+      <div class="bloco-imagem__arte" data-revelar>{% imagem "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-17.jpg", "Mão segurando uma caneta sobre a carteira de trabalho", "(min-width: 800px) 380px, 80vw", "", false %}</div>
+      <div class="bloco-imagem__texto">
+        <h2 class="st">Vantagens únicas para filiados</h2>
+        <p>Ser filiado ao Sindicato não é um custo. É uma proteção e garantia de muitos direitos e benefícios trabalhistas para você e sua <strong>FAMÍLIA.</strong></p>
+        <p>O SINDCOM luta e garante formas distintas de direitos e benefícios:</p>
+        <ul>
+          <li><strong>Direitos Coletivos:</strong> são aqueles garantidos a todos os trabalhadores atuantes nos ramos comerciais representados pelo SINDCOM, independentemente de serem ou não sindicalizados ou filiados.</li>
+          <li><strong>Direitos Individuais:</strong> são os direitos de assistência individual garantidos apenas aos trabalhadores sindicalizados e filiados.</li>
+          <li><strong>Benefícios e Descontos:</strong> é o direito de usufruir do Convênio Sindcom, estendido aos seus dependentes, familiares e até terceiros!</li>
+        </ul>
+      </div>
+    </div>
+    <div class="direitos">
+      <div class="direito" data-revelar>
+        <svg class="ic" aria-hidden="true"><use href="#i-pessoas"/></svg>
+        <h3 class="sb">Direitos Coletivos</h3>
+        <ul><li>Piso salarial</li><li>Reajustes salariais</li><li>Proteção coletiva</li><li>Convenções Coletivas</li></ul>
+      </div>
+      <div class="direito" data-revelar>
+        <svg class="ic" aria-hidden="true"><use href="#i-balanca"/></svg>
+        <h3 class="sb">Direitos Individuais</h3>
+        <ul><li>Assistência sindical</li><li>Assistência jurídica</li><li>Advogado Trabalhista</li><li>Advogado Previdenciário</li><li>Advogado Cível</li><li>Advogado Familiar</li><li>Advogado Criminal</li></ul>
+      </div>
+      <div class="direito" data-revelar>
+        <svg class="ic" aria-hidden="true"><use href="#i-coracao"/></svg>
+        <h3 class="sb">Convênio Sindcom</h3>
+        <ul><li>Consultas Médicas</li><li>Consultas Odontológicas</li><li>Exames Clínicos</li><li>Exames de Imagem</li><li>Terapias Integrativas</li><li>Outros serviços de Saúde</li><li>Serviços de Educação</li><li>Serviços de Lazer</li><li>Serviços de Turismo</li><li>Planos de Saúde</li></ul>
+      </div>
+    </div>
+    <p class="chamada-v centro">Enquanto muitos descobrem seus direitos depois do problema, você pode se antecipar!</p>
+  </div>
+</section>
+
+<section class="secao" id="custo">
+  <div class="container">
+    <h2 class="st">Custos <em>vs</em> Benefícios</h2>
+    <h3 class="sb sb--vermelho subtitulo-custo">Três trabalhadores. Três níveis de proteção</h3>
+    <p>Carlos, João e Marcos trabalham no comércio da região.</p>
+    <p>Todos exercem funções parecidas.<br>Todos possuem carteira assinada.<br>Todos são representados pelo SINDCOM.</p>
+    <p>Mas cada um escolheu um nível diferente de relacionamento com o SINDCOM.</p>
+
+    <div class="perfis">
+      <article class="perfil" data-revelar>
+        <h3 class="perfil__topo">{% imagem "Sindcom-Representado-Bronze.png", "Selo Representado Bronze, nível de Carlos", "40px", "perfil__selo", false %}Carlos</h3>
+        <div class="perfil__corpo">
+          <p>Carlos apresentou a <strong>Carta de Oposição</strong> e optou por não contribuir financeiramente com o Sindicato.</p>
+          <p>Mesmo assim, continua protegido pelas conquistas coletivas negociadas pelo SINDCOM.</p>
+          <p class="perfil__recebe">Carlos recebe:</p>
+          <ul class="checks">
+            <li>Piso salarial da categoria</li>
+            <li>Reajustes salariais</li>
+            <li>Direitos previstos na Convenção Coletiva</li>
+            <li>Proteção coletiva nas negociações trabalhistas</li>
+          </ul>
+          <p>Quando a categoria conquista avanços, Carlos também é beneficiado.</p>
+          <p><strong>Mas seu acesso termina aí.</strong></p>
+        </div>
+      </article>
+      <article class="perfil" data-revelar>
+        <h3 class="perfil__topo">{% imagem "Sindcom-Sindicalizado-Prata.png", "Selo Sindicalizado Prata, nível de João", "40px", "perfil__selo", false %}João</h3>
+        <div class="perfil__corpo">
+          <p>João permaneceu sindicalizado.</p>
+          <p>Além de todos os direitos coletivos recebidos por Carlos, João possui acesso aos serviços individuais oferecidos pelo sindicato.</p>
+          <p class="perfil__recebe">João recebe:</p>
+          <ul class="checks">
+            <li>Todos os direitos do nível Bronze</li>
+            <li>Atendimento individual</li>
+            <li>Orientação trabalhista</li>
+            <li>Apoio sindical em situações específicas</li>
+            <li>Maior proximidade com a equipe do sindicato</li>
+          </ul>
+          <p>Quando surge uma dúvida ou problema relacionado ao trabalho, João pode contar com suporte direto.</p>
+        </div>
+      </article>
+      <article class="perfil" data-revelar>
+        <h3 class="perfil__topo">{% imagem "Sindcom-Filiado-Ouro.png", "Selo Filiado Ouro, nível de Marcos", "40px", "perfil__selo", false %}Marcos</h3>
+        <div class="perfil__corpo">
+          <p>Marcos decidiu dar um passo além.</p>
+          <p>Além de permanecer sindicalizado, aderiu ao Convênio Sindcom.</p>
+          <p>Por isso, possui acesso ao nível máximo de proteção e benefícios.</p>
+          <p class="perfil__recebe">Marcos recebe:</p>
+          <ul class="checks">
+            <li>Todos os direitos do nível Bronze</li>
+            <li>Todos os direitos do nível Prata</li>
+            <li>Convênio de descontos e benefícios</li>
+            <li>Benefícios exclusivos</li>
+            <li>Inclusão de dependentes</li>
+            <li>Economia em serviços parceiros</li>
+            <li>Vantagens para toda a família</li>
+          </ul>
+          <p>Quando utiliza os convênios ao longo do ano, Marcos frequentemente economiza muito mais do que investe na mensalidade.</p>
+        </div>
+      </article>
+    </div>
+
+  </div>
+</section>
+
+<section class="secao secao--alt chamada-final">
+  <div class="container centro">
+    <h2 class="st st--centro st--sem-barra chamada-final__titulo">A pergunta é simples:</h2>
+    <div class="divisor-icone" aria-hidden="true"><svg class="ic"><use href="#i-balanca"/></svg></div>
+    <p class="chamada-final__texto">Em qual nível de proteção você deseja estar?</p>
+    <p><a class="botao" href="#filiacao">Filie-se!</a></p>
+  </div>
+</section>
+
+</div>

@@ -1,0 +1,13 @@
+---
+permalink: /sitemap.xml
+eleventyExcludeFromCollections: true
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{%- for p in collections.all %}{% if p.url and not p.data.semIndexar and p.url != "/sitemap.xml" and p.url != "/robots.txt" and p.url != "/.htaccess" and p.url != "/404.html" %}
+  <url>
+    <loc>{{ site.url }}{{ p.url }}</loc>
+    <lastmod>{{ p.date | dateIso }}</lastmod>
+  </url>
+{%- endif %}{% endfor %}
+</urlset>

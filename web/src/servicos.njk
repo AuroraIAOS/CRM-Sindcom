@@ -1,0 +1,162 @@
+---
+layout: base.njk
+titulo: Serviços
+descricao: Convenções coletivas, assistência jurídica, homologações, taxas e boletos, vagas e currículos. Tudo o que o trabalhador do comércio precisa para proteger seus direitos.
+permalink: /servicos/
+css: [componentes, servicos, rodape-completo]
+rodapeCompleto: true
+ondaCor: fundo-01
+---
+{% include "icones.njk" %}
+{% set ccts = [
+  { titulo: "CCT 2026 — Fecomércio Atacadista — Passos", arquivo: "cct-2026-fecomercio-atacadista-passos.pdf", mb: "0,5" },
+  { titulo: "CCT 2026 — Fecomércio Atacadista & Varejista — Região", arquivo: "cct-2026-fecomercio-atacadista-varejista-regiao.pdf", mb: "3,4" },
+  { titulo: "CCT 2026 — Sincovaga Alimentício — Região", arquivo: "cct-2026-sincovaga-alimenticio-regiao.pdf", mb: "7,5" },
+  { titulo: "CCT 2026 — SindPass Varejista — Passos", arquivo: "cct-2026-sindpass-varejista-passos.pdf", mb: "5,2" },
+  { titulo: "CCT 2026 — SindSuper Varejista — Região", arquivo: "cct-2026-sindsuper-varejista-regiao.pdf", mb: "2,1" }
+] %}
+{% set niveis = ["Bronze", "Prata", "Ouro"] %}
+{% set linhas = [
+  { t: "Piso salarial", v: [1,1,1] },
+  { t: "Reajustes salariais", v: [1,1,1] },
+  { t: "Proteção coletiva", v: [1,1,1] },
+  { t: "Convenções coletivas", v: [1,1,1] },
+  { t: "Homologação", v: [0,1,1] },
+  { t: "Assistência sindical individual", v: [0,1,1] },
+  { t: "Assistência jurídica individual", v: [0,1,1] },
+  { t: "Convênio de descontos", v: [0,0,1] },
+  { t: "Convênio de benefícios", v: [0,0,1] },
+  { t: "Cobertura dos dependentes", v: [0,0,1] }
+] %}
+
+<div class="pg">
+
+<section class="pagina-topo">
+  <div class="container">
+    <div class="tp"><h1 class="tp__titulo"><span class="tp__nome">Nossos Serviços</span></h1></div>
+  </div>
+</section>
+
+<section class="secao pagina-topo__seguinte">
+  <div class="container bloco-imagem bloco-imagem--texto-primeiro">
+    <div class="bloco-imagem__texto" data-revelar>
+      <h2 class="st">Tudo o que o trabalhador do comércio precisa para proteger seus direitos</h2>
+      <p>Do acesso a documentos e convenções coletivas até suporte jurídico, vagas de emprego e orientação trabalhista: o SINDCOM oferece serviços que facilitam sua vida, fortalecem sua segurança no trabalho e cuidam da sua família.</p>
+      <p class="chamada-v">Menos dúvidas. Mais clareza.<br>Mais proteção.</p>
+      <p><a class="botao botao--largo" href="/filie-se/">Quero garantir meus direitos</a></p>
+    </div>
+    <div class="bloco-imagem__arte" data-revelar>{% imagem "Sindcom-Passos-Trabalhadores-do-Comercio-horizontal-27.jpg", "Trabalhadora do comércio sorridente, de avental marrom e braços cruzados, ao lado de um caixa", "(min-width: 800px) 420px, 90vw", "arte-recorte", true %}</div>
+  </div>
+</section>
+
+<section class="secao secao--alt" id="protecao">
+  <div class="container">
+    <h2 class="st">Qual é o seu nível de proteção?</h2>
+    <div class="tabela-rolagem">
+    <table class="niveis">
+      <caption class="so-leitor">Serviços incluídos em cada nível de proteção</caption>
+      <thead><tr><th scope="col"><span class="so-leitor">Serviço</span></th>
+        <th scope="col">{% imagem "Sindcom-Representado-Bronze.png", "Selo Representado Bronze", "56px", "selo", false %}Bronze</th>
+        <th scope="col">{% imagem "Sindcom-Sindicalizado-Prata.png", "Selo Sindicalizado Prata", "56px", "selo", false %}Prata</th>
+        <th scope="col">{% imagem "Sindcom-Filiado-Ouro.png", "Selo Filiado Ouro", "56px", "selo", false %}Ouro</th></tr></thead>
+      <tbody>
+      {% for l in linhas %}<tr><th scope="row">{{ l.t }}</th>
+        {% for x in l.v %}<td class="{{ 'sim' if x else 'nao' }}"><span aria-hidden="true">{{ '✓' if x else '✗' }}</span><span class="so-leitor">{{ niveis[loop.index0] }}: {{ 'incluído' if x else 'não incluído' }}</span></td>{% endfor %}
+      </tr>{% endfor %}
+      </tbody>
+    </table>
+    </div>
+  </div>
+</section>
+
+<section class="secao">
+  <div class="container">
+    <h2 class="st">Serviços jurídicos e administrativos</h2>
+
+    <div class="servico" id="convencao">
+      <div class="servico__texto servico__texto--dir" data-revelar>
+        <h3 class="sb sb--vermelho">Convenções coletivas e documentos</h3>
+        <p>Aqui você encontra os documentos que regulam os direitos da sua categoria.</p>
+        <p>As convenções coletivas definem regras importantes como salários, jornadas, benefícios e condições de trabalho.</p>
+        <p>É por meio delas que o Sindicato garante avanços reais para os trabalhadores do comércio.</p>
+        <p class="chamada-v">Consulte, baixe e acompanhe os documentos atualizados da sua categoria.</p>
+      </div>
+      <div class="card-bege" data-revelar>
+        <ul class="downloads" aria-label="Convenções Coletivas de Trabalho 2026 para download">
+          {% for c in ccts %}<li>
+            <svg class="ic" aria-hidden="true"><use href="#i-curriculo"/></svg>
+            <span class="downloads__titulo">{{ c.titulo }}<small>PDF · {{ c.mb }} MB</small></span>
+            <a class="botao botao--sec botao--mini" href="/downloads/cct/{{ c.arquivo }}" download>Baixar<span class="so-leitor"> {{ c.titulo }}</span></a>
+          </li>{% endfor %}
+        </ul>
+      </div>
+    </div>
+
+    <div class="servico servico--inverso" id="consultas">
+      <div class="card-bege card-bege--centro" data-revelar>
+        <div class="lottie" data-lottie="/assets/lottie/duvida.json" role="img" aria-label="Animação de uma pessoa com dúvidas"></div>
+        <a class="botao" href="https://wa.me/5535988270406?text=Ol%C3%A1%20Dr.%20Adenilson.%20Eu%20gostaria%20de%20solicitar%20algumas%20informa%C3%A7%C3%B5es." rel="noopener">Fale com o Advogado</a>
+      </div>
+      <div class="servico__texto" data-revelar>
+        <h3 class="sb sb--vermelho">Consultas Jurídicas e Homologações</h3>
+        <p>Tem dúvidas sobre seus direitos trabalhistas? Deseja fazer a homologação da sua rescisão contratual?</p>
+        <p>O SINDCOM oferece orientações jurídicas especializadas para ajudar você a entender sua situação e tomar decisões mais seguras sobre sua vida laboral.</p>
+        <p class="chamada-v">Evite prejuízos por falta de informação. Receba orientação profissional preventiva.</p>
+      </div>
+    </div>
+
+    <div class="servico" id="taxas">
+      <div class="servico__texto servico__texto--dir" data-revelar>
+        <h3 class="sb sb--vermelho">Taxas e boletos</h3>
+        <p>Aqui você pode acessar informações sobre contribuições, taxas e emitir boletos de forma simples e rápida.</p>
+        <p>Manter sua contribuição em dia fortalece o Sindicato e garante a continuidade das conquistas coletivas para os trabalhadores e seus familiares.</p>
+        <p class="chamada-v">Acesse seus boletos e mantenha sua participação ativa.</p>
+      </div>
+      <div class="card-bege card-bege--taxas" data-revelar>
+        <h4>Taxa de Contribuição Sindical (ANUAL)</h4>
+        <ul><li>5% do salário-base até o limite de R$100,00/ANO</li></ul>
+        <h4>Mensalidade do Convênio Sindcom (MENSAL)</h4>
+        <ul>
+          <li><strong>Titular e Beneficiados Diretos:</strong> 1% do salário-base do titular</li>
+          <li><strong>Beneficiados Indiretos:</strong> adicional de 0,5% do salário-base do titular/adicional</li>
+          <li><strong>Beneficiados Adicionais:</strong> adicional de 1% do salário-base do titular/adicional</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="secao secao--alt">
+  <div class="container">
+    <h2 class="st">Serviços de suporte</h2>
+    <div class="suporte">
+      <div class="suporte__item" id="vagas" data-revelar>
+        <h3 class="sb sb--vermelho">Vagas</h3>
+        <p>Aqui, o SINDCOM conecta trabalhadores e empresas do comércio de Passos e Região através do cadastro e oferta de <strong>vagas de emprego.</strong></p>
+        <p class="destaque-v">Os empregadores e empresas podem:</p>
+        <ul><li>Cadastrar suas vagas de forma rápida</li><li>Alcançar candidatos qualificados da região</li></ul>
+        <a class="cartao-acao" href="/vaga/"><svg class="ic" aria-hidden="true"><use href="#i-vagas"/></svg><span>Cadastro de Vagas</span></a>
+      </div>
+      <div class="suporte__item" id="curriculos" data-revelar>
+        <h3 class="sb sb--vermelho">Currículos</h3>
+        <p>Aqui, o SINDCOM conecta os profissionais e empreendedores do comércio de Passos e Região através do <strong>cadastro de currículos.</strong></p>
+        <p>Cadastre seu currículo no banco de talentos do SINDCOM.</p>
+        <p class="destaque-v">Os profissionais e trabalhadores podem:</p>
+        <ul><li>Cadastrar seus currículos de forma rápida</li><li>Receber propostas valiosas na região</li></ul>
+        <a class="cartao-acao" href="/curriculo/"><svg class="ic" aria-hidden="true"><use href="#i-curriculo"/></svg><span>Cadastro de Currículo</span></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="secao chamada-final">
+  <div class="container centro">
+    <h2 class="st st--centro st--sem-barra chamada-final__titulo">Ter acesso a serviços é bom.<br>Ter proteção completa é melhor ainda.</h2>
+    <div class="divisor-icone" aria-hidden="true"><svg class="ic"><use href="#i-balanca"/></svg></div>
+    <p class="chamada-final__texto">O SINDCOM está aqui para te apoiar em todas as etapas da sua vida profissional. Mas quem é filiado vai além:</p>
+    <p class="chamada-v">tem mais segurança, mais suporte e mais força.</p>
+    <p><a class="botao" href="/filie-se/">Fortaleça seus direitos. Faça parte do SINDCOM</a></p>
+  </div>
+</section>
+
+</div>

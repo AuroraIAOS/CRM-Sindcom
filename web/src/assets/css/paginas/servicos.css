@@ -1,0 +1,41 @@
+.arte-recorte{width:100%;aspect-ratio:4/5;object-fit:cover;object-position:50% 20%}
+
+/* Tabela dos níveis */
+.tabela-rolagem{overflow-x:auto;margin-top:var(--e-md)}
+.niveis{width:100%;max-width:760px;margin-inline:auto;min-width:320px;border-collapse:collapse}
+.niveis th,.niveis td{padding:10px 12px;border-bottom:1px solid rgb(0 0 0/.08);text-align:center}
+.niveis tbody th{text-align:left;font-weight:400;color:var(--cor-texto-02);font-size:16px}
+.niveis thead th{font:400 24px/1.2 var(--font-titulo);color:var(--cor-texto-02);vertical-align:bottom;border-bottom:0}
+.selo{width:44px;height:auto;margin:0 auto 4px}
+.niveis .sim{color:#2e7d32;font-weight:700;font-size:20px}
+.niveis .nao{color:var(--cor-realce);font-weight:700;font-size:20px}
+
+/* Blocos de serviço: texto de um lado, cartão bege do outro, alinhados pelo meio */
+.servico{display:grid;gap:var(--e-lg);align-items:center;margin-top:var(--e-lg)}
+@media (min-width:800px){.servico{grid-template-columns:1fr 1fr}.servico--inverso{grid-template-columns:1fr 1fr}}
+.servico__texto .sb{margin-bottom:var(--e-sm)}
+@media (min-width:800px){.servico__texto--dir{text-align:right}.servico__texto--dir .chamada-v{text-align:right}}
+.card-bege{background:var(--cor-fundo-02);border-radius:24px;padding:var(--e-md)}
+.card-bege--centro{display:flex;flex-direction:column;align-items:center;gap:var(--e-sm);padding-block:var(--e-md)}
+.card-bege--centro .lottie{width:min(100%,260px)}
+.card-bege h4{margin:0 0 var(--e-xs);font:400 20px/1.3 var(--font-titulo);color:var(--cor-realce)}
+.card-bege--taxas h4:not(:first-child){margin-top:var(--e-md)}
+.card-bege ul{margin:0 0 var(--e-xs);padding-left:1.2em}
+.downloads{list-style:none;margin:0;padding:0!important;display:grid}
+.downloads li{display:grid;grid-template-columns:auto 1fr auto;gap:var(--e-sm);align-items:center;padding:12px 0;border-bottom:1px solid rgb(0 0 0/.1)}
+.downloads li:last-child{border-bottom:0}
+.downloads .ic{width:30px;height:30px}
+.downloads__titulo{font-size:15px;line-height:1.35;color:var(--cor-texto-01)}
+.downloads__titulo small{display:block;color:var(--cor-texto-02);font-size:13px}
+.botao--mini{padding:6px 14px;min-height:36px;font-size:14px}
+
+/* Serviços de suporte */
+.suporte{display:grid;gap:var(--e-lg);margin-top:var(--e-md)}
+@media (min-width:800px){.suporte{grid-template-columns:1fr 1fr}}
+.suporte__item{display:flex;flex-direction:column}
+.suporte__item ul{padding-left:1.2em}
+.destaque-v{color:var(--cor-realce)!important;font-weight:700}
+.suporte__item .cartao-acao{margin-top:auto}
+.cartao-acao{display:flex;align-items:center;justify-content:center;gap:16px;width:100%;min-height:72px;padding:12px 20px;background:var(--cor-branco);color:var(--cor-texto-02);border-radius:14px;text-decoration:none;font:400 20px/1.2 var(--font-titulo);box-shadow:0 4px 12px rgb(0 0 0/.14);transition:transform .2s,box-shadow .2s}
+.cartao-acao:hover,.cartao-acao:focus-visible{transform:translateY(-3px);box-shadow:0 10px 20px rgb(0 0 0/.2)}
+.cartao-acao .ic{width:36px;height:36px;stroke:var(--cor-texto-02)}

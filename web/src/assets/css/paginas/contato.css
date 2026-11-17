@@ -1,0 +1,16 @@
+
+
+.contatos-card{display:grid;gap:var(--e-sm) var(--e-md);grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));background:var(--cor-fundo-01);border-radius:24px;padding:var(--e-md);margin:var(--e-md) 0}
+.contatos-card dt{color:var(--cor-realce);font-weight:700;font-size:16px}
+.contatos-card dd{margin:4px 0 0;color:var(--cor-texto-02);font-size:16px}
+.contatos-card a{color:var(--cor-texto-02)}
+
+.presencial{display:grid;gap:var(--e-md);align-items:center}
+@media (min-width:800px){.presencial{grid-template-columns:.8fr 1.4fr}}
+.mapa-sede-bloco{position:relative;min-height:280px;border-radius:14px;overflow:hidden;background:var(--cor-fundo-01)}
+.mapa-sede-bloco .leaflet-container{height:100%;min-height:280px;font-family:var(--font-corpo)}
+
+.regiao-topo{display:grid;gap:var(--e-xs) var(--e-lg);margin-bottom:var(--e-md)}
+@media (min-width:800px){.regiao-topo{grid-template-columns:1fr 1fr;align-items:center}}
+.regiao-topo p{margin:0}
+

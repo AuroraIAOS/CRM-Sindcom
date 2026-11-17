@@ -1,0 +1,8 @@
+---
+permalink: /robots.txt
+eleventyExcludeFromCollections: true
+---
+User-agent: *
+{% if staging %}Disallow: /{% else %}Allow: /
+
+Sitemap: https://sindcompassos.org/sitemap.xml{% endif %}
