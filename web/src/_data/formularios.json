@@ -9,18 +9,18 @@
   },
   "formularios": {
     "contato": {
-      "titulo": "Fale com o SINDCOM",
+      "titulo": "Envie sua mensagem",
       "enviar": "Enviar mensagem",
       "sucesso": "Mensagem enviada. Responderemos pelo e-mail ou telefone informado.",
       "secoes": [
         { "campos": [
-          { "nome": "nome", "rotulo": "Nome completo", "tipo": "texto", "obrigatorio": true, "max": 120, "autocomplete": "name" },
+          { "nome": "nome", "largura": "inteira", "rotulo": "Nome completo", "tipo": "texto", "obrigatorio": true, "max": 120, "autocomplete": "name" },
           { "nome": "telefone", "rotulo": "Telefone celular (com DDD)", "tipo": "tel", "obrigatorio": true, "autocomplete": "tel-national" },
           { "nome": "email", "rotulo": "E-mail", "tipo": "email", "obrigatorio": true, "max": 160, "autocomplete": "email" },
           { "nome": "cidade", "rotulo": "Cidade de residência", "tipo": "texto", "obrigatorio": true, "max": 80, "autocomplete": "address-level2" },
           { "nome": "estado", "rotulo": "Estado", "tipo": "select", "lista": "uf", "obrigatorio": true, "autocomplete": "address-level1" },
-          { "nome": "assunto", "rotulo": "Assunto", "tipo": "texto", "obrigatorio": true, "max": 60 },
-          { "nome": "mensagem", "rotulo": "Mensagem", "tipo": "textarea", "obrigatorio": true, "max": 5000, "linhas": 6 }
+          { "nome": "assunto", "largura": "inteira", "rotulo": "Assunto", "tipo": "texto", "obrigatorio": true, "max": 60 },
+          { "nome": "mensagem", "largura": "inteira", "rotulo": "Mensagem", "tipo": "textarea", "obrigatorio": true, "max": 5000, "linhas": 6 }
         ]}
       ],
       "consentimento": [

@@ -37,7 +37,7 @@ function req(form: string, campos: Record<string, string | string[] | File>, ori
   return new Request(`https://x.supabase.co/functions/v1/formularios-site/${form}`, { method: "POST", body: fd, headers });
 }
 
-const contatoOk = { nome: "Maria Souza", telefone: "(35) 99999-9999", email: "Maria@Exemplo.com", cidade: "Passos", estado: "mg", assunto: "ACT", mensagem: "Olá", consentimento: "1" };
+const contatoOk = { nome: "Maria Souza", telefone: "(35) 99999-9999", email: "Maria@Exemplo.com", cidade: "Passos", estado: "mg", assunto: "Dúvida", mensagem: "Olá", consentimento: "1" };
 
 Deno.test("CORS: preflight de origem permitida = 204; origem estranha = 403", async () => {
   const { handler } = montar();

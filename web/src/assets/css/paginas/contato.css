@@ -1,15 +1,23 @@
-.slot-form h2{margin-top:0}
-.slot-form__canais{display:flex;flex-wrap:wrap;gap:var(--e-sm);margin-top:var(--e-sm)}
-.duas-col{display:grid;gap:var(--e-md);align-items:center}
-@media (min-width:800px){.duas-col{grid-template-columns:1fr 1fr}}
-.duas-col img{border-radius:var(--r-lg);width:100%}
-.lista-check{list-style:none;padding:0}.lista-check li{padding-left:1.6em;position:relative;margin-block:.4em}
-.lista-check li::before{content:"✓";position:absolute;left:0;color:var(--cor-realce);font-weight:700}
-.chamada{text-align:center}.chamada .botao{margin-top:var(--e-sm)}
-.contatos dt{font-weight:700}.contatos dd{margin:0 0 var(--e-sm)}
-.logo-rodape{max-width:200px;margin-inline:auto}
-.municipios{columns:2;list-style:none;padding:0}
-@media (min-width:700px){.municipios{columns:3}}
-@media (min-width:1000px){.municipios{columns:4}}
-.municipios li{break-inside:avoid;margin-block:.2em}
-.assunto-aviso{background:var(--cor-branco);border-left:4px solid var(--cor-realce);padding:var(--e-xs) var(--e-sm);border-radius:var(--r-sm)}
+.fale{display:grid;gap:var(--e-lg);align-items:start}
+@media (min-width:900px){.fale{grid-template-columns:1fr 1.1fr}}
+
+.fale__form .form-site{max-width:none}
+
+.contatos-card{display:grid;gap:var(--e-sm) var(--e-md);grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));background:var(--cor-fundo-01);border-radius:24px;padding:var(--e-md);margin:var(--e-md) 0}
+.contatos-card dt{color:var(--cor-realce);font-weight:700;font-size:16px}
+.contatos-card dd{margin:4px 0 0;color:var(--cor-texto-02);font-size:16px}
+.contatos-card a{color:var(--cor-texto-02)}
+
+.presencial{display:grid;gap:var(--e-md);align-items:center}
+@media (min-width:800px){.presencial{grid-template-columns:.8fr 1.4fr}}
+.mapa-sede-bloco{position:relative;min-height:280px;border-radius:14px;overflow:hidden;background:var(--cor-fundo-01)}
+.mapa-sede-bloco .leaflet-container{height:100%;min-height:280px;font-family:var(--font-corpo)}
+
+.regiao-topo{display:grid;gap:var(--e-xs) var(--e-lg);margin-bottom:var(--e-md)}
+@media (min-width:800px){.regiao-topo{grid-template-columns:1fr 1fr;align-items:center}}
+.regiao-topo p{margin:0}
+
+/* Distribuição lateral: texto e animação formam um bloco único, centralizado na altura do formulário */
+.fale{align-items:stretch}
+.fale__texto{display:flex;flex-direction:column;justify-content:center;gap:0}
+.fale__lottie{width:min(100%,320px);margin:var(--e-md) auto 0}

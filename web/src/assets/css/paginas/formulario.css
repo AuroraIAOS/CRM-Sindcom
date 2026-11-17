@@ -28,4 +28,28 @@
 .form-site__ok{text-align:center;padding:var(--e-md) 0}
 .form-site__protocolo strong{font:600 24px var(--font-titulo);color:var(--cor-realce)}
 .form-site button[disabled]{opacity:.6;cursor:progress}
-@media (min-width:720px){.form-site__secao .campo--texto,.form-site__secao .campo--email,.form-site__secao .campo--tel,.form-site__secao .campo--cpf,.form-site__secao .campo--cnpj,.form-site__secao .campo--data,.form-site__secao .campo--pis,.form-site__secao .campo--select{display:inline-block;width:calc(50% - 10px);vertical-align:top}.form-site__secao .campo--texto:nth-child(odd){margin-right:16px}}
+
+/* ---- Estética delicada: campos sem moldura (só a cor muda), mesma altura, grade de 2 colunas ---- */
+.form-site{border-radius:24px;padding:clamp(20px,4vw,40px);box-shadow:0 12px 32px rgb(0 0 0/.06)}
+.form-site__demo{background:var(--cor-fundo-01);border-left:3px solid var(--cor-realce);border-radius:0 10px 10px 0;font-size:14px;color:var(--cor-texto-02);margin:0 0 var(--e-md)}
+.form-site__secao{display:grid;grid-template-columns:1fr;gap:18px 16px;margin:0 0 var(--e-sm)}
+@media (min-width:720px){.form-site__secao{grid-template-columns:1fr 1fr}}
+.form-site__secao>legend{grid-column:1/-1}
+.campo{margin:0;min-width:0}
+.campo--inteira,.campo--textarea,.campo--radio,.campo--checkboxes,.campo--arquivo{grid-column:1/-1}
+.campo label,.campo__grupo>legend{font-size:14px;color:var(--cor-texto-02);margin-bottom:6px;letter-spacing:.01em}
+.ajuda{font-size:13px}
+.form-site input[type=text],.form-site input[type=email],.form-site input[type=tel],.form-site select,.form-site textarea,.form-site input[type=file]{
+  height:48px;min-height:48px;padding:0 16px;color:var(--cor-texto-01);background:var(--cor-fundo-01);border:1px solid transparent;border-radius:12px;transition:background .2s,border-color .2s,box-shadow .2s}
+.form-site textarea{height:auto;min-height:130px;padding:14px 16px;line-height:1.5}
+.form-site input[type=file]{padding:10px 16px;height:auto}
+.form-site select{appearance:none;-webkit-appearance:none;padding-right:44px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='9' viewBox='0 0 14 9'%3E%3Cpath d='M1 1l6 6 6-6' fill='none' stroke='%23565656' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 18px center}
+.form-site input:hover,.form-site select:hover,.form-site textarea:hover{background-color:var(--cor-fundo-02)}
+.form-site input:focus-visible,.form-site select:focus-visible,.form-site textarea:focus-visible{outline:none;background-color:var(--cor-branco);border-color:var(--cor-realce);box-shadow:0 0 0 4px rgb(198 40 40/.12)}
+.form-site [aria-invalid=true]{border-color:var(--cor-realce);background-color:#fdf3f3}
+.contador{font-size:13px}
+.erro{font-size:14px}
+.campo--consent{margin-top:var(--e-xs)}
+.opcao--consent{font-size:14px;color:var(--cor-texto-02)}
+.form-site .botao[type=submit]{min-height:48px;padding:0 36px;border:0;border-radius:12px;font:inherit;cursor:pointer;color:#fff;transition:filter .2s,transform .2s}
+.form-site .botao[type=submit]:hover{transform:translateY(-1px)}

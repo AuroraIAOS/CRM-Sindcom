@@ -11,7 +11,7 @@
       {% if s.titulo %}<legend>{{ s.titulo }}</legend>{% endif %}
       {% for c in s.campos %}
       {%- set id = formNome + "-" + c.nome -%}
-      <div class="campo campo--{{ c.tipo }}"{% if c.mostrarSe %} data-mostrar-se="{{ c.mostrarSe }}" hidden{% endif %}>
+      <div class="campo campo--{{ c.tipo }}{% if c.largura == 'inteira' %} campo--inteira{% endif %}"{% if c.mostrarSe %} data-mostrar-se="{{ c.mostrarSe }}" hidden{% endif %}>
         {% if c.tipo == "radio" or c.tipo == "checkboxes" %}
         <fieldset class="campo__grupo" data-nome="{{ c.nome }}" data-tipo="{{ c.tipo }}"{% if c.obrigatorio %} data-obrigatorio="1"{% endif %} aria-describedby="erro-{{ id }}">
           <legend>{{ c.rotulo }}{% if c.obrigatorio %} <span class="obrig" aria-hidden="true">*</span>{% endif %}</legend>

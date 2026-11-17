@@ -49,7 +49,7 @@ com o componente de formulário já visível, e a troca é a última coisa.
 **Arquitetura:** Eleventy. Cabeçalho, rodapé, menu, botões e mapa são componentes únicos; o texto de cada página fica
 em Markdown/JSON. Imagens em AVIF/WebP com `srcset` (17 MB devem cair para cerca de 3 MB). Lottie e mapa só carregam
 quando aparecem na tela. CCTs e Nota Técnica em `/downloads/`, com nomes limpos. A biblioteca de livros e cartilhas
-**fica de fora**. ACTs não são publicadas: o botão "Solicitar ACT" abre o formulário de contato com o assunto preenchido.
+**fica de fora**.
 
 | WP | Entrega | Depende de | Paralelo? |
 |---|---|---|---|

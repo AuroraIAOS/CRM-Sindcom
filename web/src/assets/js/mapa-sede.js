@@ -1,7 +1,7 @@
 // Mapa da sede no rodapé: Leaflet (hospedado no próprio site) + OpenStreetMap, carregado só quando aparece na tela.
 (() => {
-  const alvo = document.querySelector('[data-mapa-sede]');
-  if (!alvo) return;
+  const alvos = [...document.querySelectorAll('[data-mapa-sede]')];
+  if (!alvos.length) return;
   const carregar = () => window.__leafletP ??= new Promise((ok, erro) => {
     const css = document.createElement('link');
     css.rel = 'stylesheet'; css.href = '/assets/vendor/leaflet/leaflet.css';
@@ -12,9 +12,7 @@
     s.onload = () => ok(window.L); s.onerror = erro;
     document.head.appendChild(s);
   });
-  const io = new IntersectionObserver(async (itens) => {
-    if (!itens.some((i) => i.isIntersecting)) return;
-    io.disconnect();
+  const montar = async (alvo) => {
     try {
       const L = await carregar();
       const pos = [Number(alvo.dataset.lat), Number(alvo.dataset.lng)];
@@ -25,6 +23,7 @@
       L.marker(pos, { icon: L.divIcon({ className: '', html: '<div class="pino-sede"></div>', iconSize: [30, 30], iconAnchor: [15, 30] }), title: 'SINDCOM' }).addTo(mapa);
       mapa.once('focus', () => mapa.scrollWheelZoom.enable());
     } catch { /* mantém o link "Abrir no mapa" */ }
-  }, { rootMargin: '200px' });
-  io.observe(alvo);
+  };
+  const io = new IntersectionObserver((itens) => itens.forEach((i) => { if (i.isIntersecting) { io.unobserve(i.target); montar(i.target); } }), { rootMargin: '200px' });
+  alvos.forEach((a) => io.observe(a));
 })();

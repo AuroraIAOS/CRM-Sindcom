@@ -1,20 +1,13 @@
-.inst-logo{max-width:300px;margin-inline:auto}
-.inst-logo--p{max-width:160px}
-.inst-retrato,.inst-recorte{max-width:min(360px,100%);margin-inline:auto}
-.inst-recorte{max-width:240px}
-.inst-presidente h3{font-size:clamp(22px,3.5vw,28px);margin-top:0}
-.inst-citacao{margin:var(--e-md) 0 0;padding:var(--e-sm) var(--e-md);border-left:4px solid var(--cor-realce);background:var(--cor-branco);border-radius:var(--r-md);font:italic 400 clamp(18px,2.5vw,22px)/1.5 var(--font-titulo)}
-.inst-citacao p{margin:0 0 var(--e-xs)}
-.inst-centro{text-align:center;margin-top:var(--e-lg)}
-.inst-numeros{list-style:none;margin:var(--e-md) 0 var(--e-lg);padding:0;display:grid;gap:var(--e-md);grid-template-columns:repeat(2,1fr);text-align:center}
-@media (min-width:800px){.inst-numeros{grid-template-columns:repeat(3,1fr)}}
-.inst-numeros li{display:flex;flex-direction:column;gap:6px}
-.inst-numeros__rotulo{color:var(--cor-texto-02)}
-.inst-municipios{list-style:none;padding:0;margin:var(--e-sm) 0 var(--e-md);display:grid;gap:4px var(--e-md);grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
-.inst-municipios li::before{content:"";display:inline-block;width:8px;height:8px;margin-right:8px;background:var(--cor-realce);border-radius:50%}
-.inst-fecho{margin-top:var(--e-lg)}
-.inst-links,.inst-contatos{list-style:none;padding:0}
-.inst-links{display:flex;flex-wrap:wrap;gap:var(--e-sm)}
-.inst-contatos li{margin-bottom:var(--e-xs)}
-.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-.secao ul:not([class]){padding-left:1.2em}
+.pagina-topo{background:var(--cor-fundo-01);padding-top:var(--e-sm)}
+.pagina-topo__seguinte{padding-top:0!important}
+.presidente,.resultados{margin-top:var(--e-md)}
+@media (min-width:800px){.presidente{grid-template-columns:340px 1fr}.resultados{grid-template-columns:300px 1fr}}
+.presidente .bloco-imagem__arte img,.resultados .bloco-imagem__arte img{border-radius:0;box-shadow:none}
+.resultados{margin-top:0}
+.numeros--centro{margin:var(--e-md) auto}
+@media (min-width:640px){.numeros--centro{max-width:820px}}
+.regiao-titulo{margin-top:var(--e-lg)}
+.fecho-forca{display:flex;flex-direction:column;align-items:center;text-align:center;margin-top:var(--e-lg);gap:var(--e-xs)}
+.fecho-forca .ic{width:56px;height:56px}
+.com-icones{display:flex;align-items:center;justify-content:center;gap:var(--e-sm);margin:var(--e-md) 0 var(--e-xs)}
+.com-icones .ic{width:44px;height:44px}

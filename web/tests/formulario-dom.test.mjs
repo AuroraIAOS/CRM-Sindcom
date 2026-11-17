@@ -25,8 +25,8 @@ test('contato: vazio mostra resumo e erros acessíveis', () => {
 });
 
 test('contato: ?assunto= preenche e válido não mostra erro (modo demonstração)', () => {
-  const w = abrir('contato', 'http://localhost/contato/?assunto=ACT'); const form = w.document.querySelector('.form-site form');
-  assert.equal(form.elements.assunto.value, 'ACT');
+  const w = abrir('contato', 'http://localhost/contato/?assunto=Duvida'); const form = w.document.querySelector('.form-site form');
+  assert.equal(form.elements.assunto.value, 'Duvida');
   preenche(w, form, 'nome', 'Maria Souza'); preenche(w, form, 'telefone', '35999999999');
   preenche(w, form, 'email', 'maria@exemplo.com'); preenche(w, form, 'cidade', 'Passos');
   preenche(w, form, 'estado', 'MG'); preenche(w, form, 'mensagem', 'Olá');

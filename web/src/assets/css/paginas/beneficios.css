@@ -1,20 +1,30 @@
-.fotos picture{border-radius:var(--r-lg);overflow:hidden}
-.foto{width:100%}
-.fotos{display:grid;gap:var(--e-sm)}
-.foto-vertical{max-width:320px}
-.perfis{margin-top:var(--e-md);align-items:start}
-.perfil .selo{width:96px;height:auto;margin-bottom:var(--e-xs)}
-.perfil--ouro{border:2px solid var(--cor-realce)}
-.checks{list-style:none;padding:0;margin:0 0 var(--e-sm)}
-.checks li{padding-left:28px;position:relative;margin-bottom:6px}
-.checks li::before{content:"✓";position:absolute;left:0;color:var(--cor-realce);font-weight:700}
-.exemplo .economia{font-weight:700;color:var(--cor-realce);margin-bottom:0}
-.area{position:relative}
-.etiqueta{display:inline-block;background:var(--cor-realce);color:var(--cor-branco);font-size:13px;letter-spacing:.06em;text-transform:uppercase;padding:2px 10px;border-radius:var(--r-sm);margin-bottom:var(--e-xs)}
-.parceiros-titulo{margin-top:var(--e-lg)}
-.carrossel{display:flex;gap:var(--e-sm);overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:var(--e-xs)}
-.carrossel figure{margin:0;flex:0 0 min(80%,400px);scroll-snap-align:start;background:var(--cor-branco);border-radius:var(--r-lg);overflow:hidden}
+.arte-recorte{width:100%;aspect-ratio:4/5;object-fit:cover;object-position:50% 20%}
+.bloco-imagem+.bloco-imagem{margin-top:var(--e-lg)}
+.bloco-imagem__texto h2.sb{margin-bottom:var(--e-sm)}
+.subtitulo-custo{margin:0 0 var(--e-sm)}
 
-.area .acoes{display:flex;flex-direction:column;align-items:flex-start;gap:var(--e-xs);margin-top:var(--e-sm)}
-.area .acoes .botao{padding:8px 16px;font-size:16px}
-.area .acoes .botao--sec{border-width:2px}
+/* Três perfis */
+.perfis{display:grid;gap:var(--e-sm);grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));margin:var(--e-md) 0 var(--e-lg);align-items:stretch}
+.perfil{display:flex;flex-direction:column;background:var(--cor-fundo-02);border-radius:20px;overflow:hidden}
+.perfil__topo{display:flex;align-items:center;gap:12px;margin:0;padding:10px 16px;background:var(--cor-realce);color:#fff;font:400 22px/1.2 var(--font-titulo);border-radius:0 0 18px 18px}
+.perfil__selo{width:40px;height:auto}
+.perfil__corpo{padding:var(--e-sm)}
+.perfil__corpo p{font-size:15px;margin:0 0 10px}
+.perfil__corpo p.perfil__recebe{color:var(--cor-realce);font-weight:700}
+.checks{list-style:none;padding:0;margin:0 0 var(--e-sm)}
+.checks li{padding-left:26px;position:relative;margin-bottom:6px;font-size:15px;color:var(--cor-texto-02)}
+.checks li::before{content:"✓";position:absolute;left:0;color:#2e7d32;font-weight:700}
+
+/* A pergunta é simples */
+.pergunta__texto{text-align:center}
+.pergunta__texto .sb{font-size:clamp(24px,4vw,30px)}
+
+/* Exemplos de custo-benefício */
+@media (min-width:800px){.exemplos{grid-template-columns:280px 1fr}}
+.exemplo{background:var(--cor-fundo-01);border-radius:20px;margin-bottom:var(--e-sm);overflow:hidden;box-shadow:0 1px 4px rgb(0 0 0/.08)}
+.exemplo__topo{display:flex;align-items:center;gap:12px;margin:0;padding:12px 18px;font:400 22px/1.2 var(--font-titulo);color:var(--cor-texto-02)}
+.exemplo__topo .ic{width:34px;height:34px}
+.exemplo__corpo{display:grid;gap:4px var(--e-md);grid-template-columns:1fr;padding:6px 18px 14px;font-size:15px}
+@media (min-width:640px){.exemplo__corpo{grid-template-columns:1fr auto;align-items:center}}
+.exemplo__corpo ul{margin:0;padding-left:1.2em}
+.exemplo__corpo .chamada-v{margin:0;font-size:18px}

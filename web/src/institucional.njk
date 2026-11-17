@@ -3,80 +3,82 @@ layout: base.njk
 titulo: Institucional
 descricao: Conheça o SINDCOM, sua história, o presidente Davi de Oliveira, os 29 municípios que representamos e os resultados alcançados pelos trabalhadores do comércio.
 permalink: /institucional/
-css: [institucional]
+css: [componentes, institucional, rodape-completo]
+rodapeCompleto: true
 ---
-<section class="hero">
+{% include "icones.njk" %}
+<div class="pg">
+
+<section class="pagina-topo">
   <div class="container">
-    <h1>Institucional</h1>
-    <p class="lead">Sindicato dos Empregados no Comércio de Passos e Região</p>
+    <div class="tp"><h1 class="tp__titulo"><span class="tp__nome">Institucional</span></h1></div>
   </div>
 </section>
 
-<section id="quem" class="secao">
-  <div class="container duas-col">
-    <div>
-      <h2>Quem somos?</h2>
+<section id="quem" class="secao pagina-topo__seguinte">
+  <div class="container bloco-imagem bloco-imagem--texto-primeiro">
+    <div class="bloco-imagem__texto" data-revelar>
+      <h2 class="st">Quem somos?</h2>
       <p>O <strong>SINDCOM – Sindicato dos Empregados no Comércio de Passos e Região</strong> é a entidade que representa e defende os trabalhadores do comércio em todo o sudoeste de Minas Gerais.</p>
       <p>Atuamos em <strong>29 municípios</strong>, fortalecendo direitos, negociando melhores condições de trabalho e garantindo que cada trabalhador tenha voz diante do mercado.</p>
-      <p>Mais do que um sindicato, somos <strong>uma rede de proteção, orientação e conquista coletiva</strong>.</p>
-      <p><a class="botao" href="/filie-se/">Quero garantir meus direitos</a></p>
+      <p class="chamada-v">Mais do que um sindicato, somos <strong>uma rede de proteção, orientação e conquista coletiva.</strong></p>
+      <p><a class="botao botao--largo" href="/filie-se/">Quero garantir meus direitos</a></p>
     </div>
-    <div class="centro">{% imagem "Sindcom-Passos-Logotipo-01.png", "Logotipo do SINDCOM", "(min-width: 800px) 300px, 60vw", "inst-logo", true %}</div>
+    <div class="bloco-imagem__arte bloco-imagem__arte--sem-moldura" data-revelar>{% imagem "Sindcom-Passos-Logotipo-01.png", "Logotipo do SINDCOM", "(min-width: 800px) 360px, 60vw", "", true %}</div>
   </div>
 </section>
 
 <section id="historia" class="secao secao--alt">
-  <div class="container duas-col">
-    <div>
-      <h2>Nossa história</h2>
+  <div class="container bloco-imagem bloco-imagem--texto-primeiro">
+    <div class="bloco-imagem__texto" data-revelar>
+      <h2 class="st">Nossa história</h2>
       <p>A história do SINDCOM nasce da união de trabalhadores que entenderam uma verdade simples:</p>
-      <p class="lead">Direitos não se mantêm sozinhos.<br>Eles precisam ser defendidos.</p>
+      <p class="chamada-v">Direitos não se mantêm sozinhos.<br>Eles precisam ser defendidos.</p>
       <p>Ao longo dos anos, o Sindicato se consolidou como uma força ativa na região, participando de negociações coletivas, garantindo avanços salariais e ampliando benefícios para milhares de trabalhadores do comércio e seus familiares.</p>
       <p>Cada conquista construída até aqui não foi individual. Foi resultado de organização, representatividade e ação coletiva.</p>
       <p>E essa história continua sendo escrita todos os dias.</p>
     </div>
-    <div>{% imagem "Sindcom-Passos-Trabalhadores-do-Comercio-horizontal-28.webp", "Martelo de juiz sobre documentos e a carteira de trabalho", "(min-width: 800px) 520px, 100vw", "", false %}</div>
+    <div class="bloco-imagem__arte" data-revelar>{% imagem "Sindcom-Passos-Trabalhadores-do-Comercio-horizontal-28.webp", "Martelo de juiz sobre documentos e a carteira de trabalho", "(min-width: 800px) 420px, 90vw", "", false %}</div>
   </div>
 </section>
 
 <section id="presidente" class="secao">
-  <div class="container duas-col inst-presidente">
-    <div class="centro">{% imagem "Davi-de-Oliveira-Presidente-do-Sindcom-Passos.png", "Davi de Oliveira, presidente do SINDCOM Passos, de terno e gravata", "(min-width: 800px) 360px, 70vw", "inst-retrato", false %}</div>
-    <div>
-      <h2>O Presidente</h2>
-      <h3>Davi de Oliveira</h3>
-      <p>À frente do SINDCOM está <strong>Davi de Oliveira</strong>, uma liderança marcada pela presença, pelo diálogo e pela atuação firme na defesa dos trabalhadores do comércio.</p>
-      <p>Mais do que ocupar um cargo institucional, acredita que o sindicato deve estar próximo da realidade dos comerciários. Por isso, sua atuação vai além do gabinete: participa de assembleias, visita empresas, acompanha negociações coletivas e mantém contato direto com os trabalhadores da categoria.</p>
-      <p>Em momentos delicados, como demissões em massa e conflitos trabalhistas, mantém uma postura acessível e atuante, colocando o sindicato à disposição para orientação, acolhimento e defesa de direitos.</p>
-      <p>Além de sua dedicação ao movimento sindical, também atua como presidente do ISEPEM – Instituto Social, Educacional e de Pesquisa de Minas Gerais, reforçando seu compromisso com o desenvolvimento humano, social e regional.</p>
-      <p>Sob sua liderança, o SINDCOM segue fortalecendo sua atuação, ampliando serviços e construindo uma representação sindical mais próxima, moderna e participativa.</p>
-      <blockquote class="inst-citacao">
-        <p>“Nosso compromisso é garantir que nenhum trabalhador do comércio esteja desamparado.</p>
-        <p>Quando o trabalhador se fortalece, toda a categoria avança.”</p>
-      </blockquote>
+  <div class="container">
+    <h2 class="st">O Presidente</h2>
+    <div class="bloco-imagem presidente">
+      <div class="bloco-imagem__arte bloco-imagem__arte--sem-moldura" data-revelar>{% imagem "Davi-de-Oliveira-Presidente-do-Sindcom-Passos.png", "Davi de Oliveira, presidente do SINDCOM Passos, de terno e gravata", "(min-width: 800px) 340px, 70vw", "", false %}</div>
+      <div class="bloco-imagem__texto">
+        <h3 class="sb">Davi de Oliveira</h3>
+        <p>À frente do SINDCOM está <strong>Davi de Oliveira</strong>, uma liderança marcada pela presença, pelo diálogo e pela atuação firme na defesa dos trabalhadores do comércio.</p>
+        <p>Mais do que ocupar um cargo institucional, acredita que o sindicato deve estar próximo da realidade dos comerciários. Por isso, sua atuação vai além do gabinete: participa de assembleias, visita empresas, acompanha negociações coletivas e mantém contato direto com os trabalhadores da categoria.</p>
+        <p>Em momentos delicados, como demissões em massa e conflitos trabalhistas, mantém uma postura acessível e atuante, colocando o sindicato à disposição para orientação, acolhimento e defesa de direitos.</p>
+        <p>Além de sua dedicação ao movimento sindical, também atua como presidente do ISEPEM – Instituto Social, Educacional e de Pesquisa de Minas Gerais, reforçando seu compromisso com o desenvolvimento humano, social e regional.</p>
+        <p>Sob sua liderança, o SINDCOM segue fortalecendo sua atuação, ampliando serviços e construindo uma representação sindical mais próxima, moderna e participativa.</p>
+        <p class="chamada-v">“Nosso compromisso é garantir que nenhum trabalhador do comércio esteja desamparado.<br>Quando o trabalhador se fortalece, toda a categoria avança.”</p>
+      </div>
     </div>
   </div>
 </section>
 
 <section id="forca" class="secao secao--alt">
   <div class="container">
-    <h2>Nossa força</h2>
-    <p class="lead">Hoje, o SINDCOM representa uma base sólida e em constante crescimento.</p>
+    <h2 class="st">Nossa força</h2>
+    <p>Hoje, o SINDCOM representa uma base sólida e em constante crescimento.</p>
     <p>O número de trabalhadores e famílias alcançados mostra a força deste Sindicato. A quantidade de setores representados evidencia a amplitude da nossa atuação. E a abrangência regional da nossa luta prova nossa credibilidade e resolutividade.</p>
 
-    <h3 class="inst-centro">Números que mostram nossa força</h3>
-    <ul class="inst-numeros" data-revelar>
-      <li><span class="numero" data-contador="29">29</span><span class="inst-numeros__rotulo">Municípios cobertos</span></li>
-      <li><span class="numero" data-contador="21" data-prefixo="+">+21</span><span class="inst-numeros__rotulo">Classes representadas</span></li>
-      <li><span class="numero" data-contador="226" data-prefixo="+">+226</span><span class="inst-numeros__rotulo">Atividades representadas</span></li>
-      <li><span class="numero" data-contador="17500" data-prefixo="+">+17.500</span><span class="inst-numeros__rotulo">Empresas envolvidas</span></li>
-      <li><span class="numero" data-contador="27500" data-prefixo="+">+27.500</span><span class="inst-numeros__rotulo">Trabalhadores protegidos</span></li>
-      <li><span class="numero" data-contador="115000" data-prefixo="+">+115.000</span><span class="inst-numeros__rotulo">Familiares atendidos</span></li>
+    <h3 class="sb sb--vermelho centro numeros-titulo">Números que mostram nossa força</h3>
+    <ul class="numeros numeros--centro" data-revelar>
+      <li><svg class="ic" aria-hidden="true"><use href="#i-predio"/></svg><span class="numero" data-contador="29">29</span><span class="numeros__rotulo">Municípios cobertos</span></li>
+      <li><svg class="ic" aria-hidden="true"><use href="#i-pessoas"/></svg><span class="numero" data-contador="21" data-prefixo="+">+21</span><span class="numeros__rotulo">Classes representadas</span></li>
+      <li><svg class="ic" aria-hidden="true"><use href="#i-rede"/></svg><span class="numero" data-contador="226" data-prefixo="+">+226</span><span class="numeros__rotulo">Atividades representadas</span></li>
+      <li><svg class="ic" aria-hidden="true"><use href="#i-loja"/></svg><span class="numero" data-contador="17500" data-prefixo="+">+17.500</span><span class="numeros__rotulo">Empresas envolvidas</span></li>
+      <li><svg class="ic" aria-hidden="true"><use href="#i-pessoa"/></svg><span class="numero" data-contador="27500" data-prefixo="+">+27.500</span><span class="numeros__rotulo">Trabalhadores protegidos</span></li>
+      <li><svg class="ic" aria-hidden="true"><use href="#i-familia"/></svg><span class="numero" data-contador="115000" data-prefixo="+">+115.000</span><span class="numeros__rotulo">Familiares atendidos</span></li>
     </ul>
 
-    <h3>Abrangência regional</h3>
-    <p>O SINDCOM representa os empregados no comércio dos seguintes municípios:</p>
-    <ul class="inst-municipios">
+    <h3 class="sb sb--vermelho centro regiao-titulo">Abrangência regional</h3>
+    <p class="centro">O SINDCOM representa os empregados no comércio dos seguintes municípios:</p>
+    <ul class="municipios">
       <li>Alpinópolis</li><li>Alterosa</li><li>Arceburgo</li><li>Bom Jesus da Penha</li><li>Capetinga</li>
       <li>Capitólio</li><li>Carmo do Rio Claro</li><li>Cássia</li><li>Conceição da Aparecida</li><li>Delfinópolis</li>
       <li>Fortaleza de Minas</li><li>Guapé</li><li>Ibiraci</li><li>Ilicínea</li><li>Itamogi</li>
@@ -87,94 +89,51 @@ css: [institucional]
 
     {% include "mapa-atuacao.njk" %}
 
-    <div class="duas-col inst-fecho">
-      <p class="lead">Para nós, quanto maior a base, maior a força de negociação. E por isso, cada novo filiado fortalece toda a categoria.</p>
-      <div class="centro">{% imagem "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-23.png", "Trabalhador sorridente de camisa e calça, segurando um tablet", "(min-width: 800px) 260px, 50vw", "inst-recorte", false %}</div>
+    <div class="fecho-forca">
+      <svg class="ic" aria-hidden="true"><use href="#i-pessoas"/></svg>
+      <p class="chamada-v">Para nós, quanto maior a base, maior a força de negociação.<br>E por isso, cada novo filiado fortalece toda a categoria.</p>
     </div>
   </div>
 </section>
 
 <section id="resultados" class="secao">
-  <div class="container">
-    <h2>Resultados alcançados</h2>
-    <p class="lead">A atuação do SINDCOM gera impacto real na vida dos trabalhadores e seus familiares.</p>
-    <p>Aqui, nossos resultados não são apenas discursos. É a expressão e comprovação da melhoria real na vida de quem trabalha.</p>
-    <div class="grade">
-      <div class="cartao">
-        <h3>Conquistas recentes</h3>
-        <ul>
-          <li>Reajustes salariais acima da inflação em diversas negociações</li>
-          <li>Ampliação de benefícios em convenções coletivas</li>
-          <li>Garantia de direitos em jornadas e condições de trabalho</li>
-          <li>Atuação em defesas trabalhistas e orientações jurídicas</li>
-        </ul>
+  <div class="container bloco-imagem bloco-imagem--distribuido resultados">
+    <div class="bloco-imagem__arte bloco-imagem__arte--sem-moldura" data-revelar>{% imagem "Sindcom-Passos-Trabalhadores-do-Comercio-vertical-23.png", "Trabalhador sorridente de camisa e calça, segurando um tablet", "(min-width: 800px) 340px, 60vw", "", false %}</div>
+    <div class="bloco-imagem__texto">
+      <div>
+      <h2 class="st">Resultados alcançados</h2>
+      <p>A atuação do SINDCOM gera impacto real na vida dos trabalhadores e seus familiares.</p>
+      <p>Aqui, nossos resultados não são apenas discursos. É a expressão e comprovação da melhoria real na vida de quem trabalha.</p>
       </div>
-      <div class="cartao">
-        <h3>Impacto direto</h3>
-        <ul>
-          <li>Centenas de trabalhadores orientados juridicamente todos os anos</li>
-          <li>Acordos coletivos que beneficiam milhares de famílias</li>
-          <li>Redução de conflitos trabalhistas por meio de mediação e suporte</li>
-        </ul>
+      <div>
+      <h3 class="sb centro com-icones"><svg class="ic" aria-hidden="true"><use href="#i-trofeu"/></svg>Conquistas recentes<svg class="ic" aria-hidden="true"><use href="#i-trofeu"/></svg></h3>
+      <ul>
+        <li>Reajustes salariais acima da inflação em diversas negociações</li>
+        <li>Ampliação de benefícios em convenções coletivas</li>
+        <li>Garantia de direitos em jornadas e condições de trabalho</li>
+        <li>Atuação em defesas trabalhistas e orientações jurídicas</li>
+      </ul>
+      </div>
+      <div>
+      <h3 class="sb centro com-icones"><svg class="ic" aria-hidden="true"><use href="#i-balanca"/></svg>Impacto direto<svg class="ic" aria-hidden="true"><use href="#i-balanca"/></svg></h3>
+      <ul>
+        <li>Centenas de trabalhadores orientados juridicamente todos os anos</li>
+        <li>Acordos coletivos que beneficiam milhares de famílias</li>
+        <li>Redução de conflitos trabalhistas por meio de mediação e suporte</li>
+      </ul>
       </div>
     </div>
   </div>
 </section>
 
-<section class="secao secao--alt">
+<section class="secao secao--alt chamada-final">
   <div class="container centro">
-    <h2>Um sindicato forte começa com você!</h2>
-    <p>Cada trabalhador filiado fortalece a luta por melhores salários, condições dignas e respeito no ambiente de trabalho.</p>
-    <p>Não fique de fora.</p>
-    <p><strong>Torne-se um trabalhador com proteção nível ouro!</strong></p>
+    <h2 class="st st--centro st--sem-barra chamada-final__titulo">Um sindicato forte começa com você!</h2>
+    <div class="divisor-icone" aria-hidden="true"><svg class="ic"><use href="#i-balanca"/></svg></div>
+    <p class="chamada-final__texto">Cada trabalhador filiado fortalece a luta por melhores salários, condições dignas e respeito no ambiente de trabalho.</p>
+    <p class="chamada-v">Não fique de fora.<br>Torne-se um trabalhador com proteção nível ouro!</p>
     <p><a class="botao" href="/filie-se/">Faça parte do SINDCOM e fortaleça seus direitos</a></p>
   </div>
 </section>
 
-<section id="denuncia" class="secao">
-  <div class="container duas-col">
-    <div class="lottie" data-lottie="/assets/lottie/denuncia.json" role="img" aria-label="Animação ilustrando uma denúncia trabalhista"></div>
-    <div>
-      <h2>Denúncia anônima</h2>
-      <p>Direitos trabalhistas não são favores. São garantias legais.</p>
-      <p>Caso você tenha identificado possíveis irregularidades, clique no botão abaixo e registre sua denúncia de forma segura e anônima.</p>
-      <p><a class="botao" href="/denuncie/">Denuncie aqui!</a></p>
-    </div>
-  </div>
-</section>
-
-<section id="servicos-trabalhador" class="secao secao--alt">
-  <div class="container grade">
-    <div>
-      <h2>Serviços para o Trabalhador</h2>
-      <p>Prezado trabalhador, fique à vontade para cadastrar aqui seu currículo e/ou buscar pelas vagas e oportunidades de emprego cadastradas.</p>
-      <ul class="inst-links">
-        <li><a class="botao botao--sec" href="/curriculo/#cadastroC">Cadastro de Currículo</a></li>
-        <li><a class="botao botao--sec" href="/vaga/#bancoV">Banco de Vagas</a></li>
-      </ul>
-    </div>
-    <div>
-      <h2>Serviços para o Empregador</h2>
-      <p>Prezado empregador, fique à vontade para cadastrar aqui suas vagas e oportunidades de emprego e/ou buscar por currículos que lhe atendam.</p>
-      <ul class="inst-links">
-        <li><a class="botao botao--sec" href="/vaga/#cadastroV">Cadastro de Vagas</a></li>
-        <li><a class="botao botao--sec" href="/curriculo/#bancoC">Banco de Currículos</a></li>
-      </ul>
-    </div>
-  </div>
-</section>
-
-<section id="contatos" class="secao">
-  <div class="container duas-col">
-    <div class="centro">{% imagem "Sindcom-Passos-Logotipo-01.png", "Logotipo do SINDCOM", "160px", "inst-logo inst-logo--p", false %}</div>
-    <div>
-      <h2>Contatos</h2>
-      <ul class="inst-contatos">
-        <li><strong>Endereço:</strong> Av. dos Expedicionários, 137, Centro, CEP 37.900-130, Passos, Minas Gerais</li>
-        <li><strong>E-mail:</strong> <a href="mailto:contato@sindcompassos.org">contato@sindcompassos.org</a></li>
-        <li><strong>Telefone:</strong> <a href="tel:+553535263847">(35) 3526-3847</a></li>
-      </ul>
-      <p><a class="botao botao--sec" href="https://www.openstreetmap.org/search?query=Avenida%20dos%20Expedicion%C3%A1rios%20137%2C%20Passos%2C%20MG" rel="noopener">Ver no mapa</a> <a class="botao" href="/contato/">Fale conosco</a></p>
-    </div>
-  </div>
-</section>
+</div>

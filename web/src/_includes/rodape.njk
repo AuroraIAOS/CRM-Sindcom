@@ -1,6 +1,6 @@
 {% if rodapeCompleto %}
 <footer class="rodape rodape--completo">
-  <svg class="rodape__onda" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path d="M0 0H1440V28L720 90 0 28Z"/></svg>
+  <svg class="rodape__onda" viewBox="0 0 1440 90" preserveAspectRatio="none" aria-hidden="true" focusable="false"{% if ondaCor %} style="fill:var(--cor-{{ ondaCor }})"{% endif %}><path d="M0 0H1440V28L720 90 0 28Z"/></svg>
   <div class="container rodape__miolo">
 
     <section class="rodape-denuncia" aria-labelledby="rd-titulo">
